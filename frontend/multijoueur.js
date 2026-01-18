@@ -1,5 +1,7 @@
 // Configuration
-const SERVER_URL = "https://question-pour-un-champion.onrender.com";
+// IMPORTANT: URL du backend Socket.IO (Render)
+// Mise a jour apres redeploiement
+const SERVER_URL = "https://questionpourunchampion-backend.onrender.com";
 
 // Variables globales
 let mpSocket = null;

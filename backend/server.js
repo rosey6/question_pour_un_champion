@@ -11,14 +11,29 @@ const server = http.createServer(app);
 // Configuration Socket.io
 const io = socketIo(server, {
   cors: {
-    origin: "*",
+    // Autoriser le frontend Vercel et les environnements locaux.
+    // (Liste explicite: évite certains blocages CORS / proxies.)
+    origin: [
+      "https://question-pour-un-champion-murex.vercel.app",
+      "http://localhost:3000",
+      "http://localhost:5173",
+    ],
     methods: ["GET", "POST"],
   },
   transports: ["websocket", "polling"],
 });
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "https://question-pour-un-champion-murex.vercel.app",
+      "http://localhost:3000",
+      "http://localhost:5173",
+    ],
+    methods: ["GET", "POST"],
+  })
+);
 app.use(express.json());
 
 // Route de santé pour Render
@@ -276,8 +291,20 @@ io.on("connection", (socket) => {
 
     game.state = "playing";
 
+    // Normaliser les settings (compat anciennes clés)
     if (settings) {
-      game.settings = settings;
+      const rawSettings = settings || {};
+      game.settings = {
+        questionsCount: Number(
+          rawSettings.questionsCount ?? rawSettings.nombreQuestions ?? 10
+        ),
+        timePerQuestion: Number(
+          rawSettings.timePerQuestion ?? rawSettings.dureeQuestion ?? 30
+        ),
+        timePerAnswer: Number(
+          rawSettings.timePerAnswer ?? rawSettings.dureeReponse ?? 15
+        ),
+      };
     }
 
     // Utiliser les questions envoyées par l'hôte ou générer des questions locales
@@ -303,7 +330,7 @@ io.on("connection", (socket) => {
       })),
       settings: game.settings,
       questions: game.questions,
-      totalQuestions: normalizedSettings.questionsCount,
+      totalQuestions: game.totalQuestions,
     });
 
     // Envoyer la première question après 2 secondes

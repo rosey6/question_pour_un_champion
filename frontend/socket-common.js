@@ -9,8 +9,8 @@ let isHost = false;
 function connectSocket() {
   if (socket) return socket;
 
-  socket = io("https://question-pour-un-champion.onrender.com", {
-    transports: ["websocket"],
+  socket = io("https://questionpourunchampion-backend.onrender.com", {
+    transports: ["websocket", "polling"],
   });
 
   socket.on("connect", () => {
