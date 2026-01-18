@@ -1,0 +1,1314 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+  color: white;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.ecran {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 2rem;
+  animation: apparition 0.5s ease-out;
+}
+
+.ecran.actif {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.contenu {
+  max-width: 900px;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2.5rem;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+@keyframes apparition {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  color: #fdbb2d;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+h2 {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+}
+
+h3 {
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.sous-titre {
+  font-size: 1rem;
+  color: #fdbb2d;
+  font-style: italic;
+  margin-bottom: 1.5rem;
+}
+
+p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.separateur {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #fdbb2d, transparent);
+  margin: 2rem 0;
+}
+
+.caracteristiques {
+  display: flex;
+  justify-content: space-between;
+  margin: 2.5rem 0;
+  flex-wrap: wrap;
+}
+
+.caracteristique {
+  flex: 1;
+  min-width: 200px;
+  margin: 0.5rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  transition: transform 0.3s ease;
+}
+
+.caracteristique:hover {
+  transform: translateY(-5px);
+}
+
+button.bouton {
+  display: inline-block;
+  padding: 0.8rem 1.8rem;
+  margin: 0.5rem;
+  border-radius: 50px;
+  font-weight: bold;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+}
+
+.bouton-principal {
+  background: #fdbb2d;
+  color: #1a1a1a;
+}
+
+.bouton-principal:hover {
+  background: #ffcc44;
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(253, 187, 45, 0.4);
+}
+
+.bouton-secondaire {
+  background: transparent;
+  color: #fdbb2d;
+  border: 2px solid #fdbb2d;
+}
+
+.bouton-secondaire:hover {
+  background: rgba(253, 187, 45, 0.1);
+  transform: scale(1.05);
+}
+
+.options-joueurs-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+@media (max-width: 768px) {
+  .options-joueurs-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+button.option-joueur {
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  border: none;
+  color: white;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button.option-joueur:hover {
+  background: rgba(253, 187, 45, 0.3);
+  transform: scale(1.05);
+}
+
+.nombre-joueurs {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #fdbb2d;
+  margin-bottom: 0.5rem;
+}
+
+.texte-joueurs {
+  font-size: 1rem;
+}
+
+.formulaire-noms {
+  margin: 2rem 0;
+}
+
+.groupe-nom {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.groupe-nom label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  color: #fdbb2d;
+}
+
+.groupe-nom input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 2px solid rgba(253, 187, 45, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.groupe-nom input:focus {
+  outline: none;
+  border-color: #fdbb2d;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.scores {
+  display: grid;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.scores-grid-1 {
+  grid-template-columns: 1fr;
+}
+
+.scores-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.scores-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.scores-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 768px) {
+  .scores-grid-3,
+  .scores-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .scores-grid-2,
+  .scores-grid-3,
+  .scores-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.carte-joueur {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1rem 1.5rem;
+  border-radius: 10px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.carte-joueur:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-3px);
+}
+
+.carte-joueur h3 {
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.carte-joueur .points {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #fdbb2d;
+}
+
+.question {
+  margin: 2rem 0;
+}
+
+.options-reponse {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+@media (max-width: 768px) {
+  .options-reponse {
+    grid-template-columns: 1fr;
+  }
+}
+
+button.option-reponse {
+  padding: 1.2rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  border: none;
+  color: white;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button.option-reponse:hover {
+  background: rgba(253, 187, 45, 0.3);
+  transform: scale(1.02);
+}
+
+.chronometre-container {
+  margin: 1.5rem 0;
+}
+
+.chronometre {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50px;
+  border: 3px solid #fdbb2d;
+}
+
+.temps-restant {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #fdbb2d;
+  text-shadow: 0 0 10px rgba(253, 187, 45, 0.5);
+}
+
+.unite-temps {
+  font-size: 1rem;
+  color: #ffffff;
+  margin-top: 0.5rem;
+}
+
+.chronometre-reponse {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: #4caf50;
+}
+
+.chronometre-reponse .temps-restant {
+  color: #4caf50;
+  text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+.buzzers-container {
+  margin: 2rem 0;
+  text-align: center;
+}
+
+.buzzers-grid {
+  display: grid;
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.buzzers-grid-1 {
+  grid-template-columns: 1fr;
+}
+
+.buzzers-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.buzzers-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.buzzers-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 768px) {
+  .buzzers-grid-3,
+  .buzzers-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .buzzers-grid-2,
+  .buzzers-grid-3,
+  .buzzers-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.buzzer-joueur {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.buzzer-joueur h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #ffffff;
+}
+
+button.bouton-buzzer {
+  display: inline-block;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  color: white;
+  font-weight: bold;
+  font-size: 1.4rem;
+  transition: all 0.3s ease;
+  border: 6px solid;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button.bouton-buzzer::before {
+  content: "";
+  position: absolute;
+  top: 10%;
+  left: 10%;
+  right: 10%;
+  bottom: 10%;
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  border-radius: 50%;
+}
+
+button.bouton-buzzer:hover:not(:disabled) {
+  transform: scale(1.1);
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
+}
+
+button.bouton-buzzer:active:not(:disabled) {
+  transform: scale(0.95);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+.texte-buzzer {
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  z-index: 1;
+}
+
+.indication-buzzers {
+  margin-top: 1rem;
+  font-size: 1.2rem;
+  color: #fdbb2d;
+  font-weight: bold;
+}
+
+.resultat-question {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.reponse-correcte {
+  font-size: 1.2rem;
+  color: #4caf50;
+  font-weight: bold;
+  margin: 1rem 0;
+}
+
+.statut-reponse {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #4caf50;
+  margin: 1rem 0;
+}
+
+.joueur-repondant {
+  font-size: 1.2rem;
+  color: #fdbb2d;
+  font-weight: bold;
+  margin: 1rem 0;
+}
+
+.actions {
+  margin-top: 2rem;
+}
+
+@keyframes buzz {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+  }
+}
+
+.buzzer-active {
+  animation: buzz 0.5s ease-in-out 3;
+}
+
+.reponse-incorrecte {
+  font-size: 1.2rem;
+  color: #f44336;
+  font-weight: bold;
+  margin: 1rem 0;
+}
+
+.statut-reponse.incorrect {
+  color: #f44336;
+}
+
+.bouton-buzzer.desactive,
+.bouton-buzzer:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: radial-gradient(circle at center, #666666, #444444, #222222);
+  border-color: #888888;
+}
+
+.bouton-buzzer.desactive:hover,
+.bouton-buzzer:disabled:hover {
+  transform: scale(1);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+.raccourci-clavier {
+  font-size: 0.9rem;
+  color: #fdbb2d;
+  font-weight: bold;
+  margin-top: 0.5rem;
+  padding: 0.3rem 0.8rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  display: inline-block;
+}
+
+body {
+  background: linear-gradient(-45deg, #1a2a6c, #b21f1f, #fdbb2d, #1a2a6c);
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
+}
+
+@keyframes gradientBG {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@media (max-width: 768px) {
+  .ecran {
+    padding: 1rem;
+  }
+
+  .contenu {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  .caracteristiques {
+    flex-direction: column;
+  }
+
+  .bouton-buzzer {
+    width: 130px;
+    height: 130px;
+  }
+
+  .texte-buzzer {
+    font-size: 1.3rem;
+  }
+
+  .temps-restant {
+    font-size: 2.5rem;
+  }
+
+  .chronometre {
+    padding: 0.8rem 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .bouton-buzzer {
+    width: 120px;
+    height: 120px;
+  }
+
+  .texte-buzzer {
+    font-size: 1.2rem;
+  }
+}
+
+.partie-historique {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.partie-historique h3 {
+  color: #fdbb2d;
+  margin-bottom: 0.5rem;
+}
+
+.partie-historique ul {
+  list-style-type: none;
+  padding-left: 1rem;
+}
+
+.partie-historique li {
+  margin: 0.3rem 0;
+  padding: 0.3rem 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 5px;
+}
+
+.parametres-partie {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.groupe-parametre {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.groupe-parametre label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  color: #fdbb2d;
+}
+
+.select-choix {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 2px solid rgba(253, 187, 45, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.select-choix:focus {
+  outline: none;
+  border-color: #fdbb2d;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.select-choix option {
+  background: #1a1a1a;
+  color: white;
+}
+/* ===== STYLES MULTIJOUEUR ===== */
+
+/* Écran multijoueur */
+.multijoueur-options {
+  display: flex;
+  gap: 3rem;
+  margin: 2rem 0;
+}
+
+.separateur-vertical {
+  width: 2px;
+  background: linear-gradient(to bottom, transparent, #fdbb2d, transparent);
+  height: 400px;
+}
+
+.option-creer,
+.option-rejoindre {
+  flex: 1;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  border: 1px solid rgba(253, 187, 45, 0.3);
+}
+
+.option-creer h3,
+.option-rejoindre h3 {
+  color: #fdbb2d;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #fdbb2d;
+  font-weight: bold;
+}
+
+.code-partie {
+  text-align: center;
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  border: 2px dashed #fdbb2d;
+}
+
+#code-partie {
+  font-size: 3.5rem;
+  font-weight: 900;
+  letter-spacing: 10px;
+  color: #fdbb2d;
+  margin: 1rem 0;
+  text-shadow: 0 0 20px rgba(253, 187, 45, 0.5);
+}
+
+.joueurs-salle {
+  margin-top: 2rem;
+}
+
+#liste-joueurs-salle,
+#joueurs-attente {
+  margin: 1rem 0;
+  min-height: 100px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.joueur-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem;
+  margin: 0.5rem 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.joueur-item i {
+  color: #fdbb2d;
+}
+
+.message-attente {
+  text-align: center;
+  padding: 2rem;
+  color: #fdbb2d;
+  font-style: italic;
+}
+
+/* Header jeu multijoueur */
+.header-multijoueur {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 1rem 2rem;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+}
+
+.info-partie {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+}
+
+.chrono-multijoueur {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(253, 187, 45, 0.2);
+  padding: 0.5rem 1.5rem;
+  border-radius: 50px;
+  border: 2px solid #fdbb2d;
+}
+
+.chrono-multijoueur span:first-child {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #fdbb2d;
+}
+
+/* Scores multijoueur */
+.scores-multijoueur {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.carte-joueur-multi {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  border-radius: 10px;
+  text-align: center;
+  transition: all 0.3s;
+  border: 2px solid transparent;
+}
+
+.carte-joueur-multi.hote {
+  border-color: #fdbb2d;
+}
+
+.carte-joueur-multi.active {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: #4caf50;
+}
+
+.carte-joueur-multi h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.carte-joueur-multi .points {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #fdbb2d;
+}
+
+/* Question multijoueur */
+.question-multijoueur {
+  margin: 2rem 0;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  border-left: 5px solid #fdbb2d;
+}
+
+/* Buzzers multijoueur */
+.buzzers-multijoueur {
+  margin: 2rem 0;
+}
+
+.buzzers-grid-multi {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.buzzer-joueur-multi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  transition: all 0.3s;
+}
+
+.buzzer-joueur-multi.active {
+  background: rgba(76, 175, 80, 0.2);
+  transform: scale(1.05);
+}
+
+.bouton-buzzer-multi {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 4px solid;
+  background: radial-gradient(circle at center, var(--color, #666), #333);
+  color: white;
+  font-weight: bold;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin: 0.5rem 0;
+}
+
+.bouton-buzzer-multi:hover:not(:disabled) {
+  transform: scale(1.1);
+  box-shadow: 0 0 30px var(--color, #666);
+}
+
+.bouton-buzzer-multi:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bouton-buzzer-multi.buzzed {
+  animation: buzz 0.5s ease-in-out 3;
+}
+
+/* Écran réponse multijoueur */
+#ecran-reponse-multi {
+  margin-top: 2rem;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  border: 2px solid #4caf50;
+}
+
+.reponse-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.chrono-reponse-multi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(76, 175, 80, 0.2);
+  padding: 0.5rem 1.5rem;
+  border-radius: 50px;
+  border: 2px solid #4caf50;
+}
+
+.chrono-reponse-multi span:first-child {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #4caf50;
+}
+
+.options-reponse-multi {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.option-reponse-multi {
+  padding: 1.2rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(253, 187, 45, 0.3);
+  border-radius: 10px;
+  color: white;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+
+.option-reponse-multi:hover {
+  background: rgba(253, 187, 45, 0.3);
+  transform: scale(1.02);
+}
+
+/* Animations */
+@keyframes buzz {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .multijoueur-options {
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .separateur-vertical {
+    width: 100%;
+    height: 2px;
+    margin: 1rem 0;
+  }
+
+  .scores-multijoueur {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .buzzers-grid-multi {
+    grid-template-columns: 1fr;
+  }
+
+  .info-partie {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .options-reponse-multi {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Utilitaires */
+.hidden {
+  display: none !important;
+}
+
+:root {
+  --joueur1: #ff5252;
+  --joueur2: #4caf50;
+  --joueur3: #2196f3;
+  --joueur4: #ffc107;
+}
+
+
+/* ===== PALETTE AJOUTÉE (sans modification de structure existante) ===== */
+:root {
+  --p-bleu: #72DDF7;
+  --p-indigo: #8093F1;
+  --p-violet: #B388EB;
+  --p-rose: #F7AEF8;
+  --p-rose-clair: #FDC5F5;
+}
+
+/* Accents couleur (override léger) */
+h1, .sous-titre, .indication-buzzers,
+.groupe-nom label, .groupe-parametre label,
+.partie-historique h3, .joueur-repondant {
+  color: var(--p-rose);
+}
+
+.separateur,
+.separateur-vertical {
+  background: linear-gradient(90deg, transparent, var(--p-indigo), transparent);
+}
+
+.bouton-principal {
+  background: linear-gradient(135deg, var(--p-bleu), var(--p-indigo));
+  color: #1a1a1a;
+}
+.bouton-principal:hover {
+  background: linear-gradient(135deg, var(--p-violet), var(--p-rose));
+}
+
+.bouton-secondaire {
+  color: var(--p-bleu);
+  border-color: var(--p-bleu);
+}
+.bouton-secondaire:hover {
+  background: rgba(114,221,247,0.15);
+}
+
+.temps-restant {
+  color: var(--p-indigo);
+  text-shadow: 0 0 10px rgba(128,147,241,0.6);
+}
+
+.reponse-correcte,
+.statut-reponse {
+  color: var(--p-bleu);
+}
+
+.reponse-incorrecte,
+.statut-reponse.incorrect {
+  color: var(--p-rose);
+}
+
+/* Multijoueur accents */
+.carte-joueur-multi.hote {
+  border-color: var(--p-indigo);
+}
+.carte-joueur-multi.active {
+  background: rgba(114,221,247,0.2);
+  border-color: var(--p-bleu);
+}
+
+.option-reponse-multi:hover,
+button.option-reponse:hover {
+  background: rgba(179,136,235,0.35);
+}
+
+
+/* ===== CORRECTION FINALE DEGRADE (AUCUN JAUNE / ORANGE) ===== */
+body {
+  background: linear-gradient(
+    -45deg,
+    #0f1020,
+    #72DDF7,
+    #8093F1,
+    #B388EB,
+    #F7AEF8,
+    #FDC5F5
+  ) !important;
+  background-size: 500% 500% !important;
+}
+
+
+/* ===== AJUSTEMENTS HOVER/INPUTS + SUPPRESSION JAUNE RESTANT (AJOUT SEULEMENT) ===== */
+:root {
+  --p1: #72DDF7;
+  --p2: #8093F1;
+  --p3: #B388EB;
+  --p4: #F7AEF8;
+  --p5: #FDC5F5;
+}
+
+/* Chiffres choix joueurs (était jaune via .nombre-joueurs) */
+.nombre-joueurs {
+  color: var(--p3) !important;
+}
+
+/* Hover boutons de choix joueurs (override du jaune) */
+button.option-joueur:hover {
+  background: rgba(128,147,241,0.22) !important;
+  transform: scale(1.05);
+}
+
+/* Champs de saisie & sélection : style plus visible et cohérent */
+.groupe-nom input,
+.select-choix,
+.form-group input,
+.form-group select,
+#code-rejoindre {
+  border: 2px solid rgba(128,147,241,0.35) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border-radius: 10px !important;
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease !important;
+}
+
+/* Hover (souris) */
+.groupe-nom input:hover,
+.select-choix:hover,
+.form-group input:hover,
+.form-group select:hover,
+#code-rejoindre:hover {
+  border-color: rgba(114,221,247,0.70) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Focus (clavier / clic) */
+.groupe-nom input:focus,
+.select-choix:focus,
+.form-group input:focus,
+.form-group select:focus,
+#code-rejoindre:focus {
+  outline: none !important;
+  border-color: var(--p2) !important;
+  box-shadow: 0 0 0 4px rgba(128,147,241,0.25) !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+/* Placeholder */
+.groupe-nom input::placeholder,
+.form-group input::placeholder,
+#code-rejoindre::placeholder {
+  color: rgba(253, 197, 245, 0.75) !important;
+}
+
+/* Multijoueur : champs (rendre "information" plus lisible) */
+.option-creer .form-group label,
+.option-rejoindre .form-group label {
+  color: var(--p3) !important;
+}
+
+.code-partie {
+  border-color: rgba(179,136,235,0.55) !important;
+}
+
+
+/* ===== PALETTE + OVERRIDES SANS CHANGER LA STRUCTURE (AJOUT EN FIN) ===== */
+:root{
+  --p-bleu:#72DDF7;
+  --p-indigo:#8093F1;
+  --p-violet:#B388EB;
+  --p-rose:#F7AEF8;
+  --p-rose-clair:#FDC5F5;
+}
+
+/* Remplace les accents jaunes/oranges (définis plus haut) */
+body{
+  background: linear-gradient(
+    -45deg,
+    #0f1020,
+    var(--p-bleu),
+    var(--p-indigo),
+    var(--p-violet),
+    var(--p-rose),
+    var(--p-rose-clair)
+  ) !important;
+  background-size: 500% 500% !important;
+}
+
+/* Titres et sous-titres */
+h1{ color: var(--p-rose) !important; }
+.sous-titre{ color: var(--p-violet) !important; }
+
+/* Séparateurs */
+.separateur{
+  background: linear-gradient(90deg, transparent, var(--p-indigo), transparent) !important;
+}
+.separateur-vertical{
+  background: linear-gradient(to bottom, transparent, var(--p-indigo), transparent) !important;
+}
+
+/* Boutons */
+.bouton-principal{
+  background: linear-gradient(135deg, var(--p-bleu), var(--p-indigo), var(--p-violet)) !important;
+  color:#101018 !important;
+}
+.bouton-principal:hover{
+  background: linear-gradient(135deg, var(--p-violet), var(--p-rose), var(--p-rose-clair)) !important;
+  box-shadow: 0 5px 15px rgba(128,147,241,0.35) !important;
+}
+.bouton-secondaire{
+  color: var(--p-bleu) !important;
+  border-color: var(--p-bleu) !important;
+}
+.bouton-secondaire:hover{
+  background: rgba(114,221,247,0.15) !important;
+}
+
+/* Choix joueurs */
+.nombre-joueurs{ color: var(--p-violet) !important; }
+button.option-joueur:hover{
+  background: rgba(128,147,241,0.22) !important;
+}
+button.option-joueur{
+  border: 1px solid rgba(128,147,241,0.22) !important;
+}
+
+/* Labels + inputs/selects */
+.groupe-nom label,
+.groupe-parametre label,
+.form-group label{
+  color: var(--p-violet) !important;
+}
+.groupe-nom input,
+.select-choix,
+.form-group input{
+  border-color: rgba(128,147,241,0.35) !important;
+}
+.groupe-nom input:focus,
+.select-choix:focus,
+.form-group input:focus{
+  border-color: var(--p-indigo) !important;
+  box-shadow: 0 0 0 4px rgba(128,147,241,0.22) !important;
+}
+
+/* Chronomètre solo */
+.chronometre{ border-color: var(--p-indigo) !important; }
+.temps-restant{
+  color: var(--p-indigo) !important;
+  text-shadow: 0 0 10px rgba(128,147,241,0.55) !important;
+}
+.indication-buzzers,
+.raccourci-clavier,
+.joueur-repondant{
+  color: var(--p-violet) !important;
+}
+
+/* Multijoueur accents */
+.option-creer,
+.option-rejoindre{
+  border-color: rgba(128,147,241,0.28) !important;
+}
+.option-creer h3,
+.option-rejoindre h3,
+.joueur-item i,
+.message-attente,
+#code-partie,
+.chrono-multijoueur span:first-child,
+.carte-joueur-multi .points,
+.question-multijoueur{
+  color: var(--p-violet) !important;
+}
+.code-partie{
+  border-color: rgba(179,136,235,0.55) !important;
+}
+.chrono-multijoueur{
+  background: rgba(128,147,241,0.18) !important;
+  border-color: var(--p-indigo) !important;
+}
+.carte-joueur-multi.hote{ border-color: var(--p-indigo) !important; }
+.carte-joueur-multi .points{ color: var(--p-violet) !important; }
+.question-multijoueur{ border-left-color: var(--p-indigo) !important; }
+.option-reponse-multi{
+  border-color: rgba(128,147,241,0.35) !important;
+}
+.option-reponse-multi:hover,
+button.option-reponse:hover{
+  background: rgba(179,136,235,0.35) !important;
+}

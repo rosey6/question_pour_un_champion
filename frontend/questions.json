@@ -1,0 +1,1584 @@
+[
+  {
+    "question": "Quelle est la capitale du Canada ?",
+    "options": [
+      "Toronto",
+      "Ottawa",
+      "Vancouver",
+      "Montréal"
+    ],
+    "reponseCorrecte": "Ottawa",
+    "wikidataId": "Q1930",
+    "wikidataLabel": "Ottawa",
+    "illustrationTexte": "Ottawa — capitale du Canada",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Ottawa%20Montage%202020.jpg?width=900"
+  },
+  {
+    "question": "Quel est l’océan le plus grand du monde ?",
+    "options": [
+      "Atlantique",
+      "Pacifique",
+      "Indien",
+      "Arctique"
+    ],
+    "reponseCorrecte": "Pacifique",
+    "wikidataId": "Q98",
+    "wikidataLabel": "océan Pacifique",
+    "illustrationTexte": "océan Pacifique — océan le plus vaste du globe terrestre",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Pacific%20Ocean.png?width=900"
+  },
+  {
+    "question": "Quelle planète est la plus proche du Soleil ?",
+    "options": [
+      "Vénus",
+      "Mercure",
+      "Mars",
+      "Jupiter"
+    ],
+    "reponseCorrecte": "Mercure",
+    "wikidataId": "Q1709809",
+    "wikidataLabel": "Mercure",
+    "illustrationTexte": "Mercure — chaîne d'hôtels",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Hotel%20Mercure%20Eindhoven.jpg?width=900"
+  },
+  {
+    "question": "En quelle année a débuté la Première Guerre mondiale ?",
+    "options": [
+      "1912",
+      "1914",
+      "1916",
+      "1918"
+    ],
+    "reponseCorrecte": "1914",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "1914",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3E1914%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel est le plus long fleuve d’Afrique ?",
+    "options": [
+      "Congo",
+      "Niger",
+      "Nil",
+      "Zambèze"
+    ],
+    "reponseCorrecte": "Nil",
+    "wikidataId": "Q20000773",
+    "wikidataLabel": "Nil",
+    "illustrationTexte": "Nil — prénom masculin",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3ENil%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Combien de continents y a-t-il sur Terre ?",
+    "options": [
+      "5",
+      "6",
+      "7",
+      "8"
+    ],
+    "reponseCorrecte": "7",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "7",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3E7%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel gaz est le plus présent dans l’air (atmosphère terrestre) ?",
+    "options": [
+      "Oxygène",
+      "Azote",
+      "Dioxyde de carbone",
+      "Argon"
+    ],
+    "reponseCorrecte": "Azote",
+    "wikidataId": "Q627",
+    "wikidataLabel": "azote",
+    "illustrationTexte": "azote — élément chimique de numéro atomique 7 et de symbole N ; élément le plus abondan...",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Fluessiger%20Stickstoff.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la capitale de l’Australie ?",
+    "options": [
+      "Sydney",
+      "Melbourne",
+      "Canberra",
+      "Perth"
+    ],
+    "reponseCorrecte": "Canberra",
+    "wikidataId": "Q3114",
+    "wikidataLabel": "Canberra",
+    "illustrationTexte": "Canberra — capitale de l'Australie",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Canberra%20from%20Mt%20Ainslie%20(5642431515).jpg?width=900"
+  },
+  {
+    "question": "Dans quel pays se trouve la ville de Kyoto ?",
+    "options": [
+      "Chine",
+      "Japon",
+      "Corée du Sud",
+      "Thaïlande"
+    ],
+    "reponseCorrecte": "Japon",
+    "wikidataId": "Q17",
+    "wikidataLabel": "Japon",
+    "illustrationTexte": "Japon — pays d'Asie de l'Est",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Satellite%20image%20of%20Japan%20in%20May%202003.jpg?width=900"
+  },
+  {
+    "question": "Quel instrument mesure les tremblements de terre ?",
+    "options": [
+      "Baromètre",
+      "Sismographe",
+      "Thermomètre",
+      "Hygromètre"
+    ],
+    "reponseCorrecte": "Sismographe",
+    "wikidataId": "Q160567",
+    "wikidataLabel": "sismographe",
+    "illustrationTexte": "sismographe — appareil enregistrant les séismes",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Kinemetrics%20seismograph.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la monnaie du Royaume-Uni ?",
+    "options": [
+      "Euro",
+      "Dollar",
+      "Livre sterling",
+      "Franc"
+    ],
+    "reponseCorrecte": "Livre sterling",
+    "wikidataId": "Q25224",
+    "wikidataLabel": "livre sterling",
+    "illustrationTexte": "livre sterling — monnaie officielle du Royaume-Uni et d'autres territoires",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/One%20Pound%201983%20obverse.jpg?width=900"
+  },
+  {
+    "question": "Quel est le symbole chimique de l’or ?",
+    "options": [
+      "Ag",
+      "Au",
+      "Fe",
+      "O"
+    ],
+    "reponseCorrecte": "Au",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "Au",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3EAu%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel pays a pour capitale Berlin ?",
+    "options": [
+      "Autriche",
+      "Allemagne",
+      "Belgique",
+      "Suisse"
+    ],
+    "reponseCorrecte": "Allemagne",
+    "wikidataId": "Q183",
+    "wikidataLabel": "Allemagne",
+    "illustrationTexte": "Allemagne — pays d'Europe centrale",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Aerial%20view%20of%20Berlin%20(32881394137).jpg?width=900"
+  },
+  {
+    "question": "Quel est le plus grand désert chaud du monde ?",
+    "options": [
+      "Gobi",
+      "Sahara",
+      "Kalahari",
+      "Atacama"
+    ],
+    "reponseCorrecte": "Sahara",
+    "wikidataId": "Q6583",
+    "wikidataLabel": "Sahara",
+    "illustrationTexte": "Sahara — désert du Nord de l'Afrique",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Sahara%20real%20color.jpg?width=900"
+  },
+  {
+    "question": "Quelle mer borde la Côte d’Azur (Nice, Cannes) ?",
+    "options": [
+      "Mer Rouge",
+      "Mer Méditerranée",
+      "Mer Baltique",
+      "Mer Noire"
+    ],
+    "reponseCorrecte": "Mer Méditerranée",
+    "wikidataId": "Q4918",
+    "wikidataLabel": "mer Méditerranée",
+    "illustrationTexte": "mer Méditerranée — mer entre l'Europe, l'Asie et l'Afrique",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Mediterranean%20Sea%20political%20map-en.svg?width=900"
+  },
+  {
+    "question": "Quel est l’organe principal de la respiration chez l’être humain ?",
+    "options": [
+      "Cœur",
+      "Poumons",
+      "Estomac",
+      "Foie"
+    ],
+    "reponseCorrecte": "Poumons",
+    "wikidataId": "Q7886",
+    "wikidataLabel": "poumon",
+    "illustrationTexte": "poumon — organe de l'appareil respiratoire",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Thorax%20Lung%203d%20from%20ct%20scans.jpg?width=900"
+  },
+  {
+    "question": "Combien de côtés a un hexagone ?",
+    "options": [
+      "5",
+      "6",
+      "7",
+      "8"
+    ],
+    "reponseCorrecte": "6",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "6",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3E6%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel pays est surnommé « le pays du Soleil-Levant » ?",
+    "options": [
+      "Japon",
+      "Espagne",
+      "Brésil",
+      "Égypte"
+    ],
+    "reponseCorrecte": "Japon",
+    "wikidataId": "Q17",
+    "wikidataLabel": "Japon",
+    "illustrationTexte": "Japon — pays d'Asie de l'Est",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Satellite%20image%20of%20Japan%20in%20May%202003.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la langue officielle du Brésil ?",
+    "options": [
+      "Espagnol",
+      "Portugais",
+      "Anglais",
+      "Français"
+    ],
+    "reponseCorrecte": "Portugais",
+    "wikidataId": "Q5146",
+    "wikidataLabel": "portugais",
+    "illustrationTexte": "portugais — langue ibéro-romane",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Breve%20discurso%20em%20que%20se%20contem%20a%20conquista%20do%20Reyno%20de%20Pegu%20na%20Índia%20Oriental,%20pelos%20portuguezes%20em%20tempo%20do%20Viso-Rey%20Ayres%20de%20Saldanha;%20sendo%20capitam%20Salvador%20Ribeiro%20de%20Souza,%20chamado%20Massinga,%20natural%20de%20Guimaraens.%20Rei%20do%20Pegu.JPG?width=900"
+  },
+  {
+    "question": "Quelle ville est la capitale de l’Italie ?",
+    "options": [
+      "Milan",
+      "Venise",
+      "Rome",
+      "Naples"
+    ],
+    "reponseCorrecte": "Rome",
+    "wikidataId": "Q220",
+    "wikidataLabel": "Rome",
+    "illustrationTexte": "Rome — capitale de l'Italie",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Rome%20Skyline%20(8012016319).jpg?width=900"
+  },
+  {
+    "question": "Quel est le plus grand mammifère du monde ?",
+    "options": [
+      "Éléphant d’Afrique",
+      "Baleine bleue",
+      "Rhinocéros",
+      "Girafe"
+    ],
+    "reponseCorrecte": "Baleine bleue",
+    "wikidataId": "Q42196",
+    "wikidataLabel": "baleine bleue",
+    "illustrationTexte": "baleine bleue — espèce de cétacés de la famille des Balaenopteridae",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Anim1755%20-%20Flickr%20-%20NOAA%20Photo%20Library.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la formule chimique de l’eau ?",
+    "options": [
+      "CO2",
+      "H2O",
+      "O2",
+      "NaCl"
+    ],
+    "reponseCorrecte": "H2O",
+    "wikidataId": "Q3780358",
+    "wikidataLabel": "H2O",
+    "illustrationTexte": "H2O — album de H2O",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3EH2O%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel pays a pour capitale Madrid ?",
+    "options": [
+      "Portugal",
+      "Espagne",
+      "Mexique",
+      "Argentine"
+    ],
+    "reponseCorrecte": "Espagne",
+    "wikidataId": "Q29",
+    "wikidataLabel": "Espagne",
+    "illustrationTexte": "Espagne — pays du sud-ouest de l'Europe",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Spain%20-%20Location%20Map%20(2013)%20-%20ESP%20-%20UNOCHA.svg?width=900"
+  },
+  {
+    "question": "Quel est l’astre au centre du système solaire ?",
+    "options": [
+      "La Lune",
+      "Le Soleil",
+      "Mars",
+      "Jupiter"
+    ],
+    "reponseCorrecte": "Le Soleil",
+    "wikidataId": "Q3227253",
+    "wikidataLabel": "Le Soleil",
+    "illustrationTexte": "Le Soleil — journal quotidien québécois",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3ELe%20Soleil%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quelle est la capitale du Maroc ?",
+    "options": [
+      "Casablanca",
+      "Rabat",
+      "Fès",
+      "Marrakech"
+    ],
+    "reponseCorrecte": "Rabat",
+    "wikidataId": "Q3551",
+    "wikidataLabel": "Rabat",
+    "illustrationTexte": "Rabat — capitale du Maroc",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Kasbah%20des%20Oudaias%20P1060356.JPG?width=900"
+  },
+  {
+    "question": "Quel est le plus grand océan après le Pacifique ?",
+    "options": [
+      "Atlantique",
+      "Indien",
+      "Arctique",
+      "Antarctique"
+    ],
+    "reponseCorrecte": "Atlantique",
+    "wikidataId": "Q97",
+    "wikidataLabel": "océan Atlantique",
+    "illustrationTexte": "océan Atlantique — océan de la Terre",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Atlantic%20Ocean.png?width=900"
+  },
+  {
+    "question": "Quel sport se joue avec une raquette et un volant ?",
+    "options": [
+      "Tennis",
+      "Badminton",
+      "Squash",
+      "Ping-pong"
+    ],
+    "reponseCorrecte": "Badminton",
+    "wikidataId": "Q7291",
+    "wikidataLabel": "badminton",
+    "illustrationTexte": "badminton — sport de raquette",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Badmintonpan.jpg?width=900"
+  },
+  {
+    "question": "Qui a peint la Joconde ?",
+    "options": [
+      "Pablo Picasso",
+      "Léonard de Vinci",
+      "Claude Monet",
+      "Vincent van Gogh"
+    ],
+    "reponseCorrecte": "Léonard de Vinci",
+    "wikidataId": "Q762",
+    "wikidataLabel": "Léonard de Vinci",
+    "illustrationTexte": "Léonard de Vinci — peintre, sculpteur, architecte et ingénieur, théoricien de l'art et ...",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Francesco%20Melzi%20-%20Portrait%20of%20Leonardo.png?width=900"
+  },
+  {
+    "question": "Quel est le plus grand pays du monde en superficie ?",
+    "options": [
+      "Canada",
+      "Chine",
+      "Russie",
+      "États-Unis"
+    ],
+    "reponseCorrecte": "Russie",
+    "wikidataId": "Q159",
+    "wikidataLabel": "Russie",
+    "illustrationTexte": "Russie — pays d'Europe de l'Est et d'Asie du Nord",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Russia%2087.74494E%2066.20034N.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la capitale de la Turquie ?",
+    "options": [
+      "Istanbul",
+      "Ankara",
+      "Izmir",
+      "Bursa"
+    ],
+    "reponseCorrecte": "Ankara",
+    "wikidataId": "Q2297724",
+    "wikidataLabel": "Ankara",
+    "illustrationTexte": "Ankara — province turque",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Ankara%20districts.png?width=900"
+  },
+  {
+    "question": "Combien de minutes y a-t-il dans une heure ?",
+    "options": [
+      "30",
+      "45",
+      "60",
+      "90"
+    ],
+    "reponseCorrecte": "60",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "60",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3E60%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel pays a pour capitale Lisbonne ?",
+    "options": [
+      "Espagne",
+      "Portugal",
+      "Italie",
+      "Grèce"
+    ],
+    "reponseCorrecte": "Portugal",
+    "wikidataId": "Q45",
+    "wikidataLabel": "Portugal",
+    "illustrationTexte": "Portugal — pays du sud-ouest de l'Europe",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Portugal%20-%20Location%20Map%20(2013)%20-%20PRT%20-%20UNOCHA.svg?width=900"
+  },
+  {
+    "question": "Quel est le plus haut sommet du monde ?",
+    "options": [
+      "K2",
+      "Mont Everest",
+      "Kangchenjunga",
+      "Mont Blanc"
+    ],
+    "reponseCorrecte": "Mont Everest",
+    "wikidataId": "Q513",
+    "wikidataLabel": "Everest",
+    "illustrationTexte": "Everest — plus haute montagne de la Terre au dessus du niveau de la mer",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Mount%20Everest%20as%20seen%20from%20Drukair2%20PLW%20edit.jpg?width=900"
+  },
+  {
+    "question": "Quel appareil sert à mesurer la pression atmosphérique ?",
+    "options": [
+      "Baromètre",
+      "Altimètre",
+      "Thermomètre",
+      "Télémètre"
+    ],
+    "reponseCorrecte": "Baromètre",
+    "wikidataId": "Q79757",
+    "wikidataLabel": "baromètre",
+    "illustrationTexte": "baromètre — instrument de mesure de la pression atmosphérique",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Dosen-barometer.jpg?width=900"
+  },
+  {
+    "question": "Quel pays est traversé par le fleuve Amazone ?",
+    "options": [
+      "Brésil",
+      "Maroc",
+      "Inde",
+      "Australie"
+    ],
+    "reponseCorrecte": "Brésil",
+    "wikidataId": "Q155",
+    "wikidataLabel": "Brésil",
+    "illustrationTexte": "Brésil — pays d'Amérique du Sud",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Brazil%20topo.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la capitale de la Chine ?",
+    "options": [
+      "Shanghai",
+      "Pékin",
+      "Hong Kong",
+      "Canton"
+    ],
+    "reponseCorrecte": "Pékin",
+    "wikidataId": "Q956",
+    "wikidataLabel": "Pékin",
+    "illustrationTexte": "Pékin — capitale de la Chine",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Skyline%20of%20Beijing%20CBD%20with%20B-5906%20approaching%20(20211016171955).jpg?width=900"
+  },
+  {
+    "question": "Quel est l’état de l’eau à 0°C (à pression normale) ?",
+    "options": [
+      "Gazeux",
+      "Solide",
+      "Plasma",
+      "Liquide"
+    ],
+    "reponseCorrecte": "Solide",
+    "wikidataId": "Q11438",
+    "wikidataLabel": "matière solide",
+    "illustrationTexte": "matière solide — état de la matière",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Fcc%20lattice%204.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la plus grande planète du système solaire ?",
+    "options": [
+      "Saturne",
+      "Jupiter",
+      "Uranus",
+      "Neptune"
+    ],
+    "reponseCorrecte": "Jupiter",
+    "wikidataId": "Q319",
+    "wikidataLabel": "Jupiter",
+    "illustrationTexte": "Jupiter — cinquième planète du Système solaire",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Jupiter%20OPAL%202024.png?width=900"
+  },
+  {
+    "question": "Quel pays a pour capitale Le Caire ?",
+    "options": [
+      "Égypte",
+      "Tunisie",
+      "Algérie",
+      "Maroc"
+    ],
+    "reponseCorrecte": "Égypte",
+    "wikidataId": "Q79",
+    "wikidataLabel": "Égypte",
+    "illustrationTexte": "Égypte — pays de l'Afrique du Nord-Est",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/All%20Gizah%20Pyramids.jpg?width=900"
+  },
+  {
+    "question": "Quel est l’organe qui pompe le sang dans le corps humain ?",
+    "options": [
+      "Cerveau",
+      "Cœur",
+      "Poumon",
+      "Rein"
+    ],
+    "reponseCorrecte": "Cœur",
+    "wikidataId": "Q1072",
+    "wikidataLabel": "cœur",
+    "illustrationTexte": "cœur — organe creux et musculaire qui assure la circulation du sang",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Heart%20numlabels.svg?width=900"
+  },
+  {
+    "question": "Quel est le continent où se trouve l’Argentine ?",
+    "options": [
+      "Europe",
+      "Afrique",
+      "Amérique du Sud",
+      "Asie"
+    ],
+    "reponseCorrecte": "Amérique du Sud",
+    "wikidataId": "Q18",
+    "wikidataLabel": "Amérique du Sud",
+    "illustrationTexte": "Amérique du Sud — sous-continent de l'Amérique, situé principalement sur le cadran sud-...",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/South%20America%20satellite%20orthographic.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la capitale de la Russie ?",
+    "options": [
+      "Saint-Pétersbourg",
+      "Kiev",
+      "Moscou",
+      "Minsk"
+    ],
+    "reponseCorrecte": "Moscou",
+    "wikidataId": "Q649",
+    "wikidataLabel": "Moscou",
+    "illustrationTexte": "Moscou — capitale de la Russie",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Saint%20Basil's%20Cathedral%20and%20the%20Red%20Square.jpg?width=900"
+  },
+  {
+    "question": "Quel est le métal liquide à température ambiante ?",
+    "options": [
+      "Fer",
+      "Mercure",
+      "Cuivre",
+      "Aluminium"
+    ],
+    "reponseCorrecte": "Mercure",
+    "wikidataId": "Q1709809",
+    "wikidataLabel": "Mercure",
+    "illustrationTexte": "Mercure — chaîne d'hôtels",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Hotel%20Mercure%20Eindhoven.jpg?width=900"
+  },
+  {
+    "question": "Quel est le premier mois de l’année ?",
+    "options": [
+      "Décembre",
+      "Janvier",
+      "Février",
+      "Mars"
+    ],
+    "reponseCorrecte": "Janvier",
+    "wikidataId": "Q25275155",
+    "wikidataLabel": "Janvier",
+    "illustrationTexte": "Janvier — nom de famille",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3EJanvier%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel est le plus grand continent ?",
+    "options": [
+      "Afrique",
+      "Europe",
+      "Asie",
+      "Amérique du Nord"
+    ],
+    "reponseCorrecte": "Asie",
+    "wikidataId": "Q48",
+    "wikidataLabel": "Asie",
+    "illustrationTexte": "Asie — continent",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Asia%20satellite%20orthographic.jpg?width=900"
+  },
+  {
+    "question": "Quelle ville est surnommée « la Ville Lumière » ?",
+    "options": [
+      "Londres",
+      "Paris",
+      "Rome",
+      "Berlin"
+    ],
+    "reponseCorrecte": "Paris",
+    "wikidataId": "Q90",
+    "wikidataLabel": "Paris",
+    "illustrationTexte": "Paris — capitale de la France et plus grande ville de France",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/La%20Tour%20Eiffel%20vue%20de%20la%20Tour%20Saint-Jacques,%20Paris%20août%202014%20(2).jpg?width=900"
+  },
+  {
+    "question": "Quel est le résultat de 9 × 7 ?",
+    "options": [
+      "56",
+      "63",
+      "72",
+      "49"
+    ],
+    "reponseCorrecte": "63",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "63",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3E63%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel pays a pour capitale Athènes ?",
+    "options": [
+      "Grèce",
+      "Chypre",
+      "Turquie",
+      "Italie"
+    ],
+    "reponseCorrecte": "Grèce",
+    "wikidataId": "Q41",
+    "wikidataLabel": "Grèce",
+    "illustrationTexte": "Grèce — pays d'Europe du Sud-Est indépendant depuis 1822",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/The%20Acropolis%20and%20Mount%20Hymettus%20from%20Philopappos%20Hill%20on%20July%2018,%202019.jpg?width=900"
+  },
+  {
+    "question": "Quel est l’élément chimique dont le symbole est Fe ?",
+    "options": [
+      "Fluor",
+      "Fer",
+      "Francium",
+      "Fermium"
+    ],
+    "reponseCorrecte": "Fer",
+    "wikidataId": "Q10494697",
+    "wikidataLabel": "Fer",
+    "illustrationTexte": "Fer — genre d'insectes",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3EFer%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel est le nom du plus grand océan au monde ?",
+    "options": [
+      "Pacifique",
+      "Atlantique",
+      "Indien",
+      "Arctique"
+    ],
+    "reponseCorrecte": "Pacifique",
+    "wikidataId": "Q98",
+    "wikidataLabel": "océan Pacifique",
+    "illustrationTexte": "océan Pacifique — océan le plus vaste du globe terrestre",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Pacific%20Ocean.png?width=900"
+  },
+  {
+    "question": "Quel pays a pour capitale Bruxelles ?",
+    "options": [
+      "Belgique",
+      "Pays-Bas",
+      "Luxembourg",
+      "Suisse"
+    ],
+    "reponseCorrecte": "Belgique",
+    "wikidataId": "Q31",
+    "wikidataLabel": "Belgique",
+    "illustrationTexte": "Belgique — État d'Europe occidentale",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Belgique%20-%20Bruxelles%20-%20Grand-Place%20-%20Côté%20nord-est.jpg?width=900"
+  },
+  {
+    "question": "Quel est le plus petit nombre premier ?",
+    "options": [
+      "0",
+      "1",
+      "2",
+      "3"
+    ],
+    "reponseCorrecte": "2",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "2",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3E2%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quelle énergie stocke un ressort comprimé ?",
+    "options": [
+      "Énergie chimique",
+      "Énergie potentielle élastique",
+      "Énergie nucléaire",
+      "Énergie thermique"
+    ],
+    "reponseCorrecte": "Énergie potentielle élastique",
+    "wikidataId": "Q891408",
+    "wikidataLabel": "énergie potentielle élastique",
+    "illustrationTexte": "énergie potentielle élastique — forme d'énergie",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3E%C3%A9nergie%20potentielle%20%C3%A9lastique%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quelle est la capitale des États-Unis ?",
+    "options": [
+      "New York",
+      "Washington",
+      "Los Angeles",
+      "Chicago"
+    ],
+    "reponseCorrecte": "Washington",
+    "wikidataId": "Q1223",
+    "wikidataLabel": "Washington",
+    "illustrationTexte": "Washington — État des États-Unis",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/View%20of%20Puget%20Sound%20from%20Harborview%20Park.jpg?width=900"
+  },
+  {
+    "question": "Quel est le nom de la galaxie où se trouve le système solaire ?",
+    "options": [
+      "Andromède",
+      "Voie lactée",
+      "Sombrero",
+      "Triangulum"
+    ],
+    "reponseCorrecte": "Voie lactée",
+    "wikidataId": "Q321",
+    "wikidataLabel": "Voie lactée",
+    "illustrationTexte": "Voie lactée — galaxie spirale qui comprend de 200 à 400 milliards d'étoiles dont le Soleil",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Artist’s%20impression%20of%20the%20Milky%20Way.jpg?width=900"
+  },
+  {
+    "question": "Quel est le principal ingrédient du verre ?",
+    "options": [
+      "Sel",
+      "Sable",
+      "Bois",
+      "Plastique"
+    ],
+    "reponseCorrecte": "Sable",
+    "wikidataId": "Q936496",
+    "wikidataLabel": "sable",
+    "illustrationTexte": "sable — couleur noire en héraldique",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Heraldic%20Shield%20Sable.svg?width=900"
+  },
+  {
+    "question": "Quel pays a pour capitale Stockholm ?",
+    "options": [
+      "Norvège",
+      "Suède",
+      "Finlande",
+      "Danemark"
+    ],
+    "reponseCorrecte": "Suède",
+    "wikidataId": "Q34",
+    "wikidataLabel": "Suède",
+    "illustrationTexte": "Suède — pays d'Europe du Nord, en Scandinavie",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Sweden%20-%20Location%20Map%20(2013)%20-%20SWE%20-%20UNOCHA.svg?width=900"
+  },
+  {
+    "question": "Quelle est la plus grande île du monde ?",
+    "options": [
+      "Madagascar",
+      "Groenland",
+      "Borneo",
+      "Islande"
+    ],
+    "reponseCorrecte": "Groenland",
+    "wikidataId": "Q223",
+    "wikidataLabel": "Groenland",
+    "illustrationTexte": "Groenland — pays constitutif et autonome du royaume de Danemark depuis 1979",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Nuuk%20(2013).jpg?width=900"
+  },
+  {
+    "question": "Quel est le nombre de joueurs sur le terrain par équipe au football ?",
+    "options": [
+      "9",
+      "10",
+      "11",
+      "12"
+    ],
+    "reponseCorrecte": "11",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "11",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3E11%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel pays a pour capitale Dakar ?",
+    "options": [
+      "Sénégal",
+      "Mali",
+      "Guinée",
+      "Gabon"
+    ],
+    "reponseCorrecte": "Sénégal",
+    "wikidataId": "Q1041",
+    "wikidataLabel": "Sénégal",
+    "illustrationTexte": "Sénégal — pays d'Afrique de l'Ouest",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Flag%20map%20of%20Senegal.svg?width=900"
+  },
+  {
+    "question": "Comment s’appelle la couche gazeuse qui entoure la Terre ?",
+    "options": [
+      "Hydrosphère",
+      "Atmosphère",
+      "Lithosphère",
+      "Biosphère"
+    ],
+    "reponseCorrecte": "Atmosphère",
+    "wikidataId": "Q27723795",
+    "wikidataLabel": "Atmosphere",
+    "illustrationTexte": "Atmosphere — revue scientifique",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3EAtmosphere%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel est le nom du plus grand volcan actif d’Europe ?",
+    "options": [
+      "Etna",
+      "Vésuve",
+      "Stromboli",
+      "Santorin"
+    ],
+    "reponseCorrecte": "Etna",
+    "wikidataId": "Q16990",
+    "wikidataLabel": "Etna",
+    "illustrationTexte": "Etna — stratovolcan en Sicile, Italie",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/View%20of%20Mount%20Etna%20from%20Reggio%20Calabria%20-%20Italy%20-%2010%20Feb.%202017%20-%20(1).jpg?width=900"
+  },
+  {
+    "question": "Quelle est la capitale de l’Espagne ?",
+    "options": [
+      "Madrid",
+      "Barcelone",
+      "Valence",
+      "Séville"
+    ],
+    "reponseCorrecte": "Madrid",
+    "wikidataId": "Q2807",
+    "wikidataLabel": "Madrid",
+    "illustrationTexte": "Madrid — capitale de l'Espagne",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Madrid%20(38624991251).jpg?width=900"
+  },
+  {
+    "question": "Quel est le symbole chimique du sodium ?",
+    "options": [
+      "So",
+      "Sn",
+      "Na",
+      "S"
+    ],
+    "reponseCorrecte": "Na",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "Na",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3ENa%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel est le plus grand lac d’Afrique ?",
+    "options": [
+      "Lac Tanganyika",
+      "Lac Victoria",
+      "Lac Malawi",
+      "Lac Tchad"
+    ],
+    "reponseCorrecte": "Lac Victoria",
+    "wikidataId": "Q5505",
+    "wikidataLabel": "lac Victoria",
+    "illustrationTexte": "lac Victoria — lac d'Afrique",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Getting%20out%20to%20fish%20at%20dusk.jpg?width=900"
+  },
+  {
+    "question": "Quel pays a pour capitale Buenos Aires ?",
+    "options": [
+      "Chili",
+      "Argentine",
+      "Uruguay",
+      "Paraguay"
+    ],
+    "reponseCorrecte": "Argentine",
+    "wikidataId": "Q414",
+    "wikidataLabel": "Argentine",
+    "illustrationTexte": "Argentine — pays d’Amérique du Sud indépendant depuis 1816",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Fitz%20Roy%201b.jpg?width=900"
+  },
+  {
+    "question": "Quel est le nom de la plus grande forêt tropicale du monde ?",
+    "options": [
+      "Forêt amazonienne",
+      "Forêt noire",
+      "Taïga",
+      "Forêt de Sherwood"
+    ],
+    "reponseCorrecte": "Forêt amazonienne",
+    "wikidataId": "Q177567",
+    "wikidataLabel": "forêt amazonienne",
+    "illustrationTexte": "forêt amazonienne — forêt équatoriale située dans le bassin amazonien en Amérique du Sud",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Amazon%20Manaus%20forest.jpg?width=900"
+  },
+  {
+    "question": "Combien de jours y a-t-il dans une année bissextile ?",
+    "options": [
+      "365",
+      "366",
+      "364",
+      "367"
+    ],
+    "reponseCorrecte": "366",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "366",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3E366%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel pays a pour capitale Alger ?",
+    "options": [
+      "Maroc",
+      "Tunisie",
+      "Algérie",
+      "Libye"
+    ],
+    "reponseCorrecte": "Algérie",
+    "wikidataId": "Q262",
+    "wikidataLabel": "Algérie",
+    "illustrationTexte": "Algérie — pays d'Afrique du Nord",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Algeria%20-%20Location%20Map%20(2013)%20-%20DZA%20-%20UNOCHA.svg?width=900"
+  },
+  {
+    "question": "Quelle est la capitale de la Suisse ?",
+    "options": [
+      "Zurich",
+      "Genève",
+      "Berne",
+      "Bâle"
+    ],
+    "reponseCorrecte": "Berne",
+    "wikidataId": "Q70",
+    "wikidataLabel": "Berne",
+    "illustrationTexte": "Berne — capitale fédérale de la Suisse et chef-lieu du canton de Berne",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Bern%20luftaufnahme.png?width=900"
+  },
+  {
+    "question": "Quel animal est connu comme le « roi de la jungle » ?",
+    "options": [
+      "Tigre",
+      "Lion",
+      "Éléphant",
+      "Gorille"
+    ],
+    "reponseCorrecte": "Lion",
+    "wikidataId": "Q140",
+    "wikidataLabel": "lion",
+    "illustrationTexte": "lion — espèce de mammifères carnivores",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Lion%20in%20masai%20mara.jpg?width=900"
+  },
+  {
+    "question": "Quel est le résultat de 12 + 15 ?",
+    "options": [
+      "25",
+      "26",
+      "27",
+      "28"
+    ],
+    "reponseCorrecte": "27",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "27",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3E27%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel pays a pour capitale Oslo ?",
+    "options": [
+      "Suède",
+      "Norvège",
+      "Finlande",
+      "Islande"
+    ],
+    "reponseCorrecte": "Norvège",
+    "wikidataId": "Q20",
+    "wikidataLabel": "Norvège",
+    "illustrationTexte": "Norvège — pays d'Europe du Nord",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3ENorv%C3%A8ge%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quelle est la capitale du Japon ?",
+    "options": [
+      "Tokyo",
+      "Osaka",
+      "Kyoto",
+      "Nagoya"
+    ],
+    "reponseCorrecte": "Tokyo",
+    "wikidataId": "Q7473516",
+    "wikidataLabel": "Tokyo",
+    "illustrationTexte": "Tokyo — 23 arrondissements spéciaux composant la ville de Tokyo",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Akiba%20denkigai.jpg?width=900"
+  },
+  {
+    "question": "Quel est le plus grand organe du corps humain ?",
+    "options": [
+      "Cœur",
+      "Peau",
+      "Foie",
+      "Poumon"
+    ],
+    "reponseCorrecte": "Peau",
+    "wikidataId": "Q1074",
+    "wikidataLabel": "peau",
+    "illustrationTexte": "peau — organe composé de plusieurs couches de tissus",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Komodo%20dragon%20skin.jpg?width=900"
+  },
+  {
+    "question": "Quel pays a pour capitale Pretoria (capitale administrative) ?",
+    "options": [
+      "Afrique du Sud",
+      "Namibie",
+      "Zimbabwe",
+      "Botswana"
+    ],
+    "reponseCorrecte": "Afrique du Sud",
+    "wikidataId": "Q258",
+    "wikidataLabel": "Afrique du Sud",
+    "illustrationTexte": "Afrique du Sud — pays d'Afrique australe",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Ciudad%20del%20Cabo%20desde%20Cabeza%20de%20León,%20Sudáfrica,%202018-07-22,%20DD%2034.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la capitale de la Tunisie ?",
+    "options": [
+      "Tunis",
+      "Sfax",
+      "Sousse",
+      "Bizerte"
+    ],
+    "reponseCorrecte": "Tunis",
+    "wikidataId": "Q3572",
+    "wikidataLabel": "Tunis",
+    "illustrationTexte": "Tunis — capitale de la Tunisie",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Panoramique%20du%20centre%20de%20Tunis%20(3197369985)%20(cropped).jpg?width=900"
+  },
+  {
+    "question": "Quel est l’élément chimique dont le symbole est O ?",
+    "options": [
+      "Or",
+      "Oxygène",
+      "Osmium",
+      "Azote"
+    ],
+    "reponseCorrecte": "Oxygène",
+    "wikidataId": "Q629",
+    "wikidataLabel": "oxygène",
+    "illustrationTexte": "oxygène — élément chimique de numéro atomique 8 et de symbole O",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Liquid%20oxygen%20in%20a%20beaker%204.jpg?width=900"
+  },
+  {
+    "question": "Quel est le plus grand pays d’Afrique en superficie ?",
+    "options": [
+      "Algérie",
+      "Nigeria",
+      "Soudan",
+      "RDC"
+    ],
+    "reponseCorrecte": "Algérie",
+    "wikidataId": "Q262",
+    "wikidataLabel": "Algérie",
+    "illustrationTexte": "Algérie — pays d'Afrique du Nord",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Algeria%20-%20Location%20Map%20(2013)%20-%20DZA%20-%20UNOCHA.svg?width=900"
+  },
+  {
+    "question": "Quel pays a pour capitale Rabat ?",
+    "options": [
+      "Algérie",
+      "Maroc",
+      "Tunisie",
+      "Libye"
+    ],
+    "reponseCorrecte": "Maroc",
+    "wikidataId": "Q1028",
+    "wikidataLabel": "Maroc",
+    "illustrationTexte": "Maroc — pays d'Afrique du Nord",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Volubilis%20Longshot%20II.jpg?width=900"
+  },
+  {
+    "question": "Dans quel sport peut-on faire un « dunk » ?",
+    "options": [
+      "Basket-ball",
+      "Handball",
+      "Volleyball",
+      "Rugby"
+    ],
+    "reponseCorrecte": "Basket-ball",
+    "wikidataId": "Q5372",
+    "wikidataLabel": "basket-ball",
+    "illustrationTexte": "basket-ball — sport de balle collectif",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Dream%20Team%20at%20the%201992%20Summer%20Olympics.JPEG?width=900"
+  },
+  {
+    "question": "Quel est le principal gaz responsable de l’effet de serre (parmi ces choix) ?",
+    "options": [
+      "Dioxyde de carbone",
+      "Azote",
+      "Hélium",
+      "Hydrogène"
+    ],
+    "reponseCorrecte": "Dioxyde de carbone",
+    "wikidataId": "Q1997",
+    "wikidataLabel": "dioxyde de carbone",
+    "illustrationTexte": "dioxyde de carbone — composé inorganique dont la formule chimique est CO₂",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3Edioxyde%20de%20carbone%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quelle est la capitale du Sénégal ?",
+    "options": [
+      "Dakar",
+      "Saint-Louis",
+      "Thiès",
+      "Ziguinchor"
+    ],
+    "reponseCorrecte": "Dakar",
+    "wikidataId": "Q3718",
+    "wikidataLabel": "Dakar",
+    "illustrationTexte": "Dakar — capitale du Sénégal",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Dakar-Indépendance.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la capitale de l’Inde ?",
+    "options": [
+      "Mumbai",
+      "New Delhi",
+      "Calcutta",
+      "Bangalore"
+    ],
+    "reponseCorrecte": "New Delhi",
+    "wikidataId": "Q987",
+    "wikidataLabel": "New Delhi",
+    "illustrationTexte": "New Delhi — capitale de l'Inde créée au début du XXe siècle, territoire de Delhi",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/India%20Gate%20Legendary%20Saga%20Of%20Supreme%20Sacrifice.jpg?width=900"
+  },
+  {
+    "question": "Quel est le plus grand animal terrestre ?",
+    "options": [
+      "Rhinocéros",
+      "Éléphant d’Afrique",
+      "Hippopotame",
+      "Girafe"
+    ],
+    "reponseCorrecte": "Éléphant d’Afrique",
+    "wikidataId": "Q36557",
+    "wikidataLabel": "éléphant de savane d'Afrique",
+    "illustrationTexte": "éléphant de savane d'Afrique — espèce de mammifères",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Elefante%20africano%20de%20sabana%20(Loxodonta%20africana),%20parque%20nacional%20de%20Amboseli,%20Kenia,%202024-05-22,%20DD%2007.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la planète la plus grande du système solaire ?",
+    "options": [
+      "Saturne",
+      "Jupiter",
+      "Neptune",
+      "Uranus"
+    ],
+    "reponseCorrecte": "Jupiter",
+    "wikidataId": "Q319",
+    "wikidataLabel": "Jupiter",
+    "illustrationTexte": "Jupiter — cinquième planète du Système solaire",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Jupiter%20OPAL%202024.png?width=900"
+  },
+  {
+    "question": "Quel pays est célèbre pour la tour Eiffel ?",
+    "options": [
+      "Italie",
+      "France",
+      "Espagne",
+      "Belgique"
+    ],
+    "reponseCorrecte": "France",
+    "wikidataId": "Q142",
+    "wikidataLabel": "France",
+    "illustrationTexte": "France — pays transcontinental au territoire métropolitain situé en Europe de l'Ouest",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Paris%20from%20the%20Arc%20de%20Triomphe,%2017%20October%202019.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la capitale du Nigeria ?",
+    "options": [
+      "Lagos",
+      "Abuja",
+      "Ibadan",
+      "Kano"
+    ],
+    "reponseCorrecte": "Abuja",
+    "wikidataId": "Q3787",
+    "wikidataLabel": "Abuja",
+    "illustrationTexte": "Abuja — capitale du Nigeria",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/The%20National%20Assembly%20Globe.jpg?width=900"
+  },
+  {
+    "question": "Combien de jours y a-t-il en février lors d’une année non bissextile ?",
+    "options": [
+      "28",
+      "29",
+      "30",
+      "27"
+    ],
+    "reponseCorrecte": "28",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "28",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3E28%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel est l’instrument principal pour observer les étoiles ?",
+    "options": [
+      "Microscope",
+      "Télescope",
+      "Loupe",
+      "Radar"
+    ],
+    "reponseCorrecte": "Télescope",
+    "wikidataId": "Q4213",
+    "wikidataLabel": "télescope",
+    "illustrationTexte": "télescope — instrument aidant l'observation d'objets lointains",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Lunette%20mg%202368.jpg?width=900"
+  },
+  {
+    "question": "Quel est le plus petit continent ?",
+    "options": [
+      "Europe",
+      "Océanie",
+      "Antarctique",
+      "Amérique du Sud"
+    ],
+    "reponseCorrecte": "Océanie",
+    "wikidataId": "Q538",
+    "wikidataLabel": "Océanie",
+    "illustrationTexte": "Océanie — région géographique",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Oceania-map.JPG?width=900"
+  },
+  {
+    "question": "Quel pays a pour capitale Vienne ?",
+    "options": [
+      "Suisse",
+      "Autriche",
+      "Hongrie",
+      "Pologne"
+    ],
+    "reponseCorrecte": "Autriche",
+    "wikidataId": "Q40",
+    "wikidataLabel": "Autriche",
+    "illustrationTexte": "Autriche — pays d'Europe centrale depuis 1918",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Oesterreichisches%20Woerterbuch%2043.%20Auflage%20Deckel.jpg?width=900"
+  },
+  {
+    "question": "Quel est le symbole chimique du carbone ?",
+    "options": [
+      "Ca",
+      "Co",
+      "C",
+      "Cb"
+    ],
+    "reponseCorrecte": "C",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "C",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3EC%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quelle est la capitale du Kenya ?",
+    "options": [
+      "Mombasa",
+      "Nairobi",
+      "Kisumu",
+      "Eldoret"
+    ],
+    "reponseCorrecte": "Nairobi",
+    "wikidataId": "Q3870",
+    "wikidataLabel": "Nairobi",
+    "illustrationTexte": "Nairobi — capitale du Kenya",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Nairobi,%20view%20from%20KICC.JPG?width=900"
+  },
+  {
+    "question": "Quel est le plus long mur construit par l’homme ?",
+    "options": [
+      "Mur de Berlin",
+      "Grande Muraille de Chine",
+      "Mur d’Hadrien",
+      "Mur des Lamentations"
+    ],
+    "reponseCorrecte": "Grande Muraille de Chine",
+    "wikidataId": "Q12501",
+    "wikidataLabel": "Grande Muraille",
+    "illustrationTexte": "Grande Muraille — Ensemble de fortifications militaires construites pour marquer et déf...",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Badaling%20China%20Great-Wall-of-China-06.jpg?width=900"
+  },
+  {
+    "question": "Quel organe est responsable de la digestion ?",
+    "options": [
+      "Poumons",
+      "Estomac",
+      "Cœur",
+      "Cerveau"
+    ],
+    "reponseCorrecte": "Estomac",
+    "wikidataId": "Q1029907",
+    "wikidataLabel": "estomac",
+    "illustrationTexte": "estomac — organe digestif",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Illu%20stomach2.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la capitale du Ghana ?",
+    "options": [
+      "Accra",
+      "Kumasi",
+      "Tamale",
+      "Takoradi"
+    ],
+    "reponseCorrecte": "Accra",
+    "wikidataId": "Q3761",
+    "wikidataLabel": "Accra",
+    "illustrationTexte": "Accra — capitale du Ghana",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Accra%20town.jpg?width=900"
+  },
+  {
+    "question": "Quel est le plus rapide des animaux terrestres ?",
+    "options": [
+      "Lion",
+      "Antilope",
+      "Guépard",
+      "Léopard"
+    ],
+    "reponseCorrecte": "Guépard",
+    "wikidataId": "Q23907",
+    "wikidataLabel": "guépard",
+    "illustrationTexte": "guépard — espèce de mammifères",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Cheetah%20(Acinonyx%20jubatus)%20female%202.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la couleur du sang oxygéné ?",
+    "options": [
+      "Bleu",
+      "Rouge",
+      "Vert",
+      "Noir"
+    ],
+    "reponseCorrecte": "Rouge",
+    "wikidataId": "Q3142",
+    "wikidataLabel": "rouge",
+    "illustrationTexte": "rouge — couleur",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Color%20icon%20red.svg?width=900"
+  },
+  {
+    "question": "Quel pays est le plus peuplé du monde ?",
+    "options": [
+      "États-Unis",
+      "Inde",
+      "Chine",
+      "Russie"
+    ],
+    "reponseCorrecte": "Inde",
+    "wikidataId": "Q668",
+    "wikidataLabel": "Inde",
+    "illustrationTexte": "Inde — pays d'Asie du Sud",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/India-locator-map-blank.svg?width=900"
+  },
+  {
+    "question": "Quelle est la capitale de la Corée du Sud ?",
+    "options": [
+      "Busan",
+      "Séoul",
+      "Incheon",
+      "Daegu"
+    ],
+    "reponseCorrecte": "Séoul",
+    "wikidataId": "Q8684",
+    "wikidataLabel": "Séoul",
+    "illustrationTexte": "Séoul — capitale de la Corée du Sud",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/경복궁%20전경.jpg?width=900"
+  },
+  {
+    "question": "Combien de dents possède un adulte en général ?",
+    "options": [
+      "28",
+      "30",
+      "32",
+      "34"
+    ],
+    "reponseCorrecte": "32",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "32",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3E32%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel métal est attiré par un aimant ?",
+    "options": [
+      "Cuivre",
+      "Fer",
+      "Or",
+      "Aluminium"
+    ],
+    "reponseCorrecte": "Fer",
+    "wikidataId": "Q10494697",
+    "wikidataLabel": "Fer",
+    "illustrationTexte": "Fer — genre d'insectes",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3EFer%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quelle est la capitale de l’Argentine ?",
+    "options": [
+      "Montevideo",
+      "Buenos Aires",
+      "Santiago",
+      "Lima"
+    ],
+    "reponseCorrecte": "Buenos Aires",
+    "wikidataId": "Q1486",
+    "wikidataLabel": "Buenos Aires",
+    "illustrationTexte": "Buenos Aires — capitale de l'Argentine",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Vista%20aérea%20de%20la%20Plaza%20del%20Congreso%2010.jpg?width=900"
+  },
+  {
+    "question": "Quel est le plus grand océan du monde ?",
+    "options": [
+      "Atlantique",
+      "Indien",
+      "Pacifique",
+      "Arctique"
+    ],
+    "reponseCorrecte": "Pacifique",
+    "wikidataId": "Q98",
+    "wikidataLabel": "océan Pacifique",
+    "illustrationTexte": "océan Pacifique — océan le plus vaste du globe terrestre",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Pacific%20Ocean.png?width=900"
+  },
+  {
+    "question": "Quel est l’organe principal du système nerveux ?",
+    "options": [
+      "Cœur",
+      "Cerveau",
+      "Moelle",
+      "Poumon"
+    ],
+    "reponseCorrecte": "Cerveau",
+    "wikidataId": "Q65099397",
+    "wikidataLabel": "Cerveau",
+    "illustrationTexte": "Cerveau — nom de famille",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3ECerveau%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quelle est la capitale de l’Éthiopie ?",
+    "options": [
+      "Asmara",
+      "Addis-Abeba",
+      "Djibouti",
+      "Khartoum"
+    ],
+    "reponseCorrecte": "Addis-Abeba",
+    "wikidataId": "Q3624",
+    "wikidataLabel": "Addis-Abeba",
+    "illustrationTexte": "Addis-Abeba — capitale de l'Éthiopie",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/AddisView.jpg?width=900"
+  },
+  {
+    "question": "Quel est le symbole chimique de l’hydrogène ?",
+    "options": [
+      "He",
+      "Hy",
+      "H",
+      "Hg"
+    ],
+    "reponseCorrecte": "H",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "H",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3EH%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel sport se joue avec un ballon ovale ?",
+    "options": [
+      "Football",
+      "Rugby",
+      "Basket-ball",
+      "Handball"
+    ],
+    "reponseCorrecte": "Rugby",
+    "wikidataId": "Q5378",
+    "wikidataLabel": "rugby",
+    "illustrationTexte": "rugby — appellation générique désignant les différentes formes de rugby (entre autres l...",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/USO%20-%20Saracens%20-%2020151213%20-%20Maro%20Itoje%20attacking.jpg?width=900"
+  },
+  {
+    "question": "Quelle est la capitale du Cameroun ?",
+    "options": [
+      "Douala",
+      "Yaoundé",
+      "Garoua",
+      "Bafoussam"
+    ],
+    "reponseCorrecte": "Yaoundé",
+    "wikidataId": "Q3808",
+    "wikidataLabel": "Yaoundé",
+    "illustrationTexte": "Yaoundé — capitale du Cameroun",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Yaoundé%20view%20from%20central%20market%20(2014).JPG?width=900"
+  },
+  {
+    "question": "Quel est le plus grand désert froid du monde ?",
+    "options": [
+      "Gobi",
+      "Antarctique",
+      "Arctique",
+      "Patagonie"
+    ],
+    "reponseCorrecte": "Antarctique",
+    "wikidataId": "Q51",
+    "wikidataLabel": "Antarctique",
+    "illustrationTexte": "Antarctique — continent terrestre le plus austral",
+    "imageUrl": "https://commons.wikimedia.org/wiki/Special:FilePath/Antarctica%206400px%20from%20Blue%20Marble.jpg?width=900"
+  },
+  {
+    "question": "Quel est le nombre de couleurs de l’arc-en-ciel ?",
+    "options": [
+      "5",
+      "6",
+      "7",
+      "8"
+    ],
+    "reponseCorrecte": "7",
+    "wikidataId": null,
+    "wikidataLabel": null,
+    "illustrationTexte": "7",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3E7%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  },
+  {
+    "question": "Quel pays a pour capitale Helsinki ?",
+    "options": [
+      "Norvège",
+      "Finlande",
+      "Suède",
+      "Estonie"
+    ],
+    "reponseCorrecte": "Finlande",
+    "wikidataId": "Q33",
+    "wikidataLabel": "Finlande",
+    "illustrationTexte": "Finlande — pays d'Europe du Nord",
+    "imageUrl": "data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22900%22%20height%3D%22500%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%238093F1%22%2F%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%2C%20sans-serif%22%20font-size%3D%22110%22%20fill%3D%22%23FFFFFF%22%3EFinlande%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+  }
+]

@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' ws://question-pour-un-champion.onrender.com wss://question-pour-un-champion.onrender.com https://question-pour-un-champion.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;"
+    />
+    <title>Une Question pour un Champion</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-multi-role="host">
+    <section id="accueil" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1>Une Question pour un Champion</h1>
+          <h2>Testez vos connaissances en culture générale</h2>
+        </header>
+
+        <div class="description">
+          <p>
+            Bienvenue dans le jeu "Une Question pour un Champion" ! Affrontez
+            vos amis dans un quiz palpitant rempli de défis intellectuels.
+          </p>
+        </div>
+
+        <div class="separateur"></div>
+
+        <div class="caracteristiques">
+          <div class="caracteristique">
+            <h3>Jusqu'à 4 joueurs</h3>
+            <p>Jouez seul ou avec vos amis</p>
+          </div>
+          <div class="caracteristique">
+            <h3>Chronométré</h3>
+            <p>Répondez avant la fin du temps</p>
+          </div>
+          <div class="caracteristique">
+            <h3>Défis variés</h3>
+            <p>Questions de culture générale</p>
+          </div>
+        </div>
+
+        <div class="separateur"></div>
+
+        <div class="actions">
+          <button id="btn-multijoueur" class="bouton bouton-secondaire">
+            Mode Multijoueur
+          </button>
+          <button id="btn-commencer" class="bouton bouton-principal">
+            Commencer le jeu
+          </button>
+          <button id="btn-historique" class="bouton bouton-secondaire">
+            Voir l'historique
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="selection-joueurs" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1>Sélection des joueurs</h1>
+          <p class="sous-titre">Maximum 4 joueurs</p>
+        </header>
+
+        <div class="parametres-joueurs">
+          <h2>Nombre de joueurs</h2>
+          <div class="options-joueurs options-joueurs-4">
+            <button class="option-joueur" data-joueurs="1">
+              <span class="nombre-joueurs">1</span>
+              <span class="texte-joueurs">joueur</span>
+            </button>
+            <button class="option-joueur" data-joueurs="2">
+              <span class="nombre-joueurs">2</span>
+              <span class="texte-joueurs">joueurs</span>
+            </button>
+            <button class="option-joueur" data-joueurs="3">
+              <span class="nombre-joueurs">3</span>
+              <span class="texte-joueurs">joueurs</span>
+            </button>
+            <button class="option-joueur" data-joueurs="4">
+              <span class="nombre-joueurs">4</span>
+              <span class="texte-joueurs">joueurs</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="separateur"></div>
+
+        <div class="formulaire-noms" id="formulaire-noms"></div>
+
+        <div class="actions">
+          <button id="btn-valider-joueurs" class="bouton bouton-principal">
+            ok
+          </button>
+          <button id="btn-retour-joueurs" class="bouton bouton-secondaire">
+            Retour
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="parametres" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1>Paramètres du jeu</h1>
+        </header>
+
+        <div class="parametres-partie">
+          <h2>Configuration de la partie</h2>
+
+          <div class="groupe-parametre">
+            <label for="nombre-questions">Nombre de questions par partie</label>
+            <select id="nombre-questions" class="select-choix">
+              <option value="5">5 questions</option>
+              <option value="10" selected>10 questions</option>
+              <option value="15">15 questions</option>
+              <option value="20">20 questions</option>
+              <option value="0">Toutes les questions</option>
+            </select>
+          </div>
+
+          <div class="groupe-parametre">
+            <label for="duree-question-param"
+              >Temps par question (secondes)</label
+            >
+            <select id="duree-question-param" class="select-choix">
+              <option value="10">10 secondes</option>
+              <option value="15">15 secondes</option>
+              <option value="20">20 secondes</option>
+              <option value="25">25 secondes</option>
+              <option value="30" selected>30 secondes</option>
+            </select>
+          </div>
+
+          <div class="groupe-parametre">
+            <label for="duree-reponse-param"
+              >Temps pour répondre (secondes)</label
+            >
+            <select id="duree-reponse-param" class="select-choix">
+              <option value="10">10 secondes</option>
+              <option value="15" selected>15 secondes</option>
+              <option value="20">20 secondes</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="btn-demarrer-jeu" class="bouton bouton-principal">
+            Démarrer la partie
+          </button>
+          <button id="btn-retour-parametres" class="bouton bouton-secondaire">
+            Retour aux joueurs
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="jeu" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1>À vous de jouer !</h1>
+        </header>
+
+        <div class="chronometre-container">
+          <div class="chronometre">
+            <span id="temps-restant" class="temps-restant">30</span>
+            <span class="unite-temps">secondes</span>
+          </div>
+        </div>
+
+        <div class="scores" id="grille-scores"></div>
+
+        <div class="question">
+          <h2 id="question-actuelle">Quelle est la capitale de la France ?</h2>
+        </div>
+
+        <div class="buzzers-container">
+          <div class="buzzers-grid" id="grille-buzzers"></div>
+          <p class="indication-buzzers">
+            Utilisez les touches 1, 2, 3, 4 pour buzzer ou cliquez sur les
+            boutons !
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="reponses" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1><span id="nom-repondant-reponses">Joueur 1</span> va répondre</h1>
+        </header>
+
+        <div class="chronometre-container">
+          <div class="chronometre chronometre-reponse">
+            <span id="temps-reponse" class="temps-restant">15</span>
+            <span class="unite-temps">secondes</span>
+          </div>
+        </div>
+
+        <div class="question">
+          <h2 id="question-reponse">Quelle est la capitale de la France ?</h2>
+
+          <div class="options-reponse" id="options-reponse"></div>
+        </div>
+
+        <div class="actions">
+          <button id="btn-retour-reponses" class="bouton bouton-secondaire">
+            Retour
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="resultat" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1>Résultat</h1>
+        </header>
+
+        <div class="resultat-question">
+          <h2 id="question-resultat">Quelle est la capitale de la France ?</h2>
+          <p id="reponse-correcte" class="reponse-correcte">
+            Réponse correcte: Paris
+          </p>
+
+          <!-- Illustration: affichée uniquement au résultat (taille gérée en JS, sans modifier style.css) -->
+          <div id="resultat-illustration" class="illustration-container hidden">
+            <img id="resultat-image" alt="Illustration" loading="lazy" />
+            <p id="resultat-description" class="illustration-description"></p>
+          </div>
+          <p id="statut-reponse" class="statut-reponse">Bonne réponse!</p>
+          <p class="joueur-repondant">
+            <span id="nom-repondant">Joueur 1</span> a répondu
+          </p>
+        </div>
+
+        <div class="scores" id="grille-scores-resultat"></div>
+
+        <div class="actions">
+          <button id="btn-question-suivante" class="bouton bouton-principal">
+            Question suivante
+          </button>
+          <button id="btn-menu-principal" class="bouton bouton-secondaire">
+            Menu principal
+          </button>
+        </div>
+      </div>
+    </section>
+    <section id="resultat-multijoueur" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1>Résultats - Multijoueur</h1>
+          <h2>Classement final</h2>
+        </header>
+
+        <div class="resultat-question">
+          <h2 id="titre-resultat-multi">Fin de partie</h2>
+          <p id="sous-titre-resultat-multi">Bravo à tous les joueurs</p>
+        </div>
+
+        <div class="scores" id="grille-scores-resultat-multi"></div>
+
+        <div class="actions">
+          <button id="btn-retour-accueil-multi" class="bouton bouton-principal">
+            <i class="fas fa-home"></i> Retour à l'accueil
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="historique" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1>Historique des parties</h1>
+        </header>
+
+        <div id="liste-historique"></div>
+
+        <div class="actions">
+          <button id="btn-retour-historique" class="bouton bouton-secondaire">
+            Retour
+          </button>
+        </div>
+      </div>
+    </section>
+    <section id="multijoueur" class="ecran actif">
+      <div class="contenu">
+        <header>
+          <h1>Mode Multijoueur</h1>
+          <h2>Affrontez vos amis en temps réel</h2>
+        </header>
+
+        <div class="multijoueur-options">
+          <div class="option-creer">
+            <h3><i class="fas fa-plus-circle"></i> Créer une partie</h3>
+            <div class="form-group">
+              <label for="nom-createur">Votre nom</label>
+              <input
+                type="text"
+                id="nom-createur"
+                placeholder="Ex: Julien"
+                maxlength="20"
+              />
+            </div>
+
+            <div class="parametres-partie">
+              <h4>Paramètres du jeu</h4>
+
+              <div class="groupe-parametre">
+                <label for="multi-nombre-questions">Nombre de questions</label>
+                <select id="multi-nombre-questions" class="select-choix">
+                  <option value="5">5 questions</option>
+                  <option value="10" selected>10 questions</option>
+                  <option value="15">15 questions</option>
+                  <option value="20">20 questions</option>
+                  <option value="0">Toutes les questions</option>
+                </select>
+              </div>
+
+              <div class="groupe-parametre">
+                <label for="multi-duree-question">Temps par question (s)</label>
+                <select id="multi-duree-question" class="select-choix">
+                  <option value="10">10 secondes</option>
+                  <option value="15">15 secondes</option>
+                  <option value="20">20 secondes</option>
+                  <option value="25">25 secondes</option>
+                  <option value="30" selected>30 secondes</option>
+                </select>
+              </div>
+
+              <div class="groupe-parametre">
+                <label for="multi-duree-reponse">Temps pour répondre (s)</label>
+                <select id="multi-duree-reponse" class="select-choix">
+                  <option value="10">10 secondes</option>
+                  <option value="15" selected>15 secondes</option>
+                  <option value="20">20 secondes</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="groupe-parametre">
+              <label for="multi-mode">Mode multijoueur</label>
+              <select id="multi-mode" class="select-choix">
+                <option value="spectator" selected>Hôte spectateur (PC) — joueurs au téléphone</option>
+                <option value="hostplay">Hôte joueur (PC) — l’hôte participe</option>
+              </select>
+            </div>
+
+            <button id="btn-creer-partie" class="bouton bouton-principal">
+              <i class="fas fa-gamepad"></i> Créer la partie
+            </button>
+
+            <div id="code-partie-container" class="hidden">
+              <div class="code-partie">
+                <p>Code de la partie :</p>
+                <h2 id="code-partie">XXXXXX</h2>
+                <p>Partagez ce code avec vos amis !</p>
+              </div>
+
+              <div class="code-partie" id="qr-partie-container" aria-label="QR code de connexion">
+                <p>QR code (connexion rapide) :</p>
+                <div id="qr-code" style="display:flex;justify-content:center"></div>
+                <p class="info">Scannez pour rejoindre sur téléphone.</p>
+              </div>
+
+              <div class="joueurs-salle">
+                <h3>Joueurs en attente :</h3>
+                <div id="liste-joueurs-salle"></div>
+                <button
+                  id="btn-demarrer-partie"
+                  class="bouton bouton-principal"
+                  disabled
+                >
+                  <i class="fas fa-play"></i> Démarrer (1/4)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="separateur-vertical"></div>
+
+          <div class="option-rejoindre">
+            <h3><i class="fas fa-users"></i> Rejoindre une partie</h3>
+            <div class="form-group">
+              <label for="nom-joueur">Votre nom</label>
+              <input
+                type="text"
+                id="nom-joueur"
+                placeholder="Votre prénom"
+                maxlength="20"
+              />
+            </div>
+            <div class="form-group">
+              <label for="code-rejoindre">Code de la partie</label>
+              <input
+                type="text"
+                id="code-rejoindre"
+                placeholder="6 caractères"
+                maxlength="6"
+                style="text-transform: uppercase"
+              />
+            </div>
+            <button id="btn-rejoindre-partie" class="bouton bouton-secondaire">
+              <i class="fas fa-sign-in-alt"></i> Rejoindre
+            </button>
+
+            <div id="salle-attente" class="hidden">
+              <div class="info-salle">
+                <p>Partie : <strong id="code-salle-jointe"></strong></p>
+                <p>Hôte : <strong id="nom-hote"></strong></p>
+              </div>
+              <div id="joueurs-attente"></div>
+              <p class="message-attente">
+                <i class="fas fa-spinner fa-spin"></i> En attente du début de la
+                partie...
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="btn-retour-multijoueur" class="bouton bouton-secondaire">
+            <i class="fas fa-arrow-left"></i> Retour à l'accueil
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="jeu-multijoueur" class="ecran">
+  <div class="contenu contenu-large">
+    <header class="header-multijoueur">
+      <div class="info-partie">
+        <span id="info-question-multi">Question 1/10</span>
+        <div class="chrono-multijoueur" aria-label="Chronomètre question">
+          <span id="temps-multijoueur">30</span>
+          <span>secondes</span>
+        </div>
+        <span id="joueurs-connectes">0 joueurs</span>
+      </div>
+    </header>
+
+    <!-- VUE HÔTE (PC) -->
+    <div id="vue-hote-multi" class="vue-multi">
+      <div class="scores-multijoueur" id="grille-scores-multi"></div>
+
+      <div class="question-multijoueur">
+        <h2 id="question-multijoueur">Question...</h2>
+      </div>
+
+      <div class="options-host" id="options-host-multi" aria-label="Options de réponse (hôte)"></div>
+      <div id="host-player-panel" class="host-player-panel hidden" aria-label="Panneau joueur hôte">
+        <div class="mobile-buzzer-zone">
+          <button id="btn-buzz-host" class="bouton-buzzer-mobile" type="button">BUZZ</button>
+          <p id="etat-buzzer-host" class="texte-secondaire">Appuyez pour buzzer.</p>
+        </div>
+        <div class="options-reponse-multi options-reponse-mobile" id="options-reponse-hostlocal"></div>
+      </div>
+
+
+      <div id="ecran-reponse-multi" class="hidden" aria-live="polite">
+        <div class="reponse-header">
+          <h2><span id="nom-repondant-multi">Joueur</span> va répondre</h2>
+          <div class="chrono-reponse-multi" aria-label="Chronomètre réponse">
+            <span id="temps-reponse-multi">15</span>
+            <span>secondes</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="ecran-resultat-multi" class="hidden">
+        <h2>Résultat</h2>
+        <p id="resultat-multi-bonne" class="reponse-correcte">Réponse correcte : ...</p>
+
+        <div id="resultat-multi-illustration" class="illustration-container hidden">
+          <img id="resultat-multi-image" alt="Illustration" loading="lazy" />
+          <p id="resultat-multi-description" class="illustration-description"></p>
+        </div>
+
+        <div class="resultat-actions">
+          <button id="btn-resultat-multi-continuer" class="bouton bouton-principal">Question suivante</button>
+          <button id="btn-resultat-multi-menu" class="bouton bouton-secondaire">Menu principal</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VUE JOUEUR (TÉLÉPHONE) -->
+    <div id="vue-joueur-multi" class="vue-multi hidden">
+<div class="mobile-buzzer-zone">
+        <button id="btn-buzz-player" class="bouton-buzzer-mobile" type="button">BUZZ</button>
+        <p id="etat-buzzer-player" class="texte-secondaire">Appuyez pour buzzer dès que vous êtes prêt.</p>
+      </div>
+
+      <div class="options-reponse-multi options-reponse-mobile" id="options-reponse-multi"></div>
+
+      
+      <div id="resultat-joueur-multi" class="hidden resultat-joueur" aria-live="polite">
+        <h2 id="titre-resultat-joueur">Résultat</h2>
+        <p id="resultat-joueur-correct" class="texte-secondaire"></p>
+        <div class="illustration-container">
+          <img id="resultat-joueur-image" alt="Illustration" loading="lazy" />
+          <p id="resultat-joueur-description" class="illustration-description"></p>
+        </div>
+        <div class="scoreboard-joueur">
+          <h3>Points</h3>
+          <div id="liste-scores-joueur" class="liste-scores"></div>
+        </div>
+        <p id="compte-a-rebours-prochaine" class="texte-secondaire"></p>
+      </div>
+<div id="fin-partie-joueur" class="hidden fin-partie-joueur" aria-live="polite">
+        <h2>Partie terminée</h2>
+        <p class="texte-secondaire">Merci d'avoir joué. Vous pouvez fermer cette page.</p>
+        <button id="btn-retour-menu-joueur" class="bouton bouton-secondaire" type="button">Menu principal</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function(){
+    try {
+      if (typeof changerEcran === "function") changerEcran("multijoueur");
+    } catch(e) {}
+  });
+</script>
+<script src="script.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="socket-common.js"></script>
+    <script src="multijoueur.js"></script>
+  </body>
+</html>
