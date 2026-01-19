@@ -1,5 +1,5 @@
 // Configuration
-const SERVER_URL = "https://question-pour-un-champion.onrender.com";
+const SERVER_URL = (window.__BACKEND_URL || (window.QPC && window.QPC.BACKEND_URL) || "https://questionpourunchampion-backend.onrender.com");
 
 // Variables globales
 let mpSocket = null;
@@ -150,7 +150,21 @@ function obtenirQuestionsAleatoiresDepuisJSON(nombre) {
 }
 
 // Fonction pour mélanger un tableau
+// IMPORTANT: ne jamais appeler window.melangerTableau directement ici.
+// En contexte navigateur, une fonction globale devient window.melangerTableau,
+// donc l'appel indirect provoquerait une récursion infinie.
+// On capture donc une éventuelle implémentation externe AVANT de déclarer la nôtre.
+const __melangerTableauExterne =
+  typeof window !== "undefined" && typeof window.melangerTableau === "function"
+    ? window.melangerTableau
+    : null;
+
 function melangerTableau(tableau) {
+  // Utiliser l'implémentation externe uniquement si elle est différente de celle-ci.
+  if (__melangerTableauExterne && __melangerTableauExterne !== melangerTableau) {
+    return __melangerTableauExterne(tableau);
+  }
+
   const resultat = [...tableau];
   for (let i = resultat.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -319,11 +333,11 @@ function handlePlayerJoined(data) {
 
   if (currentGame.isHost) {
     updatePlayerList(data.players);
-    document.getElementById("btn-demarrer-partie").disabled =
-      data.players.length < 2;
-    document.getElementById(
-      "btn-demarrer-partie"
-    ).innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
+    const btnStart = document.getElementById("btn-demarrer-partie");
+    if (btnStart) {
+      btnStart.disabled = data.players.length < 2;
+      btnStart.innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
+    }
   } else {
     updateWaitingPlayers(data.players);
   }
@@ -336,11 +350,11 @@ function handlePlayerLeft(data) {
 
   if (currentGame.isHost) {
     updatePlayerList(data.players);
-    document.getElementById("btn-demarrer-partie").disabled =
-      data.players.length < 2;
-    document.getElementById(
-      "btn-demarrer-partie"
-    ).innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
+    const btnStart = document.getElementById("btn-demarrer-partie");
+    if (btnStart) {
+      btnStart.disabled = data.players.length < 2;
+      btnStart.innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
+    }
   } else {
     updateWaitingPlayers(data.players);
   }
@@ -354,9 +368,34 @@ function handleGameStarted(data) {
   currentGame.settings = data.settings || {};
   currentGame.currentQuestionIndex = 0;
 
-  // Cacher les écrans d'attente
-  document.getElementById("multijoueur").classList.remove("actif");
-  document.getElementById("jeu-multijoueur").classList.add("actif");
+  // Cacher les écrans d'attente / afficher l'écran de jeu.
+  // IMPORTANT: le même fichier est utilisé sur plusieurs pages.
+  // - multijoueur.html : #multijoueur et #jeu-multijoueur sont des <section class="ecran">.
+  // - multijoueur-player.html : #jeu-multijoueur est un <div class="section hidden"> DANS #multijoueur.
+  // Si on retire "actif" à #multijoueur sur la page joueur, l'écran devient vide.
+  const isPlayerPage =
+    (document.body && document.body.dataset && document.body.dataset.multiRole === "player") ||
+    /multijoueur-player\.html/i.test(String(window.location.pathname || ""));
+
+  const multijoueurScreen = document.getElementById("multijoueur");
+  const jeuMulti = document.getElementById("jeu-multijoueur");
+
+  if (isPlayerPage) {
+    // Sur téléphone: on garde la section #multijoueur visible et on masque uniquement le bloc "Rejoindre".
+    const joinSection = document.querySelector(".multijoueur-section");
+    if (joinSection) joinSection.classList.add("hidden");
+
+    if (jeuMulti) {
+      jeuMulti.classList.remove("hidden");
+      jeuMulti.classList.add("actif");
+    }
+
+    if (multijoueurScreen) multijoueurScreen.classList.add("actif");
+  } else {
+    // Sur hôte/desktop (écrans séparés)
+    if (multijoueurScreen) multijoueurScreen.classList.remove("actif");
+    if (jeuMulti) jeuMulti.classList.add("actif");
+  }
 
   // Initialiser le jeu
   initMultiplayerGame(data.players);
@@ -516,50 +555,76 @@ function updateWaitingPlayers(players) {
 function initMultiplayerGame(players) {
   console.log("🎮 Initialisation jeu multijoueur avec joueurs:", players);
 
-  // Créer la grille de scores
-  const scoresContainer = document.getElementById("grille-scores-multi");
-  if (!scoresContainer) return; // page joueur téléphone n'a pas la grille hôte
-  scoresContainer.innerHTML = "";
+  const isPlayerPage =
+    (document.body && document.body.dataset && document.body.dataset.multiRole === "player") ||
+    /multijoueur-player\.html/i.test(String(window.location.pathname || ""));
 
-  players.forEach((player, index) => {
-    const card = document.createElement("div");
-    card.className = `carte-joueur-multi ${player.isHost ? "hote" : ""}`;
-    card.id = `joueur-${player.id}`;
-    card.innerHTML = `
-            <h3>${player.name}</h3>
-            <div class="points">${player.score} pts</div>
-        `;
-    scoresContainer.appendChild(card);
-  });
+  // Créer la grille de scores (uniquement hôte)
+  const scoresContainer = document.getElementById("grille-scores-multi");
+  if (scoresContainer) {
+    scoresContainer.innerHTML = "";
+
+    players.forEach((player) => {
+      const card = document.createElement("div");
+      card.className = `carte-joueur-multi ${player.isHost ? "hote" : ""}`;
+      card.id = `joueur-${player.id}`;
+      card.innerHTML = `
+              <h3>${player.name}</h3>
+              <div class="points">${player.score} pts</div>
+          `;
+      scoresContainer.appendChild(card);
+    });
+  }
 
   // Créer les buzzers
   const buzzersContainer = document.getElementById("grille-buzzers-multi");
   if (!buzzersContainer) return;
   buzzersContainer.innerHTML = "";
 
-  players.forEach((player, index) => {
+  if (isPlayerPage) {
+    // Sur téléphone: un seul buzzer (le joueur ne voit que SON bouton)
+    const self = players.find((p) => p.id === playerId) || players.find((p) => p.name === playerName);
     const buzzerDiv = document.createElement("div");
     buzzerDiv.className = "buzzer-joueur-multi";
     buzzerDiv.innerHTML = `
-            <h3>${player.name}</h3>
-            <button class="bouton-buzzer-multi" data-player-id="${player.id}">
+            <h3>${self ? self.name : "Vous"}</h3>
+            <button class="bouton-buzzer-multi" data-player-id="${self ? self.id : ""}">
                 BUZZ !
             </button>
-            <div class="raccourci">Touche ${index + 1}</div>
         `;
 
     const button = buzzerDiv.querySelector(".bouton-buzzer-multi");
-    const colors = ["#FF5252", "#4CAF50", "#2196F3", "#FFC107"];
-    button.style.setProperty("--color", colors[index]);
-    button.style.borderColor = colors[index];
-
     button.addEventListener("click", () => {
-      console.log(`🎯 ${player.name} buzz via bouton`);
-      buzz(player.id);
+      console.log("🎯 Buzz joueur (téléphone)");
+      buzz(self ? self.id : playerId);
     });
-
     buzzersContainer.appendChild(buzzerDiv);
-  });
+  } else {
+    // Sur hôte/desktop: grille complète
+    players.forEach((player, index) => {
+      const buzzerDiv = document.createElement("div");
+      buzzerDiv.className = "buzzer-joueur-multi";
+      buzzerDiv.innerHTML = `
+              <h3>${player.name}</h3>
+              <button class="bouton-buzzer-multi" data-player-id="${player.id}">
+                  BUZZ !
+              </button>
+              <div class="raccourci">Touche ${index + 1}</div>
+          `;
+
+      const button = buzzerDiv.querySelector(".bouton-buzzer-multi");
+      const colors = ["#FF5252", "#4CAF50", "#2196F3", "#FFC107"];
+      button.style.setProperty("--color", colors[index]);
+      button.style.borderColor = colors[index];
+
+      button.addEventListener("click", () => {
+        console.log(`🎯 ${player.name} buzz via bouton`);
+        buzz(player.id);
+      });
+
+      buzzersContainer.appendChild(buzzerDiv);
+    });
+  }
 }
 
 function enableBuzzers() {
@@ -618,12 +683,12 @@ function startQuestionTimer(duration) {
   console.log("⏱️ Démarrage chrono:", duration, "ms");
 
   let timeLeft = duration / 1000;
-  const timerElement = document.getElementById("temps-multijoueur");
+  // Sur desktop: #temps-multijoueur ; sur téléphone: #chrono-multijoueur
+  const timerElement =
+    document.getElementById("temps-multijoueur") ||
+    document.getElementById("chrono-multijoueur");
 
-  if (!timerElement) {
-    console.error("❌ Élément temps-multijoueur non trouvé!");
-    return;
-  }
+  if (!timerElement) return; // certaines pages n'affichent pas le chrono
 
   timerElement.textContent = timeLeft;
 
@@ -864,8 +929,16 @@ document.addEventListener("DOMContentLoaded", () => {
     accueilActions.insertBefore(btnMultijoueur, accueilActions.firstChild);
   }
 
+  // Attache un handler click uniquement si l'élément existe sur la page.
+  // (Le même fichier est utilisé sur plusieurs écrans : hôte, joueur, accueil, etc.)
+  const bindClick = (id, handler) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("click", handler);
+    return el;
+  };
+
   // Créer une partie
-  document.getElementById("btn-creer-partie").addEventListener("click", () => {
+  bindClick("btn-creer-partie", () => {
     playerName = document.getElementById("nom-createur").value.trim();
     if (!playerName) {
       showNotification("Entrez votre nom", "error");
@@ -884,9 +957,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Rejoindre une partie
-  document
-    .getElementById("btn-rejoindre-partie")
-    .addEventListener("click", () => {
+  bindClick("btn-rejoindre-partie", () => {
       playerName = document.getElementById("nom-joueur").value.trim();
       const gameCode = document
         .getElementById("code-rejoindre")
@@ -907,9 +978,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   // Démarrer la partie (hôte)
-  document
-    .getElementById("btn-demarrer-partie")
-    .addEventListener("click", () => {
+  bindClick("btn-demarrer-partie", () => {
       if (currentGame.isHost && currentGame.code) {
         // Paramètres : mêmes réglages que le mode solo (écran Paramètres)
         const settings = getMultiplayerSettingsFromUI();
@@ -931,18 +1000,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   // Boutons retour
-  document
-    .getElementById("btn-retour-multijoueur")
-    .addEventListener("click", () => {
+  bindClick("btn-retour-multijoueur", () => {
       console.log("🔙 Retour à l'accueil depuis multijoueur");
       changerEcran("accueil");
     });
 
   // Raccourcis clavier pour buzzer
   document.addEventListener("keydown", (e) => {
-    if (
-      document.getElementById("jeu-multijoueur").classList.contains("actif")
-    ) {
+    const jeuMulti = document.getElementById("jeu-multijoueur");
+    if (jeuMulti && jeuMulti.classList.contains("actif")) {
       const key = e.key;
       if (key >= "1" && key <= "4") {
         const playerIndex = parseInt(key) - 1;
