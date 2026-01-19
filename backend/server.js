@@ -376,6 +376,8 @@ io.on("connection", (socket) => {
       question,
       options,
       correctAnswer,
+      imageUrl,
+      illustrationTexte,
       questionNumber,
       totalQuestions,
       timeLimit,
@@ -392,6 +394,8 @@ io.on("connection", (socket) => {
         question,
         options,
         correctAnswer,
+        imageUrl: imageUrl || null,
+        illustrationTexte: illustrationTexte || null,
       };
 
       clearGameTimers(game);
@@ -403,10 +407,13 @@ io.on("connection", (socket) => {
         }
       });
 
+      // IMPORTANT: on n'envoie pas les options / bonne réponse à tout le monde.
+      // Seul le premier qui buzz reçoit les 4 options.
       io.to(gameCode).emit("new-question", {
         question: question,
-        options: shuffleArray([...options]),
-        correctAnswer: correctAnswer,
+        // info visuelle (affichée côté hôte / joueur, mais pas obligatoire)
+        imageUrl: imageUrl || null,
+        illustrationTexte: illustrationTexte || null,
         timeLimit: timeLimit || game.settings.timePerQuestion * 1000,
         questionNumber: questionNumber || game.currentQuestionIndex + 1,
         totalQuestions: totalQuestions || game.totalQuestions,
@@ -475,14 +482,29 @@ io.on("connection", (socket) => {
       playerName: player.name,
     });
 
-    // Donner du temps pour répondre (2 secondes avant d'afficher l'écran de réponse)
+    // Afficher l'écran "réponse" pour tout le monde (mais options UNIQUEMENT au gagnant)
+    // - tout le monde : sait qui répond
+    // - gagnant : reçoit l'événement "answer-options" avec les 4 propositions
     setTimeout(() => {
-      if (games[gameCode] && game.buzzerWinner === socket.id) {
-        io.to(gameCode).emit("show-answer-screen", {
-          answeringPlayer: player.name,
-        });
-      }
-    }, 2000);
+      if (!games[gameCode] || game.buzzerWinner !== socket.id) return;
+
+      io.to(gameCode).emit("show-answer-screen", {
+        answeringPlayer: player.name,
+        answeringPlayerId: socket.id,
+        timeLimit: (game.settings.timePerAnswer || 15) * 1000,
+      });
+
+      // Options envoyées seulement au joueur qui doit répondre
+      const opts = Array.isArray(game.currentQuestion?.options)
+        ? shuffleArray([...game.currentQuestion.options])
+        : [];
+
+      io.to(socket.id).emit("answer-options", {
+        options: opts,
+        question: game.currentQuestion?.question || null,
+        timeLimit: (game.settings.timePerAnswer || 15) * 1000,
+      });
+    }, 500);
   });
 
   // Soumettre une réponse
@@ -522,6 +544,8 @@ io.on("connection", (socket) => {
       score: player.score,
       correctAnswer: correctAnswer || null,
       question: game.currentQuestion?.question || null,
+      imageUrl: game.currentQuestion?.imageUrl || null,
+      illustrationTexte: game.currentQuestion?.illustrationTexte || null,
       rankings,
     });
 
@@ -617,13 +641,13 @@ function sendQuestionToAll(gameCode) {
   });
 
   // Mélanger les options
-  const shuffledOptions = shuffleArray([...questionData.options]);
+  // IMPORTANT: en mode "buzzer", on n'envoie pas les options / bonne réponse à tout le monde.
+  // Seul le premier joueur à buzzer recevra les 4 options via l'événement "answer-options".
 
-  // Envoyer à tous les joueurs
   io.to(gameCode).emit("new-question", {
     question: questionData.question,
-    options: shuffledOptions,
-    correctAnswer: questionData.reponseCorrecte,
+    imageUrl: questionData.imageUrl || null,
+    illustrationTexte: questionData.illustrationTexte || null,
     timeLimit: game.settings.timePerQuestion * 1000,
     questionNumber: game.currentQuestionIndex + 1,
     totalQuestions: game.totalQuestions,

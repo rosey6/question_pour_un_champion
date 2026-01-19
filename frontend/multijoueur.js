@@ -149,26 +149,11 @@ function obtenirQuestionsAleatoiresDepuisJSON(nombre) {
   );
 }
 
-// Fonction pour mélanger un tableau
-// IMPORTANT: ne jamais déléguer à `window.melangerTableau` directement.
-// Dans un navigateur, une fonction déclarée au top-level devient une propriété de `window`,
-// ce qui crée une récursion infinie si on appelle `window.melangerTableau()` depuis ici.
-// On capture donc une éventuelle implémentation externe *avant* la déclaration.
-const _externalShuffle =
-  typeof window !== "undefined" && typeof window.melangerTableau === "function"
-    ? window.melangerTableau
-    : null;
-
+// Fonction pour mélanger un tableau (Fisher–Yates)
+// NOTE: on ne délègue jamais à window.melangerTableau ici.
+// Dans certains navigateurs, une fonction globale devient une propriété de window,
+// ce qui peut provoquer une récursion infinie (Maximum call stack size exceeded).
 function melangerTableau(tableau) {
-  // Délégation seulement si une implémentation externe existe ET n'est pas cette fonction.
-  if (typeof _externalShuffle === "function" && _externalShuffle !== melangerTableau) {
-    try {
-      return _externalShuffle(tableau);
-    } catch (e) {
-      console.warn("melangerTableau: fallback shuffle (external failed)", e);
-    }
-  }
-
   const resultat = Array.isArray(tableau) ? [...tableau] : [];
   for (let i = resultat.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -261,6 +246,7 @@ function connectToServer() {
   onSafe("new-question", "handleNewQuestion");
   onSafe("player-buzzed", "handlePlayerBuzzed");
   onSafe("show-answer-screen", "handleShowAnswerScreen");
+  onSafe("answer-options", "handleAnswerOptions");
   onSafe("answer-result", "handleAnswerResult");
   onSafe("question-results", "handleQuestionResults");
   onSafe("game-finished", "handleGameFinished");
@@ -442,23 +428,164 @@ function handleShowAnswerScreen(data) {
   document.getElementById("nom-repondant-multi").textContent =
     data.answeringPlayer;
 
-  // Si c'est nous qui répondons, afficher les options
-  if (data.answeringPlayer === playerName) {
-    showAnswerOptions();
+  // Par défaut: cacher les options tant qu'on n'a pas reçu l'événement "answer-options".
+  const optsBox = document.getElementById("options-reponse-multi");
+  if (optsBox) optsBox.innerHTML = "";
+
+  // Chrono réponse (si présent)
+  const t = document.getElementById("temps-reponse-multi") || document.getElementById("temps-reponse");
+  if (t && data && typeof data.timeLimit === "number") {
+    t.textContent = String(Math.max(0, Math.round(data.timeLimit / 1000)));
   }
+
+  // Message côté joueurs non sélectionnés
+  const isMe = data && data.answeringPlayerId && mpSocket && mpSocket.id
+    ? data.answeringPlayerId === mpSocket.id
+    : data && data.answeringPlayer === playerName;
+
+  const indication = document.getElementById("indication-buzz-multi") || document.getElementById("etat-buzzer-player") || document.getElementById("etat-buzzer-host");
+  if (indication) {
+    indication.textContent = isMe
+      ? "À vous de répondre."
+      : `${data.answeringPlayer} répond...`;
+  }
+}
+
+// Reçu uniquement par le joueur qui doit répondre (le premier qui a buzzé)
+function handleAnswerOptions(data) {
+  console.log("🧩 Options reçues (joueur sélectionné):", data);
+
+  // Stocker les options sur la question courante
+  if (!currentGame.currentQuestion) currentGame.currentQuestion = {};
+  currentGame.currentQuestion.options = Array.isArray(data.options) ? data.options : [];
+
+  // Afficher l'écran de réponse côté joueur
+  const answerScreen = document.getElementById("ecran-reponse-multi");
+  if (answerScreen) answerScreen.classList.remove("hidden");
+
+  // Afficher les options
+  showAnswerOptions();
 }
 
 function handleAnswerResult(data) {
   console.log("✅ Résultat réponse:", data);
 
-  // Mettre à jour les scores
+  // Mettre à jour les scores (grille hôte si dispo)
   updatePlayerScore(data.playerId, data.score);
 
-  // Afficher le résultat
-  const message = data.isCorrect
-    ? `${data.playerName}: ✓ Correct! +10 points`
-    : `${data.playerName}: ✗ Incorrect! -5 points`;
+  // Mettre à jour un petit classement côté joueur (si dispo)
+  if (Array.isArray(data.rankings)) {
+    // MAJ grille hôte : points par joueur (si la carte existe)
+    data.rankings.forEach((p) => {
+      // Les cartes sont indexées par id dans le DOM, mais le classement renvoie nom/score.
+      // On met à jour par nom en fallback si besoin.
+      const byId = document.getElementById(`joueur-${p.id || ""}`);
+      if (byId) {
+        const pts = byId.querySelector(".points");
+        if (pts) pts.textContent = `${p.score} pts`;
+      } else {
+        // Fallback par nom
+        const cards = document.querySelectorAll(".carte-joueur-multi");
+        cards.forEach((c) => {
+          const h3 = c.querySelector("h3");
+          if (h3 && h3.textContent.trim() === p.name) {
+            const pts = c.querySelector(".points");
+            if (pts) pts.textContent = `${p.score} pts`;
+          }
+        });
+      }
+    });
 
+    const list = document.getElementById("liste-scores-joueur");
+    if (list) {
+      list.innerHTML = "";
+      data.rankings.forEach((p) => {
+        const row = document.createElement("div");
+        row.className = "score-row";
+        row.style.display = "flex";
+        row.style.justifyContent = "space-between";
+        row.style.gap = "10px";
+        row.innerHTML = `<span>${p.position}. ${p.name}</span><strong>${p.score}</strong>`;
+        list.appendChild(row);
+      });
+    }
+  }
+
+  // Helpers d'illustration (sans toucher style.css)
+  const setHidden = (el, hidden) => {
+    if (!el) return;
+    if (hidden) el.classList.add("hidden");
+    else el.classList.remove("hidden");
+  };
+  const applyImgSizing = (img) => {
+    if (!img) return;
+    img.style.display = "block";
+    img.style.width = "100%";
+    img.style.maxWidth = "520px";
+    img.style.height = "auto";
+    img.style.maxHeight = "220px";
+    img.style.objectFit = "contain";
+    img.style.objectPosition = "center";
+    img.style.margin = "10px auto";
+  };
+
+  // Afficher résultat côté HÔTE (écran résultat multi) si disponible
+  const hostResultScreen = document.getElementById("ecran-resultat-multi");
+  if (hostResultScreen) {
+    // Masquer l'écran de réponse
+    const answerScreen = document.getElementById("ecran-reponse-multi");
+    if (answerScreen) answerScreen.classList.add("hidden");
+
+    hostResultScreen.classList.remove("hidden");
+
+    const bonne = document.getElementById("resultat-multi-bonne") || document.getElementById("reponse-correcte");
+    if (bonne) {
+      const corr = data.correctAnswer ? `Réponse correcte : ${data.correctAnswer}` : "";
+      const who = data.playerName ? `\n${data.playerName} a répondu : ${data.answer ?? "(aucune)"}` : "";
+      bonne.textContent = `${corr}${who}`.trim();
+    }
+
+    // Illustration (comme mode "Commencer à jouer")
+    const box = document.getElementById("resultat-multi-illustration");
+    const img = document.getElementById("resultat-multi-image");
+    const txt = document.getElementById("resultat-multi-description");
+    const url = data.imageUrl || "";
+    const caption = data.illustrationTexte || "";
+    if (box && img && txt && url) {
+      applyImgSizing(img);
+      img.onload = () => setHidden(box, false);
+      img.onerror = () => setHidden(box, true);
+      img.src = url;
+      txt.textContent = caption;
+      setHidden(box, false);
+    } else if (box) {
+      setHidden(box, true);
+    }
+  }
+
+  // Afficher résultat côté JOUEUR (téléphone)
+  const joueurResult = document.getElementById("resultat-joueur-multi");
+  if (joueurResult) {
+    joueurResult.classList.remove("hidden");
+    const p = document.getElementById("resultat-joueur-correct");
+    if (p) {
+      const corr = data.correctAnswer ? `Réponse correcte : ${data.correctAnswer}` : "";
+      const ok = data.isCorrect ? "Bonne réponse" : "Mauvaise réponse";
+      p.textContent = `${ok}. ${corr}`.trim();
+    }
+    const img = document.getElementById("resultat-joueur-image");
+    const txt = document.getElementById("resultat-joueur-description");
+    if (img && data.imageUrl) {
+      applyImgSizing(img);
+      img.src = data.imageUrl;
+    }
+    if (txt) txt.textContent = data.illustrationTexte || "";
+  }
+
+  // Notification courte
+  const message = data.isCorrect
+    ? `${data.playerName}: ✓ Correct (+10)`
+    : `${data.playerName}: ✗ Incorrect (-5)`;
   showNotification(message, data.isCorrect ? "success" : "error");
 }
 
@@ -673,13 +800,9 @@ function showAnswerOptions() {
     button.className = "option-reponse-multi";
     button.textContent = option;
     button.addEventListener("click", () => {
-      const isCorrect = option === currentGame.currentQuestion.correctAnswer;
-      console.log(`✅ Réponse soumise: ${option}, correcte: ${isCorrect}`);
-
       mpSocket.emit("submit-answer", {
         gameCode: currentGame.code,
         answer: option,
-        isCorrect: isCorrect,
       });
 
       // Désactiver les boutons après clic
@@ -957,6 +1080,21 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("🔙 Retour à l'accueil depuis multijoueur");
       changerEcran("accueil");
     });
+
+  // Résultat (hôte) : question suivante / menu
+  bindClick("btn-resultat-multi-continuer", () => {
+    if (currentGame.isHost && currentGame.code) {
+      mpSocket.emit("next-question", { gameCode: currentGame.code });
+    }
+  });
+  bindClick("btn-resultat-multi-menu", () => {
+    returnToMainMenu();
+  });
+
+  // Résultat (joueur) : retour menu
+  bindClick("btn-retour-menu-joueur", () => {
+    returnToMainMenu();
+  });
 
   // Raccourcis clavier pour buzzer
   document.addEventListener("keydown", (e) => {
