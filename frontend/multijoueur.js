@@ -1,7 +1,8 @@
 // Configuration
-// Par défaut, on pointe vers le backend Render.
-// Possibilité de surcharge via window.__BACKEND_URL (utile si vous changez d'URL sans rebuild).
-const SERVER_URL = (window && window.__BACKEND_URL) || "https://questionpourunchampion-backend.onrender.com";
+// URL du backend (Render). Surcharge possible via window.__BACKEND_URL (utile si vous changez d'hébergeur front).
+const SERVER_URL = (typeof window !== "undefined" && window.__BACKEND_URL)
+  ? String(window.__BACKEND_URL)
+  : "https://questionpourunchampion-backend.onrender.com";
 
 // Variables globales
 let mpSocket = null;
@@ -870,8 +871,9 @@ document.addEventListener("DOMContentLoaded", () => {
     accueilActions.insertBefore(btnMultijoueur, accueilActions.firstChild);
   }
 
-  // Créer une partie
-  document.getElementById("btn-creer-partie").addEventListener("click", () => {
+  // Créer une partie (si le bouton existe sur la page)
+  const btnCreerPartie = document.getElementById("btn-creer-partie");
+  if (btnCreerPartie) btnCreerPartie.addEventListener("click", () => {
     playerName = document.getElementById("nom-createur").value.trim();
     if (!playerName) {
       showNotification("Entrez votre nom", "error");
@@ -890,9 +892,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Rejoindre une partie
-  document
-    .getElementById("btn-rejoindre-partie")
-    .addEventListener("click", () => {
+  const btnRejoindrePartie = document.getElementById("btn-rejoindre-partie");
+  if (btnRejoindrePartie) btnRejoindrePartie.addEventListener("click", () => {
       playerName = document.getElementById("nom-joueur").value.trim();
       const gameCode = document
         .getElementById("code-rejoindre")
@@ -913,9 +914,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   // Démarrer la partie (hôte)
-  document
-    .getElementById("btn-demarrer-partie")
-    .addEventListener("click", () => {
+  const btnDemarrerPartie = document.getElementById("btn-demarrer-partie");
+  if (btnDemarrerPartie) btnDemarrerPartie.addEventListener("click", () => {
       if (currentGame.isHost && currentGame.code) {
         // Paramètres : mêmes réglages que le mode solo (écran Paramètres)
         const settings = getMultiplayerSettingsFromUI();
@@ -937,9 +937,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   // Boutons retour
-  document
-    .getElementById("btn-retour-multijoueur")
-    .addEventListener("click", () => {
+  const btnRetourMultijoueur = document.getElementById("btn-retour-multijoueur");
+  if (btnRetourMultijoueur) btnRetourMultijoueur.addEventListener("click", () => {
       console.log("🔙 Retour à l'accueil depuis multijoueur");
       changerEcran("accueil");
     });
