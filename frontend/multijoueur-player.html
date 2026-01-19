@@ -77,6 +77,9 @@
 
     <!-- IMPORTANT: ne pas charger script.js ici (dédié au SOLO, et il provoque des erreurs côté téléphone) -->
     <script src="socket-common.js"></script>
-    <script src="multijoueur.js"></script>
+    <script>
+      window.__BACKEND_URL = "https://questionpourunchampion-backend.onrender.com";
+    </script>
+    <script src="multijoueur.js?v=20260119"></script>
   </body>
 </html>

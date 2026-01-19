@@ -1,5 +1,11 @@
 // Configuration
-const SERVER_URL = "https://question-pour-un-champion.onrender.com";
+// IMPORTANT: ne jamais pointer vers l'ancien backend (question-pour-un-champion.onrender.com)
+// Pour faciliter les migrations d'hébergement, on permet une surcharge via window.__BACKEND_URL.
+// Exemple (dans une page HTML, avant multijoueur.js):
+//   <script>window.__BACKEND_URL = "https://questionpourunchampion-backend.onrender.com";</script>
+const SERVER_URL = (typeof window !== "undefined" && window.__BACKEND_URL)
+  ? window.__BACKEND_URL
+  : "https://questionpourunchampion-backend.onrender.com";
 
 // Variables globales
 let mpSocket = null;
@@ -323,9 +329,11 @@ function handlePlayerJoined(data) {
 
   if (currentGame.isHost) {
     updatePlayerList(data.players);
-    const btnStart = document.getElementById("btn-demarrer-partie");
-    if (btnStart) btnStart.disabled = data.players.length < 2;
-    if (btnStart) btnStart.innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
+    document.getElementById("btn-demarrer-partie").disabled =
+      data.players.length < 2;
+    document.getElementById(
+      "btn-demarrer-partie"
+    ).innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
   } else {
     updateWaitingPlayers(data.players);
   }
@@ -338,9 +346,11 @@ function handlePlayerLeft(data) {
 
   if (currentGame.isHost) {
     updatePlayerList(data.players);
-    const btnStart = document.getElementById("btn-demarrer-partie");
-    if (btnStart) btnStart.disabled = data.players.length < 2;
-    if (btnStart) btnStart.innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
+    document.getElementById("btn-demarrer-partie").disabled =
+      data.players.length < 2;
+    document.getElementById(
+      "btn-demarrer-partie"
+    ).innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
   } else {
     updateWaitingPlayers(data.players);
   }
@@ -864,15 +874,8 @@ document.addEventListener("DOMContentLoaded", () => {
     accueilActions.insertBefore(btnMultijoueur, accueilActions.firstChild);
   }
 
-
-  // Helpers: avoid crashes when some elements are absent on certain pages
-  const bindClick = (id, handler) => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener("click", handler);
-  };
-
   // Créer une partie
-  bindClick("btn-creer-partie", () => {
+  document.getElementById("btn-creer-partie").addEventListener("click", () => {
     playerName = document.getElementById("nom-createur").value.trim();
     if (!playerName) {
       showNotification("Entrez votre nom", "error");
@@ -891,7 +894,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Rejoindre une partie
-  bindClick("btn-rejoindre-partie", () => {
+  document
+    .getElementById("btn-rejoindre-partie")
+    .addEventListener("click", () => {
       playerName = document.getElementById("nom-joueur").value.trim();
       const gameCode = document
         .getElementById("code-rejoindre")
@@ -912,7 +917,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   // Démarrer la partie (hôte)
-  bindClick("btn-demarrer-partie", () => {
+  document
+    .getElementById("btn-demarrer-partie")
+    .addEventListener("click", () => {
       if (currentGame.isHost && currentGame.code) {
         // Paramètres : mêmes réglages que le mode solo (écran Paramètres)
         const settings = getMultiplayerSettingsFromUI();
@@ -934,15 +941,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   // Boutons retour
-  bindClick("btn-retour-multijoueur", () => {
+  document
+    .getElementById("btn-retour-multijoueur")
+    .addEventListener("click", () => {
       console.log("🔙 Retour à l'accueil depuis multijoueur");
       changerEcran("accueil");
     });
 
   // Raccourcis clavier pour buzzer
   document.addEventListener("keydown", (e) => {
-    const jeuMpEl = document.getElementById("jeu-multijoueur");
-    if (jeuMpEl && jeuMpEl.classList.contains("actif")) {
+    if (
+      document.getElementById("jeu-multijoueur").classList.contains("actif")
+    ) {
       const key = e.key;
       if (key >= "1" && key <= "4") {
         const playerIndex = parseInt(key) - 1;
