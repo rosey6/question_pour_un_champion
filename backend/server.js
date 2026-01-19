@@ -191,10 +191,18 @@ io.on("connection", (socket) => {
     const gameCode = generateGameCode();
 
     const rawSettings = settings || {};
+    // Mode hôte joueur : l'hôte participe en tant que joueur et peut buzzer/répondre.
+    // On supporte plusieurs clés pour rester compatible avec les anciennes versions.
+    const hostIsPlayer =
+      rawSettings.hostIsPlayer === true ||
+      rawSettings.mode === "hostplay" ||
+      rawSettings.multiMode === "hostplay";
+
     const normalizedSettings = {
       questionsCount: Number(rawSettings.questionsCount ?? rawSettings.nombreQuestions ?? 10),
       timePerQuestion: Number(rawSettings.timePerQuestion ?? rawSettings.dureeQuestion ?? 30),
       timePerAnswer: Number(rawSettings.timePerAnswer ?? rawSettings.dureeReponse ?? 15),
+      hostIsPlayer: hostIsPlayer,
     };
 
     games[gameCode] = {
@@ -212,7 +220,7 @@ io.on("connection", (socket) => {
       createdAt: Date.now(),
     };
 
-    // Hôte = spectateur (pas un joueur)
+    // Hôte : toujours identifié comme hôte, et optionnellement aussi comme joueur.
     players[socket.id] = {
       id: socket.id,
       gameCode: gameCode,
@@ -220,13 +228,40 @@ io.on("connection", (socket) => {
       isHost: true,
     };
 
+    if (hostIsPlayer) {
+      games[gameCode].players[socket.id] = {
+        id: socket.id,
+        name: playerName,
+        score: 0,
+        isHost: true,
+      };
+      games[gameCode].scores[socket.id] = 0;
+    }
+
     socket.join(gameCode);
+
+    const initialPlayers = Object.values(games[gameCode].players).map((p) => ({
+      id: p.id,
+      name: p.name,
+      score: games[gameCode].scores[p.id] || 0,
+      isHost: !!p.isHost,
+    }));
 
     socket.emit("game-created", {
       success: true,
       gameCode: gameCode,
       message: "Partie créée avec succès",
+      players: initialPlayers,
+      hostIsPlayer: hostIsPlayer,
     });
+
+    // Si l'hôte est joueur, informer la salle (utile pour garder les listes synchronisées)
+    if (hostIsPlayer) {
+      io.to(gameCode).emit("player-joined", {
+        player: { id: socket.id, name: playerName, score: 0, isHost: true },
+        players: initialPlayers,
+      });
+    }
 
     console.log(`Partie créée: ${gameCode} par ${playerName}`);
   });
