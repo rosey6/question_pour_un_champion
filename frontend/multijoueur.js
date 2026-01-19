@@ -154,7 +154,8 @@ function obtenirQuestionsAleatoiresDepuisJSON(nombre) {
 
 // Fonction pour mélanger un tableau
 function melangerTableau(tableau) {
-  if (typeof window.melangerTableau === "function") {
+  // Eviter la recursion infinie si window.melangerTableau reference cette meme fonction
+  if (typeof window.melangerTableau === "function" && window.melangerTableau !== melangerTableau) {
     return window.melangerTableau(tableau);
   }
 
