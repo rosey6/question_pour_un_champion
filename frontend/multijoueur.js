@@ -283,7 +283,8 @@ function handleGameCreated(data) {
 
   if (data.success) {
     currentGame.code = data.gameCode;
-    currentGame.isHost = true;
+    // Mode « tout le monde joue » : on ne distingue plus d'hôte
+    currentGame.isHost = false;
 
     const codeEl = document.getElementById("code-partie");
     if (codeEl) codeEl.textContent = data.gameCode;
@@ -299,15 +300,12 @@ function handleGameCreated(data) {
     } catch (e) {
       console.warn("⚠️ Impossible de générer le QR code:", e);
     }
-    document.getElementById("salle-attente").classList.add("hidden");
+    // Affiche la salle d'attente (code + QR) en attendant les autres joueurs
+    const salleAttenteEl = document.getElementById("salle-attente");
+    if (salleAttenteEl) salleAttenteEl.classList.remove("hidden");
 
     showNotification(`Partie créée: ${data.gameCode}`, "success");
-
-    // La liste des joueurs peut inclure l'hôte s'il joue.
-    const initialPlayers = Array.isArray(data.players) && data.players.length
-      ? data.players
-      : [{ id: playerId, name: playerName, score: 0, isHost: true }];
-    updatePlayerList(initialPlayers);
+    updatePlayerList([{ id: playerId, name: playerName, score: 0, isHost: false }]);
   }
 }
 
@@ -341,15 +339,15 @@ function handlePlayerJoined(data) {
 
   currentGame.players = data.players;
 
-  if (currentGame.isHost) {
-    updatePlayerList(data.players);
-    const btnStart = document.getElementById("btn-demarrer-partie");
-    if (btnStart) {
-      btnStart.disabled = data.players.length < 2;
-      btnStart.innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
-    }
-  } else {
-    updateWaitingPlayers(data.players);
+  // Mode « tout le monde joue » : on met à jour les deux affichages si présents
+  updateWaitingPlayers(data.players);
+  updatePlayerList(data.players);
+
+  const maxPlayers = Number(currentGame.settings?.maxPlayers ?? 4);
+  const btnStart = document.getElementById("btn-demarrer-partie");
+  if (btnStart) {
+    btnStart.disabled = data.players.length < 2;
+    btnStart.innerHTML = `<i class="fas fa-play"></i> Lancer (${data.players.length}/${maxPlayers})`;
   }
 }
 
@@ -358,15 +356,14 @@ function handlePlayerLeft(data) {
 
   currentGame.players = data.players;
 
-  if (currentGame.isHost) {
-    updatePlayerList(data.players);
-    const btnStart = document.getElementById("btn-demarrer-partie");
-    if (btnStart) {
-      btnStart.disabled = data.players.length < 2;
-      btnStart.innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
-    }
-  } else {
-    updateWaitingPlayers(data.players);
+  updateWaitingPlayers(data.players);
+  updatePlayerList(data.players);
+
+  const maxPlayers = Number(currentGame.settings?.maxPlayers ?? 4);
+  const btnStart = document.getElementById("btn-demarrer-partie");
+  if (btnStart) {
+    btnStart.disabled = data.players.length < 2;
+    btnStart.innerHTML = `<i class="fas fa-play"></i> Lancer (${data.players.length}/${maxPlayers})`;
   }
 }
 
@@ -1013,14 +1010,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Paramètres : mêmes réglages que le mode solo (écran Paramètres)
     const settings = getMultiplayerSettingsFromUI();
 
-    // Mode multijoueur (hôte spectateur vs hôte joueur)
-    // - Sur la page hôte, un <select id="multi-mode"> peut exister.
-    // - On garde un fallback pour compatibilité.
-    const modeEl = document.getElementById("multi-mode");
-    const mode = modeEl ? String(modeEl.value) : "spectator";
-    settings.mode = mode;
-    settings.hostIsPlayer = mode === "hostplay";
-
     console.log("🎮 Création partie avec paramètres:", settings);
 
     mpSocket.emit("create-game", {
@@ -1050,26 +1039,11 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-  // Démarrer la partie (hôte)
+  // Démarrer la partie (optionnel). En mode « tout le monde joue », n'importe qui peut lancer.
   bindClick("btn-demarrer-partie", () => {
-      if (currentGame.isHost && currentGame.code) {
-        // Paramètres : mêmes réglages que le mode solo (écran Paramètres)
-        const settings = getMultiplayerSettingsFromUI();
-
-        // Obtenir les questions depuis script.js
-        const questions = GameLogic.obtenirQuestionsAleatoires(
-          settings.questionsCount
-        );
-
-        console.log("🚀 Démarrage partie avec", questions.length, "questions");
-
-        // Envoyer au serveur
-        mpSocket.emit("start-game", {
-          gameCode: currentGame.code,
-          settings: settings,
-          questions: questions,
-        });
-      }
+      if (!currentGame.code) return;
+      const settings = getMultiplayerSettingsFromUI();
+      mpSocket.emit("start-game", { gameCode: currentGame.code, settings });
     });
 
   // Boutons retour

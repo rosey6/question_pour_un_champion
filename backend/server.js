@@ -186,27 +186,65 @@ function clearGameTimers(game) {
 io.on("connection", (socket) => {
   console.log("Nouveau joueur connecté:", socket.id);
 
+  // Normalise les paramètres envoyés par le frontend (plusieurs noms possibles selon les versions)
+  function normalizeSettings(raw = {}) {
+    const maxPlayers = Number(raw.maxPlayers ?? raw.playersCount ?? raw.nombreJoueurs ?? 4);
+    const questionsCount = Number(raw.questionsCount ?? raw.nombreQuestions ?? 10);
+    const timePerQuestion = Number(raw.timePerQuestion ?? raw.dureeQuestion ?? 30);
+    const timePerAnswer = Number(raw.timePerAnswer ?? raw.dureeReponse ?? 15);
+    return {
+      maxPlayers: Number.isFinite(maxPlayers) && maxPlayers > 0 ? maxPlayers : 4,
+      questionsCount: Number.isFinite(questionsCount) ? questionsCount : 10,
+      timePerQuestion: Number.isFinite(timePerQuestion) ? timePerQuestion : 30,
+      timePerAnswer: Number.isFinite(timePerAnswer) ? timePerAnswer : 15,
+    };
+  }
+
+  // Démarre une partie (sans concept d'hôte : n'importe quel joueur peut déclencher, et on démarre aussi automatiquement quand la salle est pleine)
+  function startGameInternal(gameCode, rawSettings = null) {
+    const game = games[gameCode];
+    if (!game || game.state !== "waiting") return;
+
+    const normalizedSettings = normalizeSettings(rawSettings || game.settings || {});
+    game.settings = normalizedSettings;
+
+    // Sélection questions côté serveur (évite la dépendance à GameLogic côté client)
+    game.questions = getRandomQuestions(normalizedSettings.questionsCount);
+    game.currentQuestionIndex = 0;
+    game.state = "playing";
+    game.buzzerActive = true;
+    game.buzzerWinner = null;
+
+    // Reset réponses/score structure
+    Object.keys(game.players).forEach((pid) => {
+      game.players[pid].hasAnswered = false;
+      if (typeof game.scores[pid] !== "number") game.scores[pid] = 0;
+    });
+
+    io.to(gameCode).emit("game-started", {
+      gameCode: gameCode,
+      settings: game.settings,
+      players: Object.values(game.players).map((p) => ({
+        id: p.id,
+        name: p.name,
+        score: game.scores[p.id] ?? 0,
+        isHost: false,
+      })),
+    });
+
+    // Lancer première question
+    sendQuestionToAll(gameCode);
+  }
+
   // Créer une partie
   socket.on("create-game", ({ playerName, settings }) => {
     const gameCode = generateGameCode();
 
-    const rawSettings = settings || {};
-    // Mode hôte joueur : l'hôte participe en tant que joueur et peut buzzer/répondre.
-    // On supporte plusieurs clés pour rester compatible avec les anciennes versions.
-    const hostIsPlayer =
-      rawSettings.hostIsPlayer === true ||
-      rawSettings.mode === "hostplay" ||
-      rawSettings.multiMode === "hostplay";
-
-    const normalizedSettings = {
-      questionsCount: Number(rawSettings.questionsCount ?? rawSettings.nombreQuestions ?? 10),
-      timePerQuestion: Number(rawSettings.timePerQuestion ?? rawSettings.dureeQuestion ?? 30),
-      timePerAnswer: Number(rawSettings.timePerAnswer ?? rawSettings.dureeReponse ?? 15),
-      hostIsPlayer: hostIsPlayer,
-    };
+    const normalizedSettings = normalizeSettings(settings || {});
 
     games[gameCode] = {
       code: gameCode,
+      // compat : conservé pour l'UI (affiche le créateur), mais aucun privilège spécial côté serveur
       hostId: socket.id,
       hostName: playerName,
       players: {},
@@ -220,48 +258,26 @@ io.on("connection", (socket) => {
       createdAt: Date.now(),
     };
 
-    // Hôte : toujours identifié comme hôte, et optionnellement aussi comme joueur.
+    // Le créateur est un joueur comme les autres
     players[socket.id] = {
       id: socket.id,
       gameCode: gameCode,
       name: playerName,
-      isHost: true,
+      score: 0,
+      isHost: false,
+      hasAnswered: false,
     };
 
-    if (hostIsPlayer) {
-      games[gameCode].players[socket.id] = {
-        id: socket.id,
-        name: playerName,
-        score: 0,
-        isHost: true,
-      };
-      games[gameCode].scores[socket.id] = 0;
-    }
+    games[gameCode].players[socket.id] = players[socket.id];
+    games[gameCode].scores[socket.id] = 0;
 
     socket.join(gameCode);
-
-    const initialPlayers = Object.values(games[gameCode].players).map((p) => ({
-      id: p.id,
-      name: p.name,
-      score: games[gameCode].scores[p.id] || 0,
-      isHost: !!p.isHost,
-    }));
 
     socket.emit("game-created", {
       success: true,
       gameCode: gameCode,
       message: "Partie créée avec succès",
-      players: initialPlayers,
-      hostIsPlayer: hostIsPlayer,
     });
-
-    // Si l'hôte est joueur, informer la salle (utile pour garder les listes synchronisées)
-    if (hostIsPlayer) {
-      io.to(gameCode).emit("player-joined", {
-        player: { id: socket.id, name: playerName, score: 0, isHost: true },
-        players: initialPlayers,
-      });
-    }
 
     console.log(`Partie créée: ${gameCode} par ${playerName}`);
   });
@@ -280,9 +296,10 @@ io.on("connection", (socket) => {
       return;
     }
 
-    if (Object.keys(game.players).length >= 4) {
+    const maxPlayers = Number(game.settings?.maxPlayers ?? 4);
+    if (Object.keys(game.players).length >= maxPlayers) {
       socket.emit("join-error", {
-        message: "La partie est complète (max 4 joueurs)",
+        message: `La partie est complète (max ${maxPlayers} joueurs)`,
       });
       return;
     }
@@ -337,70 +354,39 @@ io.on("connection", (socket) => {
     });
 
     console.log(`${playerName} a rejoint ${gameCode}`);
+
+    // Démarrage automatique dès que la salle est pleine
+    if (Object.keys(game.players).length >= maxPlayers) {
+      startGameInternal(gameCode);
+    }
   });
 
   // Démarrer la partie
-  socket.on("start-game", ({ gameCode, settings, questions }) => {
+  socket.on("start-game", ({ gameCode, settings }) => {
     const game = games[gameCode];
-
-    if (!game || socket.id !== game.hostId) {
-      socket.emit("error", { message: "Non autorisé" });
+    if (!game) {
+      socket.emit("error", { message: "Code de partie invalide" });
       return;
     }
 
-    if (Object.keys(game.players).length < 1) {
-      socket.emit("error", { message: "Au moins 1 joueur requis" });
+    // Déjà en cours
+    if (game.state !== "waiting") {
       return;
     }
 
-    game.state = "playing";
-
-    // Normaliser les settings (compat anciennes clés)
+    // Mettre à jour/normaliser les paramètres (si fournis)
     if (settings) {
-      const rawSettings = settings || {};
-      game.settings = {
-        questionsCount: Number(
-          rawSettings.questionsCount ?? rawSettings.nombreQuestions ?? 10
-        ),
-        timePerQuestion: Number(
-          rawSettings.timePerQuestion ?? rawSettings.dureeQuestion ?? 30
-        ),
-        timePerAnswer: Number(
-          rawSettings.timePerAnswer ?? rawSettings.dureeReponse ?? 15
-        ),
-      };
+      game.settings = normalizeSettings(settings);
     }
 
-    // Utiliser les questions envoyées par l'hôte ou générer des questions locales
-    if (questions && questions.length > 0) {
-      game.questions = questions;
-    } else {
-      const questionsCount = game.settings.questionsCount || 10;
-      game.questions = getRandomQuestions(questionsCount);
+    // Démarrage uniquement si au moins 2 joueurs (évite une partie vide)
+    if (Object.keys(game.players).length < 2) {
+      socket.emit("error", { message: "Au moins 2 joueurs requis" });
+      return;
     }
 
-    game.currentQuestionIndex = 0;
-    game.totalQuestions = game.questions.length;
-
-    console.log(
-      `Partie ${gameCode} démarrée avec ${game.totalQuestions} questions`
-    );
-
-    io.to(gameCode).emit("game-started", {
-      players: Object.values(game.players).map((p) => ({
-        id: p.id,
-        name: p.name,
-        score: p.score,
-      })),
-      settings: game.settings,
-      questions: game.questions,
-      totalQuestions: game.totalQuestions,
-    });
-
-    // Envoyer la première question après 2 secondes
-    setTimeout(() => {
-      sendQuestionToAll(gameCode);
-    }, 2000);
+    // Démarrer la partie de manière centralisée (questions côté serveur)
+    startGameInternal(gameCode);
   });
 
   // Envoyer une question (pour l'hôte qui contrôle manuellement)

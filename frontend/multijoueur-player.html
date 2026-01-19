@@ -14,9 +14,46 @@
     <section id="multijoueur" class="ecran actif">
       <div class="contenu">
         <h1 class="titre-principal">Mode Multijoueur</h1>
-        <p class="sous-titre">Rejoignez une partie et buzzez depuis votre téléphone.</p>
+        <p class="sous-titre">Créez une partie ou rejoignez-en une. Tout le monde joue, chacun a son buzzer.</p>
 
         <div class="section multijoueur-section">
+          <h2 class="titre-section">Créer une partie</h2>
+
+          <div class="formulaire">
+            <div class="champ">
+              <label for="nom-createur">Votre nom</label>
+              <input id="nom-createur" type="text" placeholder="Votre prénom" autocomplete="name" />
+            </div>
+
+            <div class="champ">
+              <label for="nb-joueurs">Nombre de joueurs</label>
+              <input id="nb-joueurs" type="number" min="2" max="4" value="2" />
+            </div>
+
+            <div class="champ">
+              <label for="nb-questions">Nombre de questions</label>
+              <input id="nb-questions" type="number" min="1" max="50" value="10" />
+            </div>
+
+            <div class="champ">
+              <label for="temps-question">Temps par question (secondes)</label>
+              <input id="temps-question" type="number" min="5" max="120" value="30" />
+            </div>
+
+            <button id="btn-creer-partie" class="bouton bouton-principal" type="button">Créer</button>
+          </div>
+
+          <!-- Salle créée : code + QR + attente joueurs -->
+          <div id="zone-code-partie" class="hidden" style="margin-top: 16px">
+            <p class="texte-secondaire">Code de la partie :</p>
+            <div id="code-partie" class="code-partie">------</div>
+            <div id="qr-code" class="qr-code-container" aria-label="QR code de connexion"></div>
+            <p id="statut-joueurs" class="texte-secondaire"></p>
+            <button id="btn-demarrer-partie" class="bouton bouton-secondaire" type="button">Démarrer</button>
+          </div>
+
+          <hr style="margin: 24px 0; opacity: 0.15" />
+
           <h2 class="titre-section">Rejoindre une partie</h2>
 
           <div class="formulaire">
