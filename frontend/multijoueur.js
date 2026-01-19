@@ -329,11 +329,11 @@ function handlePlayerJoined(data) {
 
   if (currentGame.isHost) {
     updatePlayerList(data.players);
-    document.getElementById("btn-demarrer-partie").disabled =
-      data.players.length < 2;
-    document.getElementById(
-      "btn-demarrer-partie"
-    ).innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
+    const btnDemarrer = document.getElementById("btn-demarrer-partie");
+    if (btnDemarrer) {
+      btnDemarrer.disabled = data.players.length < 2;
+      btnDemarrer.innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
+    }
   } else {
     updateWaitingPlayers(data.players);
   }
@@ -346,11 +346,11 @@ function handlePlayerLeft(data) {
 
   if (currentGame.isHost) {
     updatePlayerList(data.players);
-    document.getElementById("btn-demarrer-partie").disabled =
-      data.players.length < 2;
-    document.getElementById(
-      "btn-demarrer-partie"
-    ).innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
+    const btnDemarrer = document.getElementById("btn-demarrer-partie");
+    if (btnDemarrer) {
+      btnDemarrer.disabled = data.players.length < 2;
+      btnDemarrer.innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
+    }
   } else {
     updateWaitingPlayers(data.players);
   }
@@ -874,8 +874,16 @@ document.addEventListener("DOMContentLoaded", () => {
     accueilActions.insertBefore(btnMultijoueur, accueilActions.firstChild);
   }
 
+  // Helper: attache un click uniquement si l'élément existe sur la page.
+  // (Les écrans hôte/joueur/rejoindre n'ont pas les mêmes boutons.)
+  const bindClick = (id, handler) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("click", handler);
+  };
+
   // Créer une partie
-  document.getElementById("btn-creer-partie").addEventListener("click", () => {
+  bindClick("btn-creer-partie", () => {
     playerName = document.getElementById("nom-createur").value.trim();
     if (!playerName) {
       showNotification("Entrez votre nom", "error");
@@ -894,9 +902,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Rejoindre une partie
-  document
-    .getElementById("btn-rejoindre-partie")
-    .addEventListener("click", () => {
+  bindClick("btn-rejoindre-partie", () => {
       playerName = document.getElementById("nom-joueur").value.trim();
       const gameCode = document
         .getElementById("code-rejoindre")
@@ -917,9 +923,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   // Démarrer la partie (hôte)
-  document
-    .getElementById("btn-demarrer-partie")
-    .addEventListener("click", () => {
+  bindClick("btn-demarrer-partie", () => {
       if (currentGame.isHost && currentGame.code) {
         // Paramètres : mêmes réglages que le mode solo (écran Paramètres)
         const settings = getMultiplayerSettingsFromUI();
@@ -941,18 +945,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   // Boutons retour
-  document
-    .getElementById("btn-retour-multijoueur")
-    .addEventListener("click", () => {
+  bindClick("btn-retour-multijoueur", () => {
       console.log("🔙 Retour à l'accueil depuis multijoueur");
       changerEcran("accueil");
     });
 
   // Raccourcis clavier pour buzzer
   document.addEventListener("keydown", (e) => {
-    if (
-      document.getElementById("jeu-multijoueur").classList.contains("actif")
-    ) {
+    const jeuEl = document.getElementById("jeu-multijoueur");
+    if (jeuEl && jeuEl.classList.contains("actif")) {
       const key = e.key;
       if (key >= "1" && key <= "4") {
         const playerIndex = parseInt(key) - 1;
