@@ -170,16 +170,13 @@ function obtenirQuestionsAleatoiresDepuisJSON(nombre) {
 
 // Fonction pour mélanger un tableau
 function melangerTableau(tableau) {
-  if (typeof window.melangerTableau === "function") {
-    return window.melangerTableau(tableau);
-  }
+  // IMPORTANT:
+  // Ne JAMAIS déléguer à `window.melangerTableau` ici.
+  // Comme cette fonction est globale, `window.melangerTableau` peut référencer
+  // cette même fonction -> récursion infinie (Maximum call stack size exceeded).
 
-  const resultat = [...tableau];
-  for (let i = resultat.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [resultat[i], resultat[j]] = [resultat[j], resultat[i]];
-  }
-  return resultat;
+  // Désactivation du mélange : on conserve l'ordre original (copie simple).
+  return [...tableau];
 }
 
 // Récupérer les paramètres de jeu (mêmes réglages que le mode solo)
@@ -378,28 +375,9 @@ function handleGameStarted(data) {
   currentGame.settings = data.settings || {};
   currentGame.currentQuestionIndex = 0;
 
-  // Affichage des écrans (robuste selon le rôle)
-  const ecranMulti = document.getElementById("multijoueur");
-  const blocJeu = document.getElementById("jeu-multijoueur");
-  const role = getMultiRole();
-
-  if (role === "player") {
-    // Sur téléphone: on garde l'écran multijoueur actif, mais on masque seulement le bloc "Rejoindre".
-    const joinSection = document.querySelector(".multijoueur-section");
-    if (joinSection) joinSection.classList.add("hidden");
-
-    if (blocJeu) {
-      blocJeu.classList.remove("hidden");
-      blocJeu.classList.add("actif");
-    }
-  } else {
-    // Sur hôte/desktop: on bascule vers l'écran de jeu.
-    if (ecranMulti) ecranMulti.classList.remove("actif");
-    if (blocJeu) {
-      blocJeu.classList.remove("hidden");
-      blocJeu.classList.add("actif");
-    }
-  }
+  // Cacher les écrans d'attente
+  document.getElementById("multijoueur").classList.remove("actif");
+  document.getElementById("jeu-multijoueur").classList.add("actif");
 
   // Initialiser le jeu
   initMultiplayerGame(data.players);
@@ -742,24 +720,10 @@ function startQuestionTimer(duration) {
   console.log("⏱️ Démarrage chrono:", duration, "ms");
 
   let timeLeft = duration / 1000;
-  // Compat: certaines pages utilisent "chrono-multijoueur" (historique).
-  let timerElement = document.getElementById("temps-multijoueur") || document.getElementById("chrono-multijoueur");
+  const timerElement = document.getElementById("temps-multijoueur");
 
   if (!timerElement) {
-    // Dernier recours: créer un élément de chrono si la page n'en a pas.
-    const entete = document.querySelector(".entete-jeu");
-    if (entete) {
-      const div = document.createElement("div");
-      div.id = "chrono-multijoueur";
-      div.className = "chrono";
-      div.textContent = "0";
-      entete.appendChild(div);
-      timerElement = div;
-    }
-  }
-
-  if (!timerElement) {
-    console.error("❌ Élément chrono introuvable (temps-multijoueur / chrono-multijoueur)");
+    console.error("❌ Élément temps-multijoueur non trouvé!");
     return;
   }
 
