@@ -1,5 +1,6 @@
 // Configuration
-const SERVER_URL = "https://question-pour-un-champion.onrender.com";
+const DEFAULT_BACKEND_URL = "https://questionpourunchampion-backend.onrender.com";
+const SERVER_URL = window.__BACKEND_URL || DEFAULT_BACKEND_URL;
 
 // Variables globales
 let mpSocket = null;
@@ -150,29 +151,12 @@ function obtenirQuestionsAleatoiresDepuisJSON(nombre) {
 }
 
 // Fonction pour mélanger un tableau
-// IMPORTANT : on capture l'éventuelle implémentation externe AVANT que ce fichier
-// ne déclare sa propre fonction `melangerTableau`. Sinon `window.melangerTableau`
-// peut pointer vers cette même fonction et provoquer une récursion infinie
-// (Maximum call stack size exceeded).
-const __melangerTableauExterne =
-  typeof window !== "undefined" && typeof window.melangerTableau === "function"
-    ? window.melangerTableau
-    : null;
-
 function melangerTableau(tableau) {
-  // Délégation uniquement vers une fonction externe capturée, et uniquement si
-  // ce n'est pas cette fonction (sécurité anti-récursion).
-  if (typeof __melangerTableauExterne === "function" && __melangerTableauExterne !== melangerTableau) {
-    try {
-      return __melangerTableauExterne(tableau);
-    } catch (e) {
-      // Si l'externe échoue, on retombe sur le mélange local.
-      console.warn("⚠️ melangerTableau externe a échoué, fallback local.", e);
-    }
+  if (typeof window.melangerTableau === "function") {
+    return window.melangerTableau(tableau);
   }
 
-  // Mélange local (Fisher–Yates)
-  const resultat = Array.isArray(tableau) ? [...tableau] : [];
+  const resultat = [...tableau];
   for (let i = resultat.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [resultat[i], resultat[j]] = [resultat[j], resultat[i]];
