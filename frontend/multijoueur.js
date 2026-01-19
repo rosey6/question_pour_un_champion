@@ -150,12 +150,26 @@ function obtenirQuestionsAleatoiresDepuisJSON(nombre) {
 }
 
 // Fonction pour mélanger un tableau
+// IMPORTANT: ne jamais déléguer à `window.melangerTableau` directement.
+// Dans un navigateur, une fonction déclarée au top-level devient une propriété de `window`,
+// ce qui crée une récursion infinie si on appelle `window.melangerTableau()` depuis ici.
+// On capture donc une éventuelle implémentation externe *avant* la déclaration.
+const _externalShuffle =
+  typeof window !== "undefined" && typeof window.melangerTableau === "function"
+    ? window.melangerTableau
+    : null;
+
 function melangerTableau(tableau) {
-  if (typeof window.melangerTableau === "function") {
-    return window.melangerTableau(tableau);
+  // Délégation seulement si une implémentation externe existe ET n'est pas cette fonction.
+  if (typeof _externalShuffle === "function" && _externalShuffle !== melangerTableau) {
+    try {
+      return _externalShuffle(tableau);
+    } catch (e) {
+      console.warn("melangerTableau: fallback shuffle (external failed)", e);
+    }
   }
 
-  const resultat = [...tableau];
+  const resultat = Array.isArray(tableau) ? [...tableau] : [];
   for (let i = resultat.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [resultat[i], resultat[j]] = [resultat[j], resultat[i]];
