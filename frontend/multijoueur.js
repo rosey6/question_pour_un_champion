@@ -1,9 +1,5 @@
 // Configuration
-// IMPORTANT: on force par defaut le backend Render actuel.
-// Surcharge possible via: window.__BACKEND_URL = "https://..." (defini dans le HTML si besoin).
-const SERVER_URL =
-  (typeof window !== "undefined" && window.__BACKEND_URL) ||
-  "https://questionpourunchampion-backend.onrender.com";
+const SERVER_URL = "https://question-pour-un-champion.onrender.com";
 
 // Variables globales
 let mpSocket = null;
@@ -153,24 +149,13 @@ function obtenirQuestionsAleatoiresDepuisJSON(nombre) {
   );
 }
 
-// Fonction pour melanger un tableau
-// Correctif DEFINITIF: evite toute recursion infinie quand window.melangerTableau pointe sur cette meme fonction.
-const __externalMelangerTableau =
-  typeof window !== "undefined" && typeof window.melangerTableau === "function"
-    ? window.melangerTableau
-    : null;
-
+// Fonction pour mélanger un tableau
 function melangerTableau(tableau) {
-  // Si une fonction externe existe (ex: dans script.js) et qu'elle n'est pas cette fonction, on l'utilise.
-  if (__externalMelangerTableau && __externalMelangerTableau !== melangerTableau) {
-    try {
-      return __externalMelangerTableau(tableau);
-    } catch (e) {
-      // Fallback local
-    }
+  if (typeof window.melangerTableau === "function") {
+    return window.melangerTableau(tableau);
   }
 
-  const resultat = Array.isArray(tableau) ? [...tableau] : [];
+  const resultat = [...tableau];
   for (let i = resultat.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [resultat[i], resultat[j]] = [resultat[j], resultat[i]];
@@ -884,7 +869,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Créer une partie
-  document.getElementById("btn-creer-partie").addEventListener("click", () => {
+  const btnCreerPartie = document.getElementById("btn-creer-partie");
+  if (btnCreerPartie) btnCreerPartie.addEventListener("click", () => {
     playerName = document.getElementById("nom-createur").value.trim();
     if (!playerName) {
       showNotification("Entrez votre nom", "error");
@@ -903,9 +889,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Rejoindre une partie
-  document
-    .getElementById("btn-rejoindre-partie")
-    .addEventListener("click", () => {
+  const btnRejoindrePartie = document.getElementById("btn-rejoindre-partie");
+  if (btnRejoindrePartie) btnRejoindrePartie.addEventListener("click", () => {
       playerName = document.getElementById("nom-joueur").value.trim();
       const gameCode = document
         .getElementById("code-rejoindre")
@@ -923,12 +908,11 @@ document.addEventListener("DOMContentLoaded", () => {
         gameCode: gameCode,
         playerName: playerName,
       });
-    });
+  });
 
   // Démarrer la partie (hôte)
-  document
-    .getElementById("btn-demarrer-partie")
-    .addEventListener("click", () => {
+  const btnDemarrerPartie = document.getElementById("btn-demarrer-partie");
+  if (btnDemarrerPartie) btnDemarrerPartie.addEventListener("click", () => {
       if (currentGame.isHost && currentGame.code) {
         // Paramètres : mêmes réglages que le mode solo (écran Paramètres)
         const settings = getMultiplayerSettingsFromUI();
@@ -947,21 +931,19 @@ document.addEventListener("DOMContentLoaded", () => {
           questions: questions,
         });
       }
-    });
+  });
 
   // Boutons retour
-  document
-    .getElementById("btn-retour-multijoueur")
-    .addEventListener("click", () => {
+  const btnRetourMultijoueur = document.getElementById("btn-retour-multijoueur");
+  if (btnRetourMultijoueur) btnRetourMultijoueur.addEventListener("click", () => {
       console.log("🔙 Retour à l'accueil depuis multijoueur");
       changerEcran("accueil");
-    });
+  });
 
   // Raccourcis clavier pour buzzer
   document.addEventListener("keydown", (e) => {
-    if (
-      document.getElementById("jeu-multijoueur").classList.contains("actif")
-    ) {
+    const jeuMulti = document.getElementById("jeu-multijoueur");
+    if (jeuMulti && jeuMulti.classList.contains("actif")) {
       const key = e.key;
       if (key >= "1" && key <= "4") {
         const playerIndex = parseInt(key) - 1;
