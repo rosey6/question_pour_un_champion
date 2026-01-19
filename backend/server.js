@@ -166,6 +166,19 @@ function getRandomQuestions(count) {
 const games = {};
 const players = {};
 
+// Nettoyage défensif des timers (buzzer/answer) par partie
+function clearGameTimers(game) {
+  if (!game) return;
+  if (game._buzzerTimer) {
+    clearTimeout(game._buzzerTimer);
+    game._buzzerTimer = null;
+  }
+  if (game._answerTimer) {
+    clearTimeout(game._answerTimer);
+    game._answerTimer = null;
+  }
+}
+
 // ============================================
 // GESTION SOCKET.IO
 // ============================================
@@ -374,6 +387,14 @@ io.on("connection", (socket) => {
       // Activer le buzzer
       game.buzzerActive = true;
       game.buzzerWinner = null;
+      game.buzzerWinnerAnswered = false;
+      game.currentQuestion = {
+        question,
+        options,
+        correctAnswer,
+      };
+
+      clearGameTimers(game);
 
       // Réinitialiser les réponses
       Object.keys(game.players).forEach((playerId) => {
@@ -394,7 +415,7 @@ io.on("connection", (socket) => {
       console.log(`Question envoyée par l'hôte dans ${gameCode}`);
 
       // Désactiver le buzzer après le temps
-      setTimeout(() => {
+      game._buzzerTimer = setTimeout(() => {
         if (games[gameCode] && game.buzzerActive) {
           game.buzzerActive = false;
           io.to(gameCode).emit("buzzer-timeout");
@@ -412,6 +433,40 @@ io.on("connection", (socket) => {
 
     game.buzzerWinner = socket.id;
     game.buzzerActive = false;
+    game.buzzerWinnerAnswered = false;
+
+    // Timer de réponse: si le joueur ne répond pas, on considère la réponse comme incorrecte et on passe à la suite.
+    clearGameTimers(game);
+    game._answerTimer = setTimeout(() => {
+      const g = games[gameCode];
+      if (!g) return;
+      if (g.buzzerWinner === socket.id && !g.buzzerWinnerAnswered) {
+        const p = players[socket.id];
+        if (!p) return;
+        // Pas de réponse -> incorrect (0 point minimum)
+        p.score = Math.max(0, (p.score || 0) - 5);
+        g.scores[socket.id] = p.score;
+        g.buzzerWinnerAnswered = true;
+
+        const rankings = Object.values(g.players)
+          .sort((a, b) => (b.score || 0) - (a.score || 0))
+          .map((pl, idx) => ({ position: idx + 1, name: pl.name, score: pl.score || 0 }));
+
+        io.to(gameCode).emit("answer-result", {
+          playerId: socket.id,
+          playerName: p.name,
+          answer: null,
+          isCorrect: false,
+          score: p.score,
+          correctAnswer: g.currentQuestion?.correctAnswer || null,
+          question: g.currentQuestion?.question || null,
+          rankings,
+          reason: "timeout",
+        });
+
+        setTimeout(() => nextQuestion(gameCode), 2500);
+      }
+    }, (game.settings.timePerAnswer || 15) * 1000);
 
     console.log(`${player.name} a buzzé dans ${gameCode}`);
 
@@ -431,22 +486,32 @@ io.on("connection", (socket) => {
   });
 
   // Soumettre une réponse
-  socket.on("submit-answer", ({ gameCode, answer, isCorrect }) => {
+  socket.on("submit-answer", ({ gameCode, answer }) => {
     const game = games[gameCode];
     const player = players[socket.id];
 
     if (!game || !player) return;
 
-    player.hasAnswered = true;
+    // Seul le vainqueur du buzzer est autorisé à répondre.
+    if (!game.buzzerWinner || game.buzzerWinner !== socket.id) return;
+    if (game.buzzerWinnerAnswered) return;
+
+    game.buzzerWinnerAnswered = true;
+    clearGameTimers(game);
+
+    const correctAnswer = game.currentQuestion?.correctAnswer;
+    const isCorrect = typeof correctAnswer === "string" && String(answer) === correctAnswer;
 
     if (isCorrect) {
-      player.score += 10;
-      game.scores[socket.id] = player.score;
+      player.score = (player.score || 0) + 10;
     } else {
-      player.score -= 5;
-      if (player.score < 0) player.score = 0;
-      game.scores[socket.id] = player.score;
+      player.score = Math.max(0, (player.score || 0) - 5);
     }
+    game.scores[socket.id] = player.score;
+
+    const rankings = Object.values(game.players)
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .map((pl, idx) => ({ position: idx + 1, name: pl.name, score: pl.score || 0 }));
 
     // Informer tous les joueurs
     io.to(gameCode).emit("answer-result", {
@@ -455,15 +520,13 @@ io.on("connection", (socket) => {
       answer: answer,
       isCorrect: isCorrect,
       score: player.score,
+      correctAnswer: correctAnswer || null,
+      question: game.currentQuestion?.question || null,
+      rankings,
     });
 
-    // Vérifier si tous ont répondu
-    const allAnswered = Object.values(game.players).every((p) => p.hasAnswered);
-    if (allAnswered) {
-      setTimeout(() => {
-        nextQuestion(gameCode);
-      }, 5000);
-    }
+    // En multijoueur "buzzer": un seul joueur répond. On passe à la question suivante après un court délai.
+    setTimeout(() => nextQuestion(gameCode), 2500);
   });
 
   // Passer à la question suivante (hôte seulement)
@@ -533,6 +596,15 @@ function sendQuestionToAll(gameCode) {
 
   const questionData = game.questions[game.currentQuestionIndex];
 
+  // Conserver la question courante côté serveur (évite de faire confiance au client pour la correction)
+  game.currentQuestion = {
+    question: questionData.question,
+    options: questionData.options,
+    correctAnswer: questionData.reponseCorrecte,
+  };
+  game.buzzerWinnerAnswered = false;
+  clearGameTimers(game);
+
   // Activer le buzzer
   game.buzzerActive = true;
   game.buzzerWinner = null;
@@ -562,7 +634,7 @@ function sendQuestionToAll(gameCode) {
   );
 
   // Désactiver le buzzer après le temps
-  setTimeout(() => {
+  game._buzzerTimer = setTimeout(() => {
     if (games[gameCode] && game.buzzerActive) {
       game.buzzerActive = false;
       io.to(gameCode).emit("buzzer-timeout");

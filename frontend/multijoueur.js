@@ -154,8 +154,7 @@ function obtenirQuestionsAleatoiresDepuisJSON(nombre) {
 
 // Fonction pour mélanger un tableau
 function melangerTableau(tableau) {
-  // Eviter la recursion infinie si window.melangerTableau reference cette meme fonction
-  if (typeof window.melangerTableau === "function" && window.melangerTableau !== melangerTableau) {
+  if (typeof window.melangerTableau === "function") {
     return window.melangerTableau(tableau);
   }
 
@@ -375,6 +374,21 @@ function handleGameStarted(data) {
 function handleNewQuestion(data) {
   console.log("📩 Nouvelle question reçue:", data);
 
+  // Revenir sur l'écran de jeu et réinitialiser les sous-écrans (réponse/résultat)
+  const answerScreen = document.getElementById("ecran-reponse-multi");
+  if (answerScreen) answerScreen.classList.add("hidden");
+
+  const playerResultEl = document.getElementById("resultat-joueur-multi");
+  if (playerResultEl) playerResultEl.classList.add("hidden");
+
+  if (typeof window.changerEcran === "function") {
+    if (document.getElementById("jeu-multijoueur")) {
+      window.changerEcran("jeu-multijoueur");
+    } else if (document.getElementById("jeu")) {
+      window.changerEcran("jeu");
+    }
+  }
+
   // Afficher la question
   const questionElement = document.getElementById("question-multijoueur");
   if (questionElement) {
@@ -428,9 +442,10 @@ function handleShowAnswerScreen(data) {
   console.log("📝 Écran de réponse:", data);
 
   // Afficher l'écran de réponse
-  document.getElementById("ecran-reponse-multi").classList.remove("hidden");
-  document.getElementById("nom-repondant-multi").textContent =
-    data.answeringPlayer;
+  const answerScreen = document.getElementById("ecran-reponse-multi");
+  if (answerScreen) answerScreen.classList.remove("hidden");
+  const repName = document.getElementById("nom-repondant-multi");
+  if (repName) repName.textContent = data.answeringPlayer;
 
   // Si c'est nous qui répondons, afficher les options
   if (data.answeringPlayer === playerName) {
@@ -444,12 +459,97 @@ function handleAnswerResult(data) {
   // Mettre à jour les scores
   updatePlayerScore(data.playerId, data.score);
 
+  // Message utilisateur
+  const isTimeout = data && data.reason === "timeout";
+
   // Afficher le résultat
   const message = data.isCorrect
-    ? `${data.playerName}: ✓ Correct! +10 points`
-    : `${data.playerName}: ✗ Incorrect! -5 points`;
+    ? `${data.playerName}: ✓ Correct ! +10 points`
+    : isTimeout
+      ? `${data.playerName}: ⏰ Temps écoulé ! -5 points`
+      : `${data.playerName}: ✗ Incorrect ! -5 points`;
 
   showNotification(message, data.isCorrect ? "success" : "error");
+
+  // ==========================
+  // Affichage côté HÔTE (PC)
+  // ==========================
+  const hasSoloResultScreen =
+    document.getElementById("resultat") &&
+    document.getElementById("grille-scores-resultat");
+
+  if (currentGame.isHost && hasSoloResultScreen && typeof window.changerEcran === "function") {
+    // Mettre à jour l'écran résultat
+    const qEl = document.getElementById("question-resultat");
+    if (qEl && (data.question || currentGame.currentQuestion?.question)) {
+      qEl.textContent = data.question || currentGame.currentQuestion.question;
+    }
+
+    const repEl = document.getElementById("reponse-correcte");
+    if (repEl && data.correctAnswer) {
+      repEl.textContent = `Réponse correcte: ${data.correctAnswer}`;
+    }
+
+    const statutEl = document.getElementById("statut-reponse");
+    if (statutEl) {
+      statutEl.textContent = data.isCorrect ? "Bonne réponse !" : (isTimeout ? "Temps écoulé" : "Mauvaise réponse");
+      statutEl.className = `statut-reponse ${data.isCorrect ? "correct" : "incorrect"}`;
+    }
+
+    const nomRepEl = document.getElementById("nom-repondant");
+    if (nomRepEl) nomRepEl.textContent = data.playerName || "";
+
+    // Scoreboard résultat (classement)
+    if (Array.isArray(data.rankings)) {
+      const grid = document.getElementById("grille-scores-resultat");
+      if (grid) {
+        grid.innerHTML = "";
+        data.rankings.forEach((p) => {
+          const card = document.createElement("div");
+          card.className = "carte-joueur";
+          card.innerHTML = `<h3>${p.name}</h3><div class="points">${p.score} pts</div>`;
+          grid.appendChild(card);
+        });
+      }
+    }
+
+    // Basculer sur l'écran résultat
+    window.changerEcran("resultat");
+  }
+
+  // ==========================
+  // Affichage côté JOUEUR (téléphone)
+  // ==========================
+  const playerResultEl = document.getElementById("resultat-joueur-multi");
+  if (playerResultEl) {
+    // On affiche toujours un feedback (même si ce n'est pas le joueur qui a répondu)
+    playerResultEl.classList.remove("hidden");
+
+    const txt = document.getElementById("resultat-joueur-correct");
+    if (txt) {
+      if (data.isCorrect) {
+        txt.textContent = `${data.playerName} a répondu juste. +10 points.`;
+      } else {
+        txt.textContent = isTimeout
+          ? `${data.playerName} n'a pas répondu à temps. -5 points.`
+          : `${data.playerName} s'est trompé. -5 points.`;
+      }
+    }
+
+    // Afficher le tableau des scores si présent
+    if (Array.isArray(data.rankings)) {
+      const list = document.getElementById("liste-scores-joueur");
+      if (list) {
+        list.innerHTML = "";
+        data.rankings.forEach((p) => {
+          const row = document.createElement("div");
+          row.className = "score-item";
+          row.textContent = `${p.position}. ${p.name} — ${p.score} pts`;
+          list.appendChild(row);
+        });
+      }
+    }
+  }
 }
 
 function handleQuestionResults(data) {
@@ -524,50 +624,85 @@ function updateWaitingPlayers(players) {
 function initMultiplayerGame(players) {
   console.log("🎮 Initialisation jeu multijoueur avec joueurs:", players);
 
-  // Créer la grille de scores
+  // Détection du rôle (host / player) via l'attribut data-multi-role du <body>
+  const role = (document.body && document.body.dataset && document.body.dataset.multiRole)
+    ? String(document.body.dataset.multiRole)
+    : "";
+
+  // Créer la grille de scores (uniquement si l'élément existe sur la page)
   const scoresContainer = document.getElementById("grille-scores-multi");
-  if (!scoresContainer) return; // page joueur téléphone n'a pas la grille hôte
-  scoresContainer.innerHTML = "";
-
-  players.forEach((player, index) => {
-    const card = document.createElement("div");
-    card.className = `carte-joueur-multi ${player.isHost ? "hote" : ""}`;
-    card.id = `joueur-${player.id}`;
-    card.innerHTML = `
-            <h3>${player.name}</h3>
-            <div class="points">${player.score} pts</div>
-        `;
-    scoresContainer.appendChild(card);
-  });
-
-  // Créer les buzzers
-  const buzzersContainer = document.getElementById("grille-buzzers-multi");
-  if (!buzzersContainer) return;
-  buzzersContainer.innerHTML = "";
-
-  players.forEach((player, index) => {
-    const buzzerDiv = document.createElement("div");
-    buzzerDiv.className = "buzzer-joueur-multi";
-    buzzerDiv.innerHTML = `
-            <h3>${player.name}</h3>
-            <button class="bouton-buzzer-multi" data-player-id="${player.id}">
-                BUZZ !
-            </button>
-            <div class="raccourci">Touche ${index + 1}</div>
-        `;
-
-    const button = buzzerDiv.querySelector(".bouton-buzzer-multi");
-    const colors = ["#FF5252", "#4CAF50", "#2196F3", "#FFC107"];
-    button.style.setProperty("--color", colors[index]);
-    button.style.borderColor = colors[index];
-
-    button.addEventListener("click", () => {
-      console.log(`🎯 ${player.name} buzz via bouton`);
-      buzz(player.id);
+  if (scoresContainer) {
+    scoresContainer.innerHTML = "";
+    players.forEach((player) => {
+      const card = document.createElement("div");
+      card.className = `carte-joueur-multi ${player.isHost ? "hote" : ""}`;
+      card.id = `joueur-${player.id}`;
+      card.innerHTML = `
+              <h3>${player.name}</h3>
+              <div class="points">${player.score} pts</div>
+          `;
+      scoresContainer.appendChild(card);
     });
+  }
 
-    buzzersContainer.appendChild(buzzerDiv);
-  });
+  // Créer les buzzers (si l'élément existe)
+  const buzzersContainer = document.getElementById("grille-buzzers-multi");
+  if (buzzersContainer) {
+    buzzersContainer.innerHTML = "";
+
+    // Sur téléphone (player), chaque joueur ne doit voir que SON buzzer.
+    if (role === "player") {
+      const me = players.find((p) => p.id === playerId) || null;
+      const buzzerDiv = document.createElement("div");
+      buzzerDiv.className = "buzzer-joueur-multi";
+      buzzerDiv.innerHTML = `
+              <h3>${me ? me.name : "Vous"}</h3>
+              <button class="bouton-buzzer-multi" data-player-id="${playerId || ""}">
+                  BUZZ !
+              </button>
+          `;
+
+      const button = buzzerDiv.querySelector(".bouton-buzzer-multi");
+      if (button) {
+        // Couleur par défaut (ne touche pas au CSS global)
+        button.style.setProperty("--color", "#7C4DFF");
+        button.style.borderColor = "#7C4DFF";
+        button.addEventListener("click", () => {
+          console.log("🎯 Buzz (player) via bouton");
+          buzz(playerId);
+        });
+      }
+
+      buzzersContainer.appendChild(buzzerDiv);
+      return;
+    }
+
+    // Sur l'hôte (PC), afficher tous les buzzers pour visualiser/contrôler.
+    players.forEach((player, index) => {
+      const buzzerDiv = document.createElement("div");
+      buzzerDiv.className = "buzzer-joueur-multi";
+      buzzerDiv.innerHTML = `
+              <h3>${player.name}</h3>
+              <button class="bouton-buzzer-multi" data-player-id="${player.id}">
+                  BUZZ !
+              </button>
+              <div class="raccourci">Touche ${index + 1}</div>
+          `;
+
+      const button = buzzerDiv.querySelector(".bouton-buzzer-multi");
+      const colors = ["#FF5252", "#4CAF50", "#2196F3", "#FFC107"];
+      if (button) {
+        button.style.setProperty("--color", colors[index]);
+        button.style.borderColor = colors[index];
+        button.addEventListener("click", () => {
+          console.log(`🎯 ${player.name} buzz via bouton`);
+          buzz(player.id);
+        });
+      }
+
+      buzzersContainer.appendChild(buzzerDiv);
+    });
+  }
 }
 
 function enableBuzzers() {
@@ -663,13 +798,12 @@ function showAnswerOptions() {
     button.className = "option-reponse-multi";
     button.textContent = option;
     button.addEventListener("click", () => {
-      const isCorrect = option === currentGame.currentQuestion.correctAnswer;
-      console.log(`✅ Réponse soumise: ${option}, correcte: ${isCorrect}`);
+      console.log(`✅ Réponse soumise: ${option}`);
 
+      // Le serveur valide la correction (on ne fait pas confiance au client)
       mpSocket.emit("submit-answer", {
         gameCode: currentGame.code,
         answer: option,
-        isCorrect: isCorrect,
       });
 
       // Désactiver les boutons après clic
