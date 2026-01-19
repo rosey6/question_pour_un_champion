@@ -1,5 +1,5 @@
 // Configuration
-const SERVER_URL = (window.__BACKEND_URL || (window.QPC && window.QPC.BACKEND_URL) || "https://questionpourunchampion-backend.onrender.com");
+const SERVER_URL = "https://question-pour-un-champion.onrender.com";
 
 // Variables globales
 let mpSocket = null;
@@ -10,30 +10,11 @@ let currentGame = {
   settings: {},
   currentPlayer: null,
   currentQuestion: null,
-  // Options de réponse destinées au joueur qui buzz en premier.
-  // Elles peuvent arriver avec "new-question" ou via un event dédié.
-  answerOptions: null,
   questions: [],
   currentQuestionIndex: 0,
 };
 let playerId = null;
 let playerName = null;
-
-function getMultiRole() {
-  // Priorité: attribut data du body (présent sur multijoueur-player.html)
-  const bodyRole = document.body && document.body.getAttribute("data-multi-role");
-  if (bodyRole) return bodyRole;
-
-  // Fallback: querystring
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const role = params.get("role");
-    if (role) return role;
-  } catch (e) {
-    // ignore
-  }
-  return "host"; // par défaut
-}
 
 // ---------- QR code helper (stable) ----------
 // Génère un QR code qui ouvre la page joueur avec le code pré-rempli.
@@ -170,10 +151,6 @@ function obtenirQuestionsAleatoiresDepuisJSON(nombre) {
 
 // Fonction pour mélanger un tableau
 function melangerTableau(tableau) {
-  if (typeof window.melangerTableau === "function") {
-    return window.melangerTableau(tableau);
-  }
-
   const resultat = [...tableau];
   for (let i = resultat.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -266,7 +243,6 @@ function connectToServer() {
   onSafe("new-question", "handleNewQuestion");
   onSafe("player-buzzed", "handlePlayerBuzzed");
   onSafe("show-answer-screen", "handleShowAnswerScreen");
-  onSafe("answer-options", "handleAnswerOptions");
   onSafe("answer-result", "handleAnswerResult");
   onSafe("question-results", "handleQuestionResults");
   onSafe("game-finished", "handleGameFinished");
@@ -343,11 +319,11 @@ function handlePlayerJoined(data) {
 
   if (currentGame.isHost) {
     updatePlayerList(data.players);
-    const btnStart = document.getElementById("btn-demarrer-partie");
-    if (btnStart) {
-      btnStart.disabled = data.players.length < 2;
-      btnStart.innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
-    }
+    document.getElementById("btn-demarrer-partie").disabled =
+      data.players.length < 2;
+    document.getElementById(
+      "btn-demarrer-partie"
+    ).innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
   } else {
     updateWaitingPlayers(data.players);
   }
@@ -360,11 +336,11 @@ function handlePlayerLeft(data) {
 
   if (currentGame.isHost) {
     updatePlayerList(data.players);
-    const btnStart = document.getElementById("btn-demarrer-partie");
-    if (btnStart) {
-      btnStart.disabled = data.players.length < 2;
-      btnStart.innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
-    }
+    document.getElementById("btn-demarrer-partie").disabled =
+      data.players.length < 2;
+    document.getElementById(
+      "btn-demarrer-partie"
+    ).innerHTML = `<i class="fas fa-play"></i> Démarrer (${data.players.length}/4)`;
   } else {
     updateWaitingPlayers(data.players);
   }
@@ -391,24 +367,10 @@ function handleGameStarted(data) {
 function handleNewQuestion(data) {
   console.log("📩 Nouvelle question reçue:", data);
 
-  // Réinitialiser les options (elles seront envoyées au gagnant du buzzer)
-  if (Array.isArray(data.options)) {
-    currentGame.answerOptions = data.options;
-  } else {
-    currentGame.answerOptions = null;
-  }
-
   // Afficher la question
   const questionElement = document.getElementById("question-multijoueur");
   if (questionElement) {
-    // Vue joueur (téléphone): on ne veut afficher QUE le buzzer, pas la question.
-    if (getMultiRole() === "player") {
-      questionElement.textContent = "";
-      questionElement.style.display = "none";
-    } else {
-      questionElement.style.display = "";
-      questionElement.textContent = data.question;
-    }
+    questionElement.textContent = data.question;
     console.log(
       "✅ Question affichée:",
       data.question.substring(0, 50) + "..."
@@ -420,13 +382,7 @@ function handleNewQuestion(data) {
   // Mettre à jour le compteur de questions
   const infoQuestion = document.getElementById("info-question-multi");
   if (infoQuestion && data.questionNumber && data.totalQuestions) {
-    if (getMultiRole() === "player") {
-      infoQuestion.textContent = "";
-      infoQuestion.style.display = "none";
-    } else {
-      infoQuestion.style.display = "";
-      infoQuestion.textContent = `Question ${data.questionNumber}/${data.totalQuestions}`;
-    }
+    infoQuestion.textContent = `Question ${data.questionNumber}/${data.totalQuestions}`;
   }
 
   // Stocker la question pour les réponses
@@ -470,48 +426,7 @@ function handleShowAnswerScreen(data) {
 
   // Si c'est nous qui répondons, afficher les options
   if (data.answeringPlayer === playerName) {
-    // 1) Si le backend a déjà envoyé les options dans ce payload
-    // 2) Sinon, on les demandera au serveur (event dédié) et on attendra la réponse.
-    const possibleOpts = data && (data.options || data.choices || data.answers || data.reponses);
-    if (Array.isArray(possibleOpts) && possibleOpts.length > 0) {
-      currentGame.answerOptions = possibleOpts;
-      showAnswerOptions(possibleOpts);
-    } else if (Array.isArray(currentGame.answerOptions) && currentGame.answerOptions.length > 0) {
-      showAnswerOptions(currentGame.answerOptions);
-    } else {
-      console.warn("⚠️ Options non disponibles au moment de l'écran de réponse. Requête au serveur...");
-      try {
-        mpSocket.emit("request-answer-options", { gameCode: currentGame.code });
-      } catch (e) {
-        console.error("❌ Impossible de demander les options:", e);
-      }
-    }
-  }
-}
-
-// Réception des options de réponse pour le gagnant du buzzer.
-function handleAnswerOptions(data) {
-  console.log("📥 Options de réponse reçues:", data);
-
-  const opts = Array.isArray(data)
-    ? data
-    : (data && (data.options || data.choices || data.answers || data.reponses)) || null;
-
-  if (!Array.isArray(opts) || opts.length === 0) {
-    console.error("❌ answer-options: aucune option exploitable");
-    return;
-  }
-
-  currentGame.answerOptions = opts;
-
-  // Si l'écran de réponse est affiché et que c'est notre tour, on rend immédiatement.
-  const answerScreen = document.getElementById("ecran-reponse-multi");
-  const respondent = document.getElementById("nom-repondant-multi");
-  const isVisible = answerScreen && !answerScreen.classList.contains("hidden");
-  const isMe = respondent && respondent.textContent === playerName;
-
-  if (isVisible && isMe) {
-    showAnswerOptions(opts);
+    showAnswerOptions();
   }
 }
 
@@ -622,27 +537,7 @@ function initMultiplayerGame(players) {
   if (!buzzersContainer) return;
   buzzersContainer.innerHTML = "";
 
-  // Vue joueur: un seul buzzer (centré) et aucun autre élément.
-  const role = getMultiRole();
-  const playersToRender = role === "player"
-    ? players.filter((p) => p.id === playerId)
-    : players;
-
-  if (role === "player") {
-    // Centre visuellement la carte buzzer sans modifier le CSS global.
-    buzzersContainer.style.display = "flex";
-    buzzersContainer.style.justifyContent = "center";
-    buzzersContainer.style.alignItems = "center";
-    buzzersContainer.style.flexWrap = "nowrap";
-  } else {
-    // Laisse le layout du CSS faire (grille hôte)
-    buzzersContainer.style.display = "";
-    buzzersContainer.style.justifyContent = "";
-    buzzersContainer.style.alignItems = "";
-    buzzersContainer.style.flexWrap = "";
-  }
-
-  playersToRender.forEach((player, index) => {
+  players.forEach((player, index) => {
     const buzzerDiv = document.createElement("div");
     buzzerDiv.className = "buzzer-joueur-multi";
     buzzerDiv.innerHTML = `
@@ -743,7 +638,7 @@ function startQuestionTimer(duration) {
   }, 1000);
 }
 
-function showAnswerOptions(optionsPayload) {
+function showAnswerOptions() {
   console.log("📝 Affichage options de réponse");
 
   if (!currentGame.currentQuestion) {
@@ -753,45 +648,20 @@ function showAnswerOptions(optionsPayload) {
   }
 
   const container = document.getElementById("options-reponse-multi");
-  if (!container) {
-    console.error("❌ Conteneur options-reponse-multi introuvable");
-    return;
-  }
   container.innerHTML = "";
 
-  // Les options peuvent être dans currentGame.answerOptions, currentQuestion.options,
-  // ou dans le payload de l'event (selon le backend).
-  const opts = Array.isArray(optionsPayload)
-    ? optionsPayload
-    : (optionsPayload && (optionsPayload.options || optionsPayload.choices || optionsPayload.answers || optionsPayload.reponses)) ||
-      currentGame.answerOptions ||
-      (currentGame.currentQuestion && currentGame.currentQuestion.options) ||
-      null;
-
-  if (!Array.isArray(opts) || opts.length === 0) {
-    console.error("❌ Options de réponse indisponibles (opts)");
-    showNotification("Options de réponse non disponibles", "error");
-    return;
-  }
-
-  // Vue joueur: on masque le buzzer quand on doit répondre.
-  if (getMultiRole() === "player") {
-    const buzzerZone = document.getElementById("zone-buzzers-multi");
-    if (buzzerZone) buzzerZone.style.display = "none";
-    const buzzerGrid = document.getElementById("grille-buzzers-multi");
-    if (buzzerGrid) buzzerGrid.style.display = "none";
-  }
-
-  opts.forEach((option) => {
+  currentGame.currentQuestion.options.forEach((option) => {
     const button = document.createElement("button");
     button.className = "option-reponse-multi";
     button.textContent = option;
     button.addEventListener("click", () => {
-      console.log(`✅ Réponse soumise: ${option}`);
+      const isCorrect = option === currentGame.currentQuestion.correctAnswer;
+      console.log(`✅ Réponse soumise: ${option}, correcte: ${isCorrect}`);
 
       mpSocket.emit("submit-answer", {
         gameCode: currentGame.code,
         answer: option,
+        isCorrect: isCorrect,
       });
 
       // Désactiver les boutons après clic
@@ -994,16 +864,8 @@ document.addEventListener("DOMContentLoaded", () => {
     accueilActions.insertBefore(btnMultijoueur, accueilActions.firstChild);
   }
 
-  // Attache un handler click uniquement si l'élément existe sur la page.
-  // (Le même fichier est utilisé sur plusieurs écrans : hôte, joueur, accueil, etc.)
-  const bindClick = (id, handler) => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener("click", handler);
-    return el;
-  };
-
   // Créer une partie
-  bindClick("btn-creer-partie", () => {
+  document.getElementById("btn-creer-partie").addEventListener("click", () => {
     playerName = document.getElementById("nom-createur").value.trim();
     if (!playerName) {
       showNotification("Entrez votre nom", "error");
@@ -1022,7 +884,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Rejoindre une partie
-  bindClick("btn-rejoindre-partie", () => {
+  document
+    .getElementById("btn-rejoindre-partie")
+    .addEventListener("click", () => {
       playerName = document.getElementById("nom-joueur").value.trim();
       const gameCode = document
         .getElementById("code-rejoindre")
@@ -1043,7 +907,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   // Démarrer la partie (hôte)
-  bindClick("btn-demarrer-partie", () => {
+  document
+    .getElementById("btn-demarrer-partie")
+    .addEventListener("click", () => {
       if (currentGame.isHost && currentGame.code) {
         // Paramètres : mêmes réglages que le mode solo (écran Paramètres)
         const settings = getMultiplayerSettingsFromUI();
@@ -1065,15 +931,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   // Boutons retour
-  bindClick("btn-retour-multijoueur", () => {
+  document
+    .getElementById("btn-retour-multijoueur")
+    .addEventListener("click", () => {
       console.log("🔙 Retour à l'accueil depuis multijoueur");
       changerEcran("accueil");
     });
 
   // Raccourcis clavier pour buzzer
   document.addEventListener("keydown", (e) => {
-    const jeuMulti = document.getElementById("jeu-multijoueur");
-    if (jeuMulti && jeuMulti.classList.contains("actif")) {
+    if (
+      document.getElementById("jeu-multijoueur").classList.contains("actif")
+    ) {
       const key = e.key;
       if (key >= "1" && key <= "4") {
         const playerIndex = parseInt(key) - 1;
