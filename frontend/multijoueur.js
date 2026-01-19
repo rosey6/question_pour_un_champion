@@ -2,7 +2,7 @@
 const SERVER_URL = "https://question-pour-un-champion.onrender.com";
 
 // Variables globales
-let socket = null;
+let mpSocket = null;
 let currentGame = {
   code: null,
   isHost: false,
@@ -15,6 +15,69 @@ let currentGame = {
 };
 let playerId = null;
 let playerName = null;
+
+// ---------- QR code helper (stable) ----------
+// Génère un QR code qui ouvre la page joueur avec le code pré-rempli.
+// Ne dépend pas du CSS; n'altère pas les couleurs/thème.
+function buildPlayerJoinUrl(gameCode) {
+  try {
+    const currentPath = window.location.pathname || "/";
+    // Remplace le fichier courant par la page joueur si elle existe, sinon reste sur la page actuelle.
+    const basePath = currentPath.replace(/\/[^/]*$/, "/");
+    const candidate = `${basePath}multijoueur-player.html`;
+    const url = new URL(candidate, window.location.origin);
+    url.searchParams.set("code", String(gameCode || "").trim());
+    // Indique au client qu'il s'agit d'une vue joueur sur mobile.
+    url.searchParams.set("role", "player");
+    return url.toString();
+  } catch (e) {
+    // Fallback minimal
+    return `${window.location.origin}${window.location.pathname}?code=${encodeURIComponent(
+      String(gameCode || "").trim()
+    )}`;
+  }
+}
+
+function renderJoinQrCode(gameCode) {
+  const container = document.getElementById("qr-code");
+  const containerBox = document.getElementById("qr-code-container");
+  if (!container) return;
+
+  // Affiche le bloc QR (si présent)
+  if (containerBox) containerBox.classList.remove("hidden");
+
+  const url = buildPlayerJoinUrl(gameCode);
+
+  // Nettoie l'ancien rendu
+  container.innerHTML = "";
+
+  // 1) Si QRCode (qrcodejs) est chargé, on l'utilise
+  if (typeof QRCode !== "undefined") {
+    // eslint-disable-next-line no-new
+    new QRCode(container, {
+      text: url,
+      width: 180,
+      height: 180,
+      correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.M : undefined,
+    });
+    return;
+  }
+
+  // 2) Fallback: image via API (stable, aucune dépendance)
+  const img = document.createElement("img");
+  img.alt = "QR code";
+  img.loading = "lazy";
+  img.decoding = "async";
+  img.style.maxWidth = "180px";
+  img.style.width = "180px";
+  img.style.height = "180px";
+  img.style.display = "block";
+  img.style.margin = "0 auto";
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+    url
+  )}`;
+  container.appendChild(img);
+}
 
 // Référence aux fonctions de script.js
 const GameLogic = {
@@ -144,7 +207,7 @@ function getMultiplayerSettingsFromUI() {
 function connectToServer() {
   console.log("Connexion au serveur:", SERVER_URL);
 
-  socket = io(SERVER_URL, {
+  mpSocket = io(SERVER_URL, {
     transports: ["websocket", "polling"],
     reconnection: true,
     reconnectionAttempts: 5,
@@ -152,20 +215,20 @@ function connectToServer() {
     timeout: 20000,
   });
 
-  socket.on("connect", () => {
-    console.log("✅ Connecté au serveur:", socket.id);
-    playerId = socket.id;
+  mpSocket.on("connect", () => {
+    console.log("✅ Connecté au serveur:", mpSocket.id);
+    playerId = mpSocket.id;
     showNotification("Connecté au serveur", "success");
   });
 
-  socket.on("connect_error", (error) => {
+  mpSocket.on("connect_error", (error) => {
     console.error("❌ Erreur connexion:", error);
     showNotification("Erreur de connexion au serveur", "error");
   });
 
   // Événements serveur (liaison défensive : évite les ReferenceError si un handler a été supprimé/renommé)
   const onSafe = (eventName, handlerName) => {
-    socket.on(eventName, (payload) => {
+    mpSocket.on(eventName, (payload) => {
       const fn = typeof window[handlerName] === "function" ? window[handlerName] : null;
       if (!fn) {
         console.error(`❌ Handler manquant: ${handlerName} pour l'événement ${eventName}`);
@@ -205,8 +268,20 @@ function handleGameCreated(data) {
     currentGame.code = data.gameCode;
     currentGame.isHost = true;
 
-    document.getElementById("code-partie").textContent = data.gameCode;
-    document.getElementById("code-partie-container").classList.remove("hidden");
+    const codeEl = document.getElementById("code-partie");
+    if (codeEl) codeEl.textContent = data.gameCode;
+
+    const codeBox = document.getElementById("code-partie-container");
+    if (codeBox) codeBox.classList.remove("hidden");
+
+    // QR code (connexion rapide)
+    // Objectif: rester stable et indépendant du reste de l'UI.
+    // Le QR doit ouvrir la page joueur avec le code pré-rempli.
+    try {
+      renderJoinQrCode(data.gameCode);
+    } catch (e) {
+      console.warn("⚠️ Impossible de générer le QR code:", e);
+    }
     document.getElementById("salle-attente").classList.add("hidden");
 
     showNotification(`Partie créée: ${data.gameCode}`, "success");
@@ -223,9 +298,14 @@ function handleJoinSuccess(data) {
   currentGame.isHost = false;
   currentGame.players = data.players;
 
-  document.getElementById("code-salle-jointe").textContent = data.gameCode;
-  document.getElementById("nom-hote").textContent = data.hostName;
-  document.getElementById("salle-attente").classList.remove("hidden");
+  const codeSalleEl = document.getElementById("code-salle-jointe");
+  if (codeSalleEl) codeSalleEl.textContent = data.gameCode;
+
+  const nomHoteEl = document.getElementById("nom-hote");
+  if (nomHoteEl) nomHoteEl.textContent = data.hostName;
+
+  const salleAttenteEl = document.getElementById("salle-attente");
+  if (salleAttenteEl) salleAttenteEl.classList.remove("hidden");
 
   showNotification(`Rejoint: ${data.gameCode}`, "success");
   updateWaitingPlayers(data.players);
@@ -316,7 +396,16 @@ function handleNewQuestion(data) {
   enableBuzzers();
 
   // Démarrer le chrono
-  startQuestionTimer(data.timeLimit);
+  // Le serveur peut envoyer timeLimit (ms) ou seulement les settings (s).
+  let timeLimitMs = data.timeLimit;
+  if (typeof timeLimitMs !== "number" || !Number.isFinite(timeLimitMs) || timeLimitMs <= 0) {
+    const fallbackSeconds =
+      (currentGame.settings && Number(currentGame.settings.timePerQuestion)) ||
+      (currentGame.settings && Number(currentGame.settings.timePerQuestionSeconds)) ||
+      30;
+    timeLimitMs = Math.max(1, Math.round(fallbackSeconds * 1000));
+  }
+  startQuestionTimer(timeLimitMs);
 }
 
 function handlePlayerBuzzed(data) {
@@ -413,6 +502,7 @@ function updatePlayerList(players) {
 
 function updateWaitingPlayers(players) {
   const container = document.getElementById("joueurs-attente");
+  if (!container) return; // page joueur téléphone n'affiche pas cette liste
   container.innerHTML = "";
 
   players.forEach((player) => {
@@ -432,6 +522,7 @@ function initMultiplayerGame(players) {
 
   // Créer la grille de scores
   const scoresContainer = document.getElementById("grille-scores-multi");
+  if (!scoresContainer) return; // page joueur téléphone n'a pas la grille hôte
   scoresContainer.innerHTML = "";
 
   players.forEach((player, index) => {
@@ -447,6 +538,7 @@ function initMultiplayerGame(players) {
 
   // Créer les buzzers
   const buzzersContainer = document.getElementById("grille-buzzers-multi");
+  if (!buzzersContainer) return;
   buzzersContainer.innerHTML = "";
 
   players.forEach((player, index) => {
@@ -518,10 +610,10 @@ function updatePlayerScore(playerId, score) {
 function buzz(playerId) {
   console.log("🔊 Buzz envoyé pour:", playerId);
 
-  if (socket && socket.connected && currentGame.code) {
-    socket.emit("buzz", { gameCode: currentGame.code });
+  if (mpSocket && mpSocket.connected && currentGame.code) {
+    mpSocket.emit("buzz", { gameCode: currentGame.code });
   } else {
-    console.error("❌ Impossible de buzzer: socket non connecté");
+    console.error("❌ Impossible de buzzer: mpSocket non connecté");
     showNotification("Erreur de connexion", "error");
   }
 }
@@ -570,7 +662,7 @@ function showAnswerOptions() {
       const isCorrect = option === currentGame.currentQuestion.correctAnswer;
       console.log(`✅ Réponse soumise: ${option}, correcte: ${isCorrect}`);
 
-      socket.emit("submit-answer", {
+      mpSocket.emit("submit-answer", {
         gameCode: currentGame.code,
         answer: option,
         isCorrect: isCorrect,
@@ -662,9 +754,12 @@ function showFinalResults(rankings) {
 function returnToMainMenu() {
   console.log("🏠 Retour au menu principal");
 
-  document.getElementById("jeu-multijoueur").classList.remove("actif");
-  document.getElementById("multijoueur").classList.remove("actif");
-  document.getElementById("accueil").classList.add("actif");
+  const jeuEl = document.getElementById("jeu-multijoueur");
+  const multiEl = document.getElementById("multijoueur");
+  const accueilEl = document.getElementById("accueil");
+  if (jeuEl) jeuEl.classList.remove("actif");
+  if (multiEl) multiEl.classList.remove("actif");
+  if (accueilEl) accueilEl.classList.add("actif");
 }
 
 function showNotification(message, type = "info") {
@@ -716,7 +811,7 @@ function sendNextQuestion() {
       currentGame.questions[currentGame.currentQuestionIndex];
     currentGame.currentQuestionIndex++;
 
-    socket.emit("send-question", {
+    mpSocket.emit("send-question", {
       gameCode: currentGame.code,
       question: nextQuestion.question,
       options: nextQuestion.options,
@@ -744,16 +839,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
   connectToServer();
 
-  // Certaines pages (téléphone / hôte séparé) n'ont pas la même structure DOM.
-  // On sécurise donc tous les accès DOM pour éviter de bloquer le script.
-  const $ = (selector) => document.querySelector(selector);
-  const $id = (id) => document.getElementById(id);
+  // Pré-remplissage du code de partie si présent dans l'URL (QR code)
+  try {
+    const url = new URL(window.location.href);
+    const codeParam = (url.searchParams.get("code") || "").trim().toUpperCase();
+    if (codeParam) {
+      const codeInput = document.getElementById("code-rejoindre");
+      if (codeInput) codeInput.value = codeParam;
+    }
+  } catch (e) {
+    // Ignorer silencieusement (URL invalide)
+  }
 
-  // Boutons multijoueur
-  const accueilActions = $("#accueil .actions");
+  // Bouton multijoueur : uniquement si la page contient l'écran d'accueil.
+  // Sur les pages téléphone (multijoueur-player.html) ce bloc ne doit pas s'exécuter.
+  const accueilActions = document.querySelector("#accueil .actions");
 
-  // Ajouter un bouton multijoueur si non présent.
-  // Sur la page téléphone / pages séparées, #accueil n'existe pas : on évite toute manipulation DOM.
+  // Ajouter un bouton multijoueur si non présent (et si la cible existe)
   if (accueilActions && !document.getElementById("btn-multijoueur")) {
     const btnMultijoueur = document.createElement("button");
     btnMultijoueur.id = "btn-multijoueur";
@@ -766,9 +868,8 @@ document.addEventListener("DOMContentLoaded", () => {
     accueilActions.insertBefore(btnMultijoueur, accueilActions.firstChild);
   }
 
-  // Créer une partie (page hôte / multijoueur.html)
-  const btnCreerPartie = $id("btn-creer-partie");
-  if (btnCreerPartie) btnCreerPartie.addEventListener("click", () => {
+  // Créer une partie
+  document.getElementById("btn-creer-partie").addEventListener("click", () => {
     playerName = document.getElementById("nom-createur").value.trim();
     if (!playerName) {
       showNotification("Entrez votre nom", "error");
@@ -780,15 +881,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     console.log("🎮 Création partie avec paramètres:", settings);
 
-    socket.emit("create-game", {
+    mpSocket.emit("create-game", {
       playerName: playerName,
       settings: settings,
     });
   });
 
-  // Rejoindre une partie (page téléphone / multijoueur-player.html OU page multijoueur.html)
-  const btnRejoindrePartie = $id("btn-rejoindre-partie");
-  if (btnRejoindrePartie) btnRejoindrePartie.addEventListener("click", () => {
+  // Rejoindre une partie
+  document
+    .getElementById("btn-rejoindre-partie")
+    .addEventListener("click", () => {
       playerName = document.getElementById("nom-joueur").value.trim();
       const gameCode = document
         .getElementById("code-rejoindre")
@@ -802,15 +904,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
       console.log("🎮 Tentative de rejoindre:", gameCode);
 
-      socket.emit("join-game", {
+      mpSocket.emit("join-game", {
         gameCode: gameCode,
         playerName: playerName,
       });
     });
 
   // Démarrer la partie (hôte)
-  const btnDemarrerPartie = $id("btn-demarrer-partie");
-  if (btnDemarrerPartie) btnDemarrerPartie.addEventListener("click", () => {
+  document
+    .getElementById("btn-demarrer-partie")
+    .addEventListener("click", () => {
       if (currentGame.isHost && currentGame.code) {
         // Paramètres : mêmes réglages que le mode solo (écran Paramètres)
         const settings = getMultiplayerSettingsFromUI();
@@ -823,7 +926,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("🚀 Démarrage partie avec", questions.length, "questions");
 
         // Envoyer au serveur
-        socket.emit("start-game", {
+        mpSocket.emit("start-game", {
           gameCode: currentGame.code,
           settings: settings,
           questions: questions,
@@ -831,17 +934,19 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-  // Boutons retour (présent sur multijoueur.html)
-  const btnRetourMulti = $id("btn-retour-multijoueur");
-  if (btnRetourMulti) btnRetourMulti.addEventListener("click", () => {
-    console.log("🔙 Retour à l'accueil depuis multijoueur");
-    changerEcran("accueil");
-  });
+  // Boutons retour
+  document
+    .getElementById("btn-retour-multijoueur")
+    .addEventListener("click", () => {
+      console.log("🔙 Retour à l'accueil depuis multijoueur");
+      changerEcran("accueil");
+    });
 
   // Raccourcis clavier pour buzzer
   document.addEventListener("keydown", (e) => {
-		const jeuMulti = $id("jeu-multijoueur");
-		if (jeuMulti && jeuMulti.classList.contains("actif")) {
+    if (
+      document.getElementById("jeu-multijoueur").classList.contains("actif")
+    ) {
       const key = e.key;
       if (key >= "1" && key <= "4") {
         const playerIndex = parseInt(key) - 1;
