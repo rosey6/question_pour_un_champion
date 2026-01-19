@@ -6,7 +6,8 @@
     <title>Mode Multijoueur - Joueur</title>
     <link rel="stylesheet" href="style.css" />
 
-    <!-- Libs -->
+    <script src="config.js?v=20260119_4"></script>
+<!-- Libs -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   </head>
   <body data-multi-role="player">
@@ -77,11 +78,7 @@
 
     <!-- IMPORTANT: ne pas charger script.js ici (dédié au SOLO, et il provoque des erreurs côté téléphone) -->
     <script src="socket-common.js"></script>
-    <script>
-  window.__BACKEND_URL = "https://questionpourunchampion-backend.onrender.com";
-</script>
-
-<script>window.__BACKEND_URL="https://questionpourunchampion-backend.onrender.com";</script>
-    <script src="multijoueur.js?v=20260119_3"></script>
+    <script src="config.js?v=20260119_4"></script>
+    <script src="multijoueur.js?v=20260119_4"></script>
   </body>
 </html>

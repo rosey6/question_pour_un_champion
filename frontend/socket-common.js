@@ -9,9 +9,9 @@ let isHost = false;
 function connectSocket() {
   if (socket) return socket;
 
-  const backendUrl = (window && window.__BACKEND_URL) || "https://questionpourunchampion-backend.onrender.com";
+  const BACKEND_URL = (window.__BACKEND_URL || (window.QPC && window.QPC.BACKEND_URL) || "https://questionpourunchampion-backend.onrender.com");
 
-  socket = io(backendUrl, {
+  socket = io(BACKEND_URL, {
     transports: ["websocket", "polling"],
   });
 

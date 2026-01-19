@@ -1,5 +1,5 @@
 // Configuration
-const SERVER_URL = "https://question-pour-un-champion.onrender.com";
+const SERVER_URL = (window.__BACKEND_URL || (window.QPC && window.QPC.BACKEND_URL) || "https://questionpourunchampion-backend.onrender.com");
 
 // Variables globales
 let mpSocket = null;
@@ -869,8 +869,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Créer une partie
-  const btnCreerPartie = document.getElementById("btn-creer-partie");
-  if (btnCreerPartie) btnCreerPartie.addEventListener("click", () => {
+  document.getElementById("btn-creer-partie").addEventListener("click", () => {
     playerName = document.getElementById("nom-createur").value.trim();
     if (!playerName) {
       showNotification("Entrez votre nom", "error");
@@ -889,8 +888,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Rejoindre une partie
-  const btnRejoindrePartie = document.getElementById("btn-rejoindre-partie");
-  if (btnRejoindrePartie) btnRejoindrePartie.addEventListener("click", () => {
+  document
+    .getElementById("btn-rejoindre-partie")
+    .addEventListener("click", () => {
       playerName = document.getElementById("nom-joueur").value.trim();
       const gameCode = document
         .getElementById("code-rejoindre")
@@ -908,11 +908,12 @@ document.addEventListener("DOMContentLoaded", () => {
         gameCode: gameCode,
         playerName: playerName,
       });
-  });
+    });
 
   // Démarrer la partie (hôte)
-  const btnDemarrerPartie = document.getElementById("btn-demarrer-partie");
-  if (btnDemarrerPartie) btnDemarrerPartie.addEventListener("click", () => {
+  document
+    .getElementById("btn-demarrer-partie")
+    .addEventListener("click", () => {
       if (currentGame.isHost && currentGame.code) {
         // Paramètres : mêmes réglages que le mode solo (écran Paramètres)
         const settings = getMultiplayerSettingsFromUI();
@@ -931,19 +932,21 @@ document.addEventListener("DOMContentLoaded", () => {
           questions: questions,
         });
       }
-  });
+    });
 
   // Boutons retour
-  const btnRetourMultijoueur = document.getElementById("btn-retour-multijoueur");
-  if (btnRetourMultijoueur) btnRetourMultijoueur.addEventListener("click", () => {
+  document
+    .getElementById("btn-retour-multijoueur")
+    .addEventListener("click", () => {
       console.log("🔙 Retour à l'accueil depuis multijoueur");
       changerEcran("accueil");
-  });
+    });
 
   // Raccourcis clavier pour buzzer
   document.addEventListener("keydown", (e) => {
-    const jeuMulti = document.getElementById("jeu-multijoueur");
-    if (jeuMulti && jeuMulti.classList.contains("actif")) {
+    if (
+      document.getElementById("jeu-multijoueur").classList.contains("actif")
+    ) {
       const key = e.key;
       if (key >= "1" && key <= "4") {
         const playerIndex = parseInt(key) - 1;
