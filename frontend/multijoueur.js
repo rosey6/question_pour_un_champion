@@ -388,11 +388,32 @@ function handleGameStarted(data) {
 function handleNewQuestion(data) {
   console.log("📩 Nouvelle question reçue:", data);
 
-  // Réinitialiser les options (elles seront envoyées au gagnant du buzzer)
-  if (Array.isArray(data.options)) {
-    currentGame.answerOptions = data.options;
+  // Réinitialiser / normaliser les options (elles seront envoyées au gagnant du buzzer)
+  const normalizedOptions = Array.isArray(data.options) ? data.options :
+    (Array.isArray(data.choices) ? data.choices :
+    (Array.isArray(data.answers) ? data.answers :
+    (Array.isArray(data.reponses) ? data.reponses : null)));
+
+  if (Array.isArray(normalizedOptions)) {
+    data.options = normalizedOptions;
+    currentGame.answerOptions = normalizedOptions;
   } else {
+    data.options = [];
     currentGame.answerOptions = null;
+  }
+
+  // Vue joueur: on repart sur l'état 'buzzer only' à chaque nouvelle question
+  if (getMultiRole() === 'player') {
+    const res = document.getElementById('resultat-joueur-multi');
+    if (res) res.classList.add('hidden');
+    const rep = document.getElementById('ecran-reponse-multi');
+    if (rep) rep.classList.add('hidden');
+    const optsEl = document.getElementById('options-reponse-multi');
+    if (optsEl) optsEl.innerHTML = '';
+    const buz = document.getElementById('buzzers-container-multi');
+    if (buz) buz.style.display = '';
+    const grid = document.getElementById('grille-buzzers-multi');
+    if (grid) grid.style.display = '';
   }
 
   // Afficher la question
@@ -523,6 +544,15 @@ function handleAnswerResult(data) {
     ? `${data.playerName}: ✓ Correct! +10 points`
     : `${data.playerName}: ✗ Incorrect! -5 points`;
 
+  // Côté joueur: afficher l'écran de résultat à chaque fin de question
+  if (getMultiRole() === 'player') {
+    // deltaPoints peut être fourni par le backend; fallback sur +10/-5
+    if (typeof data.deltaPoints !== 'number') {
+      data.deltaPoints = data.isCorrect ? 10 : -5;
+    }
+    renderPlayerResult(data);
+  }
+
   showNotification(message, data.isCorrect ? "success" : "error");
 }
 
@@ -547,8 +577,11 @@ function handleHostDisconnected() {
 }
 
 function handleBuzzerTimeout() {
-  console.log("⏰ Timeout buzzer");
-  showNotification("Personne n'a buzzé !", "warning");
+  console.log('⏰ Timeout buzzer');
+  if (getMultiRole() === 'player') {
+    showPlayerNoBuzzResult();
+  }
+  showNotification("Personne n'a buzzé !", 'warning');
 }
 
 function handleNextQuestionReady() {
@@ -600,10 +633,11 @@ function initMultiplayerGame(players) {
 
   // Créer la grille de scores
   const scoresContainer = document.getElementById("grille-scores-multi");
-  if (!scoresContainer) return; // page joueur téléphone n'a pas la grille hôte
-  scoresContainer.innerHTML = "";
+  // La page joueur téléphone n'a pas la grille de scores hôte: on ne doit pas arrêter l'init.
+  if (scoresContainer) {
+    scoresContainer.innerHTML = "";
 
-  players.forEach((player, index) => {
+    players.forEach((player, index) => {
     const card = document.createElement("div");
     card.className = `carte-joueur-multi ${player.isHost ? "hote" : ""}`;
     card.id = `joueur-${player.id}`;
@@ -613,6 +647,7 @@ function initMultiplayerGame(players) {
         `;
     scoresContainer.appendChild(card);
   });
+  }
 
   // Créer les buzzers
   const buzzersContainer = document.getElementById("grille-buzzers-multi");
@@ -719,22 +754,35 @@ function buzz(playerId) {
 function startQuestionTimer(duration) {
   console.log("⏱️ Démarrage chrono:", duration, "ms");
 
-  let timeLeft = duration / 1000;
-  const timerElement = document.getElementById("temps-multijoueur");
+  // Nettoyer un ancien timer si besoin
+  if (currentGame && currentGame._timerInterval) {
+    clearInterval(currentGame._timerInterval);
+    currentGame._timerInterval = null;
+  }
 
+  let timeLeft = Math.max(0, Math.round(duration / 1000));
+
+  // Supporte plusieurs IDs selon les pages (host / player)
+  let timerElement =
+    document.getElementById("chrono-multijoueur") ||
+    document.getElementById("temps-multijoueur") ||
+    document.getElementById("timer-multijoueur");
+
+  // Si l'élément n'existe pas, on ne bloque pas le jeu (on log uniquement)
   if (!timerElement) {
-    console.error("❌ Élément temps-multijoueur non trouvé!");
+    console.warn("⚠️ Élément de chrono introuvable (chrono-multijoueur/temps-multijoueur).");
     return;
   }
 
-  timerElement.textContent = timeLeft;
+  timerElement.textContent = String(timeLeft);
 
-  const timer = setInterval(() => {
-    timeLeft--;
-    timerElement.textContent = timeLeft;
+  currentGame._timerInterval = setInterval(() => {
+    timeLeft = Math.max(0, timeLeft - 1);
+    timerElement.textContent = String(timeLeft);
 
     if (timeLeft <= 0) {
-      clearInterval(timer);
+      clearInterval(currentGame._timerInterval);
+      currentGame._timerInterval = null;
       console.log("⏰ Temps écoulé!");
     }
   }, 1000);
@@ -762,8 +810,8 @@ function showAnswerOptions(optionsPayload) {
     ? optionsPayload
     : (optionsPayload && (optionsPayload.options || optionsPayload.choices || optionsPayload.answers || optionsPayload.reponses)) ||
       currentGame.answerOptions ||
-      (currentGame.currentQuestion && currentGame.currentQuestion.options) ||
-      null;
+      (currentGame.currentQuestion && (currentGame.currentQuestion.options || currentGame.currentQuestion.choices || currentGame.currentQuestion.answers || currentGame.currentQuestion.reponses)) ||
+      [];
 
   if (!Array.isArray(opts) || opts.length === 0) {
     console.error("❌ Options de réponse indisponibles (opts)");
@@ -773,10 +821,14 @@ function showAnswerOptions(optionsPayload) {
 
   // Vue joueur: on masque le buzzer quand on doit répondre.
   if (getMultiRole() === "player") {
-    const buzzerZone = document.getElementById("zone-buzzers-multi");
+    const buzzerZone = document.getElementById('buzzers-container-multi');
     if (buzzerZone) buzzerZone.style.display = "none";
     const buzzerGrid = document.getElementById("grille-buzzers-multi");
     if (buzzerGrid) buzzerGrid.style.display = "none";
+    const answerScreen = document.getElementById("ecran-reponse-multi");
+    if (answerScreen) answerScreen.classList.remove("hidden");
+    const resultScreen = document.getElementById("resultat-joueur-multi");
+    if (resultScreen) resultScreen.classList.add("hidden");
   }
 
   opts.forEach((option) => {
@@ -799,6 +851,67 @@ function showAnswerOptions(optionsPayload) {
     });
     container.appendChild(button);
   });
+}
+
+function renderPlayerResult(payload) {
+  // Affiche un écran résultat côté joueur (téléphone)
+  const res = document.getElementById('resultat-joueur-multi');
+  if (!res) return;
+
+  const txt = document.getElementById('resultat-joueur-correct');
+  const img = document.getElementById('resultat-joueur-image');
+  const desc = document.getElementById('resultat-joueur-description');
+
+  const q = currentGame.currentQuestion || {};
+  const player = payload && (payload.playerName || payload.answeringPlayer || playerName) ? (payload.playerName || payload.answeringPlayer || playerName) : playerName;
+  const isCorrect = !!(payload && payload.isCorrect);
+  const delta = (payload && typeof payload.deltaPoints === 'number') ? payload.deltaPoints : null;
+  const score = (payload && typeof payload.score === 'number') ? payload.score : null;
+
+  if (txt) {
+    const sign = delta === null ? '' : (delta >= 0 ? '+' + delta : String(delta));
+    const scoreStr = score === null ? '' : ('Score: ' + score + ' pts');
+    const deltaStr = delta === null ? '' : ('(' + sign + ' pts)');
+    const verdict = isCorrect ? '✓ Correct' : '✗ Incorrect';
+    const ans = (payload && payload.answer) ? ('Réponse: ' + payload.answer) : '';
+    const corr = (q.reponseCorrecte || q.correctAnswer || q.correct || q.bonneReponse || '')
+      ? ('Bonne réponse: ' + (q.reponseCorrecte || q.correctAnswer || q.correct || q.bonneReponse))
+      : '';
+    txt.innerHTML = [player + ' — ' + verdict, scoreStr + ' ' + deltaStr, ans, corr].filter(Boolean).join('<br>');
+  }
+
+  if (img) {
+    if (q.imageUrl) {
+      img.src = q.imageUrl;
+      img.style.display = '';
+    } else {
+      img.removeAttribute('src');
+      img.style.display = 'none';
+    }
+  }
+
+  if (desc) {
+    desc.textContent = q.illustrationTexte || '';
+  }
+
+  // Basculer: résultat visible, autres écrans cachés
+  const rep = document.getElementById('ecran-reponse-multi');
+  if (rep) rep.classList.add('hidden');
+  const buz = document.getElementById('buzzers-container-multi');
+  if (buz) buz.style.display = 'none';
+  res.classList.remove('hidden');
+}
+
+function showPlayerNoBuzzResult() {
+  renderPlayerResult({ playerName: 'Personne', isCorrect: false, deltaPoints: 0, score: null, answer: null });
+  const txt = document.getElementById('resultat-joueur-correct');
+  if (txt) {
+    const q = currentGame.currentQuestion || {};
+    const corr = (q.reponseCorrecte || q.correctAnswer || q.correct || q.bonneReponse || '')
+      ? ('Bonne réponse: ' + (q.reponseCorrecte || q.correctAnswer || q.correct || q.bonneReponse))
+      : '';
+    txt.innerHTML = ['Personne n'a buzzé', corr].filter(Boolean).join('<br>');
+  }
 }
 
 function showQuestionResults(rankings) {
