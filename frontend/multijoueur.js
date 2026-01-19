@@ -10,8 +10,6 @@ let currentGame = {
   settings: {},
   currentPlayer: null,
   currentQuestion: null,
-  // Mode "buzzer": les options sont envoyées uniquement au gagnant (événement answer-options)
-  answerOptions: null,
   questions: [],
   currentQuestionIndex: 0,
 };
@@ -152,9 +150,19 @@ function obtenirQuestionsAleatoiresDepuisJSON(nombre) {
 }
 
 // Fonction pour mélanger un tableau
+// IMPORTANT: ne jamais appeler window.melangerTableau directement ici.
+// En contexte navigateur, une fonction globale devient window.melangerTableau,
+// donc l'appel indirect provoquerait une récursion infinie.
+// On capture donc une éventuelle implémentation externe AVANT de déclarer la nôtre.
+const __melangerTableauExterne =
+  typeof window !== "undefined" && typeof window.melangerTableau === "function"
+    ? window.melangerTableau
+    : null;
+
 function melangerTableau(tableau) {
-  if (typeof window.melangerTableau === "function") {
-    return window.melangerTableau(tableau);
+  // Utiliser l'implémentation externe uniquement si elle est différente de celle-ci.
+  if (__melangerTableauExterne && __melangerTableauExterne !== melangerTableau) {
+    return __melangerTableauExterne(tableau);
   }
 
   const resultat = [...tableau];
@@ -249,8 +257,6 @@ function connectToServer() {
   onSafe("new-question", "handleNewQuestion");
   onSafe("player-buzzed", "handlePlayerBuzzed");
   onSafe("show-answer-screen", "handleShowAnswerScreen");
-  // Options de réponse (envoyées UNIQUEMENT au gagnant du buzzer)
-  onSafe("answer-options", "handleAnswerOptions");
   onSafe("answer-result", "handleAnswerResult");
   onSafe("question-results", "handleQuestionResults");
   onSafe("game-finished", "handleGameFinished");
@@ -400,31 +406,14 @@ function handleGameStarted(data) {
 function handleNewQuestion(data) {
   console.log("📩 Nouvelle question reçue:", data);
 
-  // Réinitialiser l'état "réponse" (à chaque nouvelle question)
-  currentGame.answerOptions = null;
-  const answerScreen = document.getElementById("ecran-reponse-multi");
-  if (answerScreen) answerScreen.classList.add("hidden");
-  const optionsContainer = document.getElementById("options-reponse-multi");
-  if (optionsContainer) optionsContainer.innerHTML = "";
-
-  // Afficher la question (sur mobile joueur: on peut la cacher, car il ne doit voir que le buzzer)
-  const isPlayerPage =
-    (document.body && document.body.dataset && document.body.dataset.multiRole === "player") ||
-    /multijoueur-player\.html/i.test(String(window.location.pathname || ""));
-
+  // Afficher la question
   const questionElement = document.getElementById("question-multijoueur");
   if (questionElement) {
     questionElement.textContent = data.question;
-    console.log("✅ Question affichée:", data.question.substring(0, 50) + "...");
-
-    if (isPlayerPage) {
-      const buzzerArea = document.getElementById("buzzers-container-multi");
-      if (buzzerArea) buzzerArea.style.display = "block";
-      const questionContainer = questionElement.closest(".question-container");
-      if (questionContainer) questionContainer.style.display = "none";
-      const entete = document.querySelector("#jeu-multijoueur .entete-jeu");
-      if (entete) entete.style.display = "none";
-    }
+    console.log(
+      "✅ Question affichée:",
+      data.question.substring(0, 50) + "..."
+    );
   } else {
     console.error("❌ Élément question-multijoueur non trouvé!");
   }
@@ -469,37 +458,15 @@ function handlePlayerBuzzed(data) {
 function handleShowAnswerScreen(data) {
   console.log("📝 Écran de réponse:", data);
 
-  const answerScreen = document.getElementById("ecran-reponse-multi");
-  if (answerScreen) answerScreen.classList.remove("hidden");
+  // Afficher l'écran de réponse
+  document.getElementById("ecran-reponse-multi").classList.remove("hidden");
+  document.getElementById("nom-repondant-multi").textContent =
+    data.answeringPlayer;
 
-  const nameEl = document.getElementById("nom-repondant-multi");
-  if (nameEl) nameEl.textContent = data.answeringPlayer || "Joueur";
-
-  // Important : en mode "buzzer", les options sont envoyées via l'événement "answer-options"
-  // uniquement au gagnant. On NE DOIT PAS tenter d'afficher des options ici.
-  // Si c'est nous qui répondons et que les options ont déjà été reçues (cas rare), on les affiche.
-  const iAmAnswering =
-    (data.answeringPlayerId && data.answeringPlayerId === playerId) ||
-    (!!data.answeringPlayer && data.answeringPlayer === playerName);
-
-  if (iAmAnswering && Array.isArray(currentGame.answerOptions) && currentGame.answerOptions.length) {
-    showAnswerOptions(currentGame.answerOptions);
+  // Si c'est nous qui répondons, afficher les options
+  if (data.answeringPlayer === playerName) {
+    showAnswerOptions();
   }
-}
-
-// Options envoyées UNIQUEMENT au gagnant du buzzer
-function handleAnswerOptions(data) {
-  console.log("🧩 Options reçues (joueur gagnant):", data);
-
-  const opts = data && Array.isArray(data.options) ? data.options : [];
-  currentGame.answerOptions = opts;
-
-  // Sur téléphone: masquer le buzzer une fois qu'on doit répondre
-  const buzzerArea = document.getElementById("buzzers-container-multi");
-  if (buzzerArea) buzzerArea.style.display = "none";
-
-  // Sur la page joueur, afficher les options immédiatement.
-  showAnswerOptions(opts);
 }
 
 function handleAnswerResult(data) {
@@ -616,20 +583,9 @@ function initMultiplayerGame(players) {
 
   if (isPlayerPage) {
     // Sur téléphone: un seul buzzer (le joueur ne voit que SON bouton)
-    // Mise en page: centrer le buzzer
-    try {
-      buzzersContainer.style.display = "flex";
-      buzzersContainer.style.justifyContent = "center";
-      buzzersContainer.style.alignItems = "center";
-      buzzersContainer.style.flexDirection = "column";
-    } catch (e) {
-      // no-op
-    }
-
     const self = players.find((p) => p.id === playerId) || players.find((p) => p.name === playerName);
     const buzzerDiv = document.createElement("div");
     buzzerDiv.className = "buzzer-joueur-multi";
-    buzzerDiv.style.textAlign = "center";
     buzzerDiv.innerHTML = `
             <h3>${self ? self.name : "Vous"}</h3>
             <button class="bouton-buzzer-multi" data-player-id="${self ? self.id : ""}">
@@ -747,39 +703,31 @@ function startQuestionTimer(duration) {
   }, 1000);
 }
 
-function showAnswerOptions(options) {
+function showAnswerOptions() {
   console.log("📝 Affichage options de réponse");
 
-  const opts = Array.isArray(options)
-    ? options
-    : (currentGame.currentQuestion && Array.isArray(currentGame.currentQuestion.options)
-        ? currentGame.currentQuestion.options
-        : []);
-
-  if (!opts.length) {
-    console.error("❌ Aucune option disponible à afficher");
-    showNotification("Options de réponse non disponibles", "error");
+  if (!currentGame.currentQuestion) {
+    console.error("❌ Aucune question disponible");
+    showNotification("Erreur: question non disponible", "error");
     return;
   }
 
   const container = document.getElementById("options-reponse-multi");
-  if (!container) return;
-
-  // S'assurer que l'écran de réponse est visible (mobile joueur)
-  const answerScreen = document.getElementById("ecran-reponse-multi");
-  if (answerScreen) answerScreen.classList.remove("hidden");
-
   container.innerHTML = "";
 
-  opts.forEach((option) => {
+  currentGame.currentQuestion.options.forEach((option) => {
     const button = document.createElement("button");
     button.className = "option-reponse-multi";
     button.textContent = option;
     button.addEventListener("click", () => {
-      console.log(`✅ Réponse soumise: ${option}`);
+      const isCorrect = option === currentGame.currentQuestion.correctAnswer;
+      console.log(`✅ Réponse soumise: ${option}, correcte: ${isCorrect}`);
 
-      // Le serveur est la source de vérité pour la correction.
-      mpSocket.emit("submit-answer", { gameCode: currentGame.code, answer: option });
+      mpSocket.emit("submit-answer", {
+        gameCode: currentGame.code,
+        answer: option,
+        isCorrect: isCorrect,
+      });
 
       // Désactiver les boutons après clic
       container.querySelectorAll("button").forEach((btn) => {
