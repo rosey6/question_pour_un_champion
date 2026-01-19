@@ -910,7 +910,8 @@ function showPlayerNoBuzzResult() {
     const corr = (q.reponseCorrecte || q.correctAnswer || q.correct || q.bonneReponse || '')
       ? ('Bonne réponse: ' + (q.reponseCorrecte || q.correctAnswer || q.correct || q.bonneReponse))
       : '';
-    txt.innerHTML = ['Personne n'a buzzé', corr].filter(Boolean).join('<br>');
+    // Utiliser des guillemets doubles ici pour éviter de casser la chaîne (apostrophe dans "n'a").
+    txt.innerHTML = ["Personne n'a buzzé", corr].filter(Boolean).join('<br>');
   }
 }
 
