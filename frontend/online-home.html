@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
@@ -7,27 +7,20 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <section class="ecran actif">
-    <div class="contenu">
+  <div class="container">
+    <div class="card" style="max-width: 720px; margin: 0 auto;">
       <h1>Mode en ligne</h1>
-      <p class="sous-titre">Chacun a son buzzer. Pas d'hote.</p>
+      <p style="opacity: .85;">Créez une partie pour obtenir un code, ou rejoignez une partie existante.</p>
 
-      <div class="champ" style="max-width:560px;margin:0 auto;">
-        <label for="playerName">Votre nom</label>
-        <input id="playerName" type="text" autocomplete="nickname" placeholder="Ex: Abdoul" />
+      <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-top: 18px;">
+        <a class="btn" href="online-create.html" style="text-decoration:none; min-width: 220px; text-align:center;">Créer une partie</a>
+        <a class="btn" href="online-join.html" style="text-decoration:none; min-width: 220px; text-align:center;">Rejoindre</a>
       </div>
 
-      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:18px;">
-        <a class="bouton bouton-principal" href="online-create.html" id="goCreate" style="text-decoration:none">Creer une partie</a>
-        <a class="bouton bouton-secondaire" href="online-join.html" id="goJoin" style="text-decoration:none">Rejoindre</a>
-      </div>
-
-      <div style="margin-top:18px;text-align:center;">
-        <a href="index.html" class="lien">Retour au menu</a>
+      <div style="text-align:center; margin-top: 18px;">
+        <a href="index.html">Retour au menu</a>
       </div>
     </div>
-  </section>
-
-  <script src="online.js"></script>
+  </div>
 </body>
 </html>
