@@ -1,76 +1,97 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Créer une partie en ligne</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body data-page="online-create">
-  <section class="ecran actif">
-    <div class="contenu">
-      <h1>Créer une partie</h1>
-      <p class="sous-titre">Générez un code à partager, puis attendez que les autres rejoignent.</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org; https://cdn.socket.io"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Créer une partie</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <section class="ecran actif" id="online-create">
+      <div class="contenu">
+        <header>
+          <h1>Créer une partie</h1>
+          <p class="sous-titre">Générez un code et partagez-le</p>
+        </header>
 
-      <div class="form-group">
-        <label for="online-name">Votre nom</label>
-        <input id="online-name" class="select-choix" type="text" maxlength="20" placeholder="Votre pseudo" />
+        <div class="separateur"></div>
+
+        <div class="parametres-partie">
+          <h2>Paramètres</h2>
+
+          <div class="groupe-parametre">
+            <label for="online-nombre-questions">Nombre de questions</label>
+            <select id="online-nombre-questions" class="select-choix">
+              <option value="5">5 questions</option>
+              <option value="10" selected>10 questions</option>
+              <option value="15">15 questions</option>
+              <option value="20">20 questions</option>
+              <option value="0">Toutes les questions</option>
+            </select>
+          </div>
+
+          <div class="groupe-parametre">
+            <label for="online-temps">Temps par question</label>
+            <select id="online-temps" class="select-choix">
+              <option value="15000">15 secondes</option>
+              <option value="20000">20 secondes</option>
+              <option value="30000" selected>30 secondes</option>
+              <option value="45000">45 secondes</option>
+              <option value="60000">60 secondes</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="separateur"></div>
+
+        <div id="online-create-result" style="display:none;">
+          <h2>Code de la partie</h2>
+          <div class="caracteristiques" style="grid-template-columns: 1fr;">
+            <div class="caracteristique" style="text-align:center;">
+              <h3 id="online-code" style="font-size: 2.2rem; letter-spacing: 0.25em; margin: 0;">------</h3>
+              <p style="margin-top: 8px;">Partagez ce code ou scannez le QR code</p>
+            </div>
+          </div>
+
+          <div class="separateur"></div>
+
+          <div style="display:flex; justify-content:center;">
+            <div id="online-qrcode" style="padding: 14px; border-radius: 16px;"></div>
+          </div>
+
+          <div class="separateur"></div>
+
+          <div class="actions" style="gap: 12px;">
+            <button id="btn-copy-code" class="bouton bouton-secondaire">Copier le code</button>
+            <button id="btn-copy-link" class="bouton bouton-secondaire">Copier le lien</button>
+            <a class="bouton bouton-principal" id="btn-go-lobby" href="online-join.html" style="text-decoration:none">Ouvrir l'écran rejoindre</a>
+          </div>
+        </div>
+
+        <div class="actions" style="gap: 12px;">
+          <button id="btn-create-game" class="bouton bouton-principal">Créer</button>
+          <a class="bouton bouton-secondaire" href="online-home.html" style="text-decoration:none">Retour</a>
+        </div>
+
+        <p id="online-create-status" style="margin-top: 14px; opacity: 0.85;"></p>
       </div>
+    </section>
 
-      <div class="form-group">
-        <label for="online-numPlayers">Nombre de joueurs</label>
-        <select id="online-numPlayers" class="select-choix">
-          <option value="2">2 joueurs</option>
-          <option value="3">3 joueurs</option>
-          <option value="4">4 joueurs</option>
-          <option value="5">5 joueurs</option>
-          <option value="6">6 joueurs</option>
-        </select>
-      </div>
+    <!-- Config (BACKEND_URL) -->
+    <script src="config.js"></script>
 
-      <div class="form-group">
-        <label for="online-numQuestions">Nombre de questions</label>
-        <select id="online-numQuestions" class="select-choix">
-          <option value="5">5 questions</option>
-          <option value="10" selected>10 questions</option>
-          <option value="15">15 questions</option>
-          <option value="20">20 questions</option>
-        </select>
-      </div>
+    <!-- Socket.IO (servi par le backend Render pour respecter le CSP) -->
+    <script src="https://questionpourunchampion-backend.onrender.com/socket.io/socket.io.js"></script>
 
-      <div class="form-group">
-        <label for="online-buzzTime">Temps pour buzzer (secondes)</label>
-        <select id="online-buzzTime" class="select-choix">
-          <option value="10">10 s</option>
-          <option value="20">20 s</option>
-          <option value="30" selected>30 s</option>
-          <option value="45">45 s</option>
-          <option value="60">60 s</option>
-        </select>
-      </div>
+    <!-- QR Code (lib) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-      <div class="form-group">
-        <label for="online-answerTime">Temps pour répondre (secondes)</label>
-        <select id="online-answerTime" class="select-choix">
-          <option value="10">10 s</option>
-          <option value="15" selected>15 s</option>
-          <option value="20">20 s</option>
-          <option value="30">30 s</option>
-        </select>
-      </div>
-
-      <div id="online-notice" class="note" style="margin-top:12px;"></div>
-      <div id="online-root" style="margin-top: 14px;"></div>
-
-      <div class="actions" style="margin-top: 16px;">
-        <button id="online-btn-create" class="bouton bouton-principal">Créer</button>
-        <a class="bouton bouton-secondaire" href="online-home.html">Retour</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- Socket.IO servi par votre backend Render (évite le CDN et ses .map) -->
-  <script src="https://questionpourunchampion-backend.onrender.com/socket.io/socket.io.js"></script>
-  <script src="online.js"></script>
-</body>
+    <!-- Logique -->
+    <script src="online-qrcode.js"></script>
+    <script src="online.js"></script>
+  </body>
 </html>

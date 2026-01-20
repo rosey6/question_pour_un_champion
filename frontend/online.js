@@ -1,495 +1,408 @@
-/*
-  Mode en ligne
-  - Création: génère un code de partie via event `create-game`.
-  - Rejoindre: rejoint via `join-game`.
-  - Démarrage: le créateur (host logique) clique "Démarrer" quand tout le monde est prêt.
-  - Gameplay: tout le monde a un buzzer; seul le 1er qui buzz voit les 4 choix.
-  - Résultats: écran résultat après réponse ou si personne ne buzz (timeout).
-
-  Note: on ne modifie pas script.js. Ce module est autonome pour les pages online-*.html
-*/
+/* global io, OnlineQr */
+// Mode en ligne : 3 pages
+// - online-home.html  : navigation
+// - online-create.html: création + code + QR
+// - online-join.html  : rejoindre + écran de jeu (buzzer/options/résultats)
 
 (function () {
-  // -----------------------------
-  // Helpers
-  // -----------------------------
-  const $ = (sel) => document.querySelector(sel);
-  const safeText = (v) => (v == null ? "" : String(v));
-  const clampInt = (v, def) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? Math.trunc(n) : def;
-  };
+  "use strict";
 
-  const BACKEND_URL = (window.BACKEND_URL || "").trim();
-  if (!BACKEND_URL) {
-    console.error("❌ BACKEND_URL manquant. Définissez window.BACKEND_URL dans config.js");
-    return;
+  const BACKEND_URL = String(window.BACKEND_URL || "").trim();
+
+  // Helpers DOM
+  function $(id) {
+    return document.getElementById(id);
   }
 
-  // -----------------------------
-  // Socket
-  // -----------------------------
-  const socket = window.io(BACKEND_URL, {
-    transports: ["websocket", "polling"],
-    withCredentials: false,
-  });
+  function setText(id, text) {
+    const el = $(id);
+    if (el) el.textContent = text;
+  }
 
-  socket.on("connect", () => {
-    console.log("✅ Connecté au serveur:", socket.id);
-    notify("success", "Connecté au serveur");
-  });
-
-  socket.on("connect_error", (err) => {
-    console.error("❌ Erreur connexion:", err);
-    notify("error", "Erreur de connexion au serveur");
-  });
-
-  // -----------------------------
-  // UI: notifications (simple)
-  // -----------------------------
-  function notify(type, message) {
-    const el = $("#online-notice");
+  function show(id) {
+    const el = $(id);
     if (!el) return;
-    el.style.display = "block";
-    el.textContent = message;
-    el.dataset.type = type;
+    el.classList.remove("cache");
+    el.style.display = "";
   }
 
-  // -----------------------------
-  // Etat
-  // -----------------------------
-  let currentGameCode = null;
-  let isCreator = false;
-  let players = [];
-  let settings = null;
-  let currentQuestion = null; // {question, options[], correctAnswer, timeLimit, ...}
-  let buzzerWinnerId = null;
-  let lastAnsweringPlayerId = null;
-
-  // -----------------------------
-  // Pages: create / join / game
-  // -----------------------------
-  const page = document.body?.dataset?.page || "";
-
-  if (page === "online-create") {
-    wireCreatePage();
-  } else if (page === "online-join") {
-    wireJoinPage();
-  } else {
-    // online-home: rien
+  function hide(id) {
+    const el = $(id);
+    if (!el) return;
+    el.classList.add("cache");
+    el.style.display = "none";
   }
 
-  // -----------------------------
-  // Socket events
-  // -----------------------------
-  socket.on("game-created", (payload) => {
-    // { gameCode, game }
-    isCreator = true;
-    currentGameCode = payload?.gameCode || null;
-    settings = payload?.game?.settings || null;
-    players = normalizePlayers(payload?.game?.players);
+  function safeOn(el, event, handler) {
+    if (el) el.addEventListener(event, handler);
+  }
 
-    renderLobby({
-      mode: "create",
-      gameCode: currentGameCode,
-      players,
-      settings,
-    });
-
-    // Afficher code dans input si présent
-    const codeEl = $("#online-game-code");
-    if (codeEl) codeEl.value = safeText(currentGameCode);
-
-    notify("success", `Partie créée : ${currentGameCode}`);
-  });
-
-  socket.on("game-joined", (payload) => {
-    // { gameCode, game }
-    isCreator = false;
-    currentGameCode = payload?.gameCode || null;
-    settings = payload?.game?.settings || null;
-    players = normalizePlayers(payload?.game?.players);
-
-    renderLobby({
-      mode: "join",
-      gameCode: currentGameCode,
-      players,
-      settings,
-    });
-
-    notify("success", `Rejoint : ${currentGameCode}`);
-  });
-
-  socket.on("game-update", (payload) => {
-    // { gameCode, game }
-    if (!currentGameCode || payload?.gameCode !== currentGameCode) return;
-    players = normalizePlayers(payload?.game?.players);
-    // Mettre à jour la liste lobby si visible
-    updateLobbyPlayers(players);
-  });
-
-  socket.on("game-started", (payload) => {
-    if (!currentGameCode || payload?.gameCode !== currentGameCode) return;
-    settings = payload?.settings || settings;
-    players = Array.isArray(payload?.players) ? payload.players : players;
-
-    // Basculer UI en mode jeu (buzzer)
-    showGameScreen();
-
-    notify("success", "La partie commence !");
-  });
-
-  socket.on("new-question", (q) => {
-    currentQuestion = q || null;
-    buzzerWinnerId = null;
-    lastAnsweringPlayerId = null;
-
-    renderQuestion(q);
-    enableBuzzer(true);
-    hideAnswerOptions();
-    hideResultPanel();
-  });
-
-  socket.on("player-buzzed", ({ playerId, playerName }) => {
-    buzzerWinnerId = playerId || null;
-    enableBuzzer(false);
-
-    // Afficher info côté joueurs qui n'ont pas buzz
-    if (socket.id !== buzzerWinnerId) {
-      showWaitingForAnswer(playerName || "Un joueur");
-    }
-  });
-
-  socket.on("show-answer-screen", ({ answeringPlayer }) => {
-    // backend broadcast à tous. On montre les options seulement au gagnant.
-    lastAnsweringPlayerId = findPlayerIdByName(answeringPlayer, players) || lastAnsweringPlayerId;
-
-    if (socket.id === buzzerWinnerId) {
-      showAnswerOptions();
-    } else {
-      showWaitingForAnswer(answeringPlayer || "Un joueur");
-    }
-  });
-
-  socket.on("answer-result", (res) => {
-    // { playerId, playerName, answer, isCorrect, score, correctAnswer }
-    // MAJ scores depuis game-update si backend l'envoie, sinon on patch local
-    showResultPanel(res);
-  });
-
-  socket.on("buzzer-timeout", () => {
-    enableBuzzer(false);
-    showResultPanel({
-      timeout: true,
-      playerName: null,
-      isCorrect: false,
-      answer: null,
-      correctAnswer: currentQuestion?.correctAnswer,
-    });
-  });
-
-  socket.on("error-message", (msg) => {
-    notify("error", safeText(msg));
-  });
-
-  // -----------------------------
-  // Create page
-  // -----------------------------
-  function wireCreatePage() {
-    // Mark body
-    if (document.body) document.body.dataset.page = "online-create";
-
-    const btnCreate = $("#online-btn-create");
-    const nameInput = $("#online-name");
-
-    if (btnCreate) {
-      btnCreate.addEventListener("click", () => {
-        const playerName = (nameInput?.value || "").trim() || "Joueur";
-
-        const rawSettings = {
-          maxPlayers: clampInt($("#online-players")?.value, 2),
-          questionCount: clampInt($("#online-questions")?.value, 10),
-          timePerQuestion: clampInt($("#online-time-question")?.value, 30),
-          timePerAnswer: clampInt($("#online-time-answer")?.value, 15),
-        };
-
-        socket.emit("create-game", { playerName, settings: rawSettings });
-      });
-    }
-
-    const lobbyStartBtn = $("#online-start");
-    if (lobbyStartBtn) {
-      lobbyStartBtn.addEventListener("click", () => {
-        if (!currentGameCode) return;
-        socket.emit("start-game", { gameCode: currentGameCode });
-      });
+  function parseJoinCodeFromUrl() {
+    try {
+      const u = new URL(window.location.href);
+      return (u.searchParams.get("code") || "").trim().toUpperCase();
+    } catch {
+      return "";
     }
   }
 
-  // -----------------------------
-  // Join page
-  // -----------------------------
-  function wireJoinPage() {
-    if (document.body) document.body.dataset.page = "online-join";
+  function normalizeOptions(payload) {
+    // On accepte plusieurs formats possibles
+    const p = payload || {};
+    const options = p.options || p.reponses || p.answers || p.choices || (p.question && (p.question.options || p.question.reponses)) || null;
+    if (Array.isArray(options)) return options;
+    // Certains backends envoient {A,B,C,D}
+    if (options && typeof options === "object") {
+      const arr = Object.values(options);
+      if (arr.every((v) => typeof v === "string")) return arr;
+    }
+    return [];
+  }
 
-    const btnJoin = $("#online-btn-join");
-    const nameInput = $("#online-name");
-    const codeInput = $("#online-code");
+  function ensureBackendOrExplain() {
+    if (BACKEND_URL) return true;
+    const hint = "BACKEND_URL manquant. Vérifiez frontend/config.js (window.BACKEND_URL).";
+    // create page
+    setText("create-error", hint);
+    show("create-error");
+    // join page
+    setText("join-error", hint);
+    show("join-error");
+    return false;
+  }
 
-    if (btnJoin) {
-      btnJoin.addEventListener("click", () => {
-        const playerName = (nameInput?.value || "").trim() || "Joueur";
-        const gameCode = (codeInput?.value || "").trim().toUpperCase();
-        if (!gameCode) {
-          notify("error", "Entrez un code de partie.");
+  // Socket (lazy)
+  let socket = null;
+  function getSocket() {
+    if (socket) return socket;
+    if (!ensureBackendOrExplain()) return null;
+
+    // IMPORTANT: on force websocket uniquement pour éviter des soucis CORS/polling
+    socket = io(BACKEND_URL, {
+      transports: ["websocket"],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      timeout: 10000,
+    });
+
+    socket.on("connect", () => {
+      // eslint-disable-next-line no-console
+      console.log("✅ Socket connecté:", socket.id);
+    });
+
+    socket.on("connect_error", (err) => {
+      // eslint-disable-next-line no-console
+      console.error("❌ Erreur connexion socket:", err);
+      setText("create-error", "Erreur de connexion au serveur");
+      show("create-error");
+      setText("join-error", "Erreur de connexion au serveur");
+      show("join-error");
+    });
+
+    return socket;
+  }
+
+  // --- Create page ---
+  function initCreatePage() {
+    const btnCreate = $("btn-create");
+    const btnBack = $("btn-create-back");
+    const outCode = $("created-code");
+    const outLink = $("created-link");
+    const qrBox = $("qrcode");
+    const btnCopy = $("btn-copy-link");
+    const btnGoJoin = $("btn-go-join");
+
+    if (!btnCreate) return; // pas sur cette page
+
+    safeOn(btnBack, "click", () => (window.location.href = "online-home.html"));
+
+    safeOn(btnCreate, "click", async () => {
+      hide("create-error");
+      show("create-wait");
+
+      const s = getSocket();
+      if (!s) {
+        hide("create-wait");
+        return;
+      }
+
+      // Demande de création : on supporte ack (callback) et event retour
+      try {
+        const ack = await new Promise((resolve) => {
+          const timer = setTimeout(() => resolve(null), 8000);
+          s.emit("createGame", { mode: "online" }, (res) => {
+            clearTimeout(timer);
+            resolve(res || null);
+          });
+        });
+
+        const code = (ack && (ack.code || ack.gameCode || ack.roomCode)) || null;
+
+        if (!code) {
+          // fallback : attendre un event
+          // eslint-disable-next-line no-console
+          console.warn("Aucun code en ACK. Attente d'un event gameCreated...");
+          s.once("gameCreated", (payload) => {
+            const c = (payload && (payload.code || payload.gameCode || payload.roomCode)) || "";
+            renderCreated(c);
+          });
           return;
         }
-        socket.emit("join-game", { gameCode, playerName });
-      });
-    }
-  }
 
-  // -----------------------------
-  // Lobby rendering
-  // -----------------------------
-  function normalizePlayers(playersObj) {
-    if (!playersObj || typeof playersObj !== "object") return [];
-    return Object.entries(playersObj).map(([id, p]) => ({
-      id,
-      name: p?.name || "Joueur",
-      score: clampInt(p?.score, 0),
-      isHost: !!p?.isHost,
-    }));
-  }
+        renderCreated(code);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(e);
+        setText("create-error", "Impossible de créer la partie.");
+        show("create-error");
+      } finally {
+        hide("create-wait");
+      }
+    });
 
-  function renderLobby({ mode, gameCode, players, settings }) {
-    const root = $("#online-root");
-    if (!root) return;
+    function renderCreated(codeRaw) {
+      const code = String(codeRaw || "").trim().toUpperCase();
+      if (!code) {
+        setText("create-error", "Code de partie invalide.");
+        show("create-error");
+        return;
+      }
 
-    root.innerHTML = `
-      <div class="card" style="padding: 18px;">
-        <h2 style="margin-top:0;">Lobby</h2>
-        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-          <div style="font-weight:700;">Code : <span id="online-code-text">${safeText(gameCode)}</span></div>
-          <input id="online-game-code" value="${safeText(gameCode)}" readonly style="max-width:140px;" />
-          <button class="btn" id="online-copy" type="button">Copier</button>
-        </div>
+      outCode.textContent = code;
+      show("create-result");
 
-        <div style="margin-top:14px;">
-          <div style="opacity:.9; margin-bottom:8px;">Joueurs (${players.length}${settings?.maxPlayers ? "/" + settings.maxPlayers : ""})</div>
-          <ul id="online-players-list" style="margin:0; padding-left:18px;"></ul>
-        </div>
+      // Lien de join
+      const joinUrl = (window.OnlineQr && OnlineQr.buildJoinUrl) ? OnlineQr.buildJoinUrl(code) : ("online-join.html?code=" + encodeURIComponent(code));
+      if (outLink) {
+        outLink.value = joinUrl;
+      }
 
-        <div style="margin-top:14px; opacity:.9;">
-          <div>Questions: ${safeText(settings?.questionCount ?? "-")}</div>
-          <div>Temps buzzer: ${safeText(settings?.timePerQuestion ?? "-")}s</div>
-          <div>Temps réponse: ${safeText(settings?.timePerAnswer ?? "-")}s</div>
-        </div>
+      if (window.OnlineQr && OnlineQr.renderQrCode) {
+        OnlineQr.renderQrCode(qrBox, joinUrl);
+      }
 
-        <div style="margin-top:18px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-          ${mode === "create" ? `<button class="btn" id="online-start" type="button">Démarrer</button>` : `<div style="opacity:.9;">En attente du démarrage…</div>`}
-          <a class="btn" href="online-home.html" style="text-decoration:none; opacity:.85;">Quitter</a>
-        </div>
-      </div>
-
-      <div id="online-game" style="display:none;"></div>
-    `;
-
-    updateLobbyPlayers(players);
-
-    const copyBtn = $("#online-copy");
-    if (copyBtn) {
-      copyBtn.addEventListener("click", async () => {
+      safeOn(btnCopy, "click", async () => {
         try {
-          await navigator.clipboard.writeText(safeText(gameCode));
-          notify("success", "Code copié.");
+          await navigator.clipboard.writeText(joinUrl);
+          setText("create-success", "Lien copié.");
+          show("create-success");
+          setTimeout(() => hide("create-success"), 1500);
         } catch {
-          notify("error", "Impossible de copier (permission navigateur). ");
+          // fallback
+          if (outLink) {
+            outLink.select();
+            document.execCommand("copy");
+          }
         }
       });
-    }
 
-    // Démarrer (creator)
-    const startBtn = $("#online-start");
-    if (startBtn) {
-      startBtn.addEventListener("click", () => {
-        if (!currentGameCode) return;
-        socket.emit("start-game", { gameCode: currentGameCode });
+      safeOn(btnGoJoin, "click", () => {
+        window.location.href = "online-join.html?code=" + encodeURIComponent(code);
       });
     }
   }
 
-  function updateLobbyPlayers(players) {
-    const list = $("#online-players-list");
-    if (!list) return;
-    list.innerHTML = "";
-    players.forEach((p) => {
-      const li = document.createElement("li");
-      li.textContent = `${p.name} — ${p.score} pts${p.isHost ? " (créateur)" : ""}`;
-      list.appendChild(li);
-    });
-  }
+  // --- Join page / Player UI ---
+  function initJoinPage() {
+    const btnJoin = $("btn-join");
+    if (!btnJoin) return; // pas sur cette page
 
-  // -----------------------------
-  // Game screen
-  // -----------------------------
-  function showGameScreen() {
-    const root = $("#online-root");
-    if (!root) return;
+    const inputCode = $("join-code");
+    const inputName = $("join-name");
 
-    const game = $("#online-game");
-    if (!game) return;
-    game.style.display = "block";
+    const codeFromUrl = parseJoinCodeFromUrl();
+    if (inputCode && codeFromUrl) inputCode.value = codeFromUrl;
 
-    game.innerHTML = `
-      <div class="card" style="padding: 18px; margin-top: 14px;">
-        <h2 style="margin-top:0;">Partie</h2>
+    const btnBack = $("btn-join-back");
+    safeOn(btnBack, "click", () => (window.location.href = "online-home.html"));
 
-        <div id="online-question-box" style="margin-top: 10px;"></div>
+    let currentCode = "";
+    let joined = false;
 
-        <div id="online-buzzer-zone" style="margin-top: 16px; display:flex; justify-content:center;">
-          <button id="online-buzzer" type="button" class="btn" style="width: 180px; height: 180px; border-radius: 999px; font-size: 22px;">BUZZ !</button>
-        </div>
+    // UI refs
+    const gameScreen = $("game-screen");
+    const buzzerBtn = $("btn-buzzer");
+    const answerBox = $("answer-options");
+    const resultBox = $("result-box");
+    const resultText = $("result-text");
+    const btnNextInfo = $("next-info");
 
-        <div id="online-answer-zone" style="margin-top: 16px; display:none;"></div>
-        <div id="online-wait-zone" style="margin-top: 12px; opacity:.9; display:none;"></div>
+    function resetForQuestion() {
+      if (answerBox) {
+        answerBox.innerHTML = "";
+        hide("answer-options");
+      }
+      if (resultBox) hide("result-box");
+      setText("next-info", "");
+      enableBuzzer(false);
+    }
 
-        <div id="online-result-zone" style="margin-top: 16px; display:none;"></div>
-      </div>
-    `;
+    function enableBuzzer(enabled) {
+      if (!buzzerBtn) return;
+      buzzerBtn.disabled = !enabled;
+      buzzerBtn.style.opacity = enabled ? "1" : "0.6";
+    }
 
-    const buzzer = $("#online-buzzer");
-    if (buzzer) {
-      buzzer.addEventListener("click", () => {
-        if (!currentGameCode) return;
-        socket.emit("buzz", { gameCode: currentGameCode });
+    function showAnswerOptions(payload) {
+      const options = normalizeOptions(payload);
+      if (!answerBox) return;
+
+      answerBox.innerHTML = "";
+
+      if (!options.length) {
+        // On n'affiche rien si pas d'options
+        setText("join-error", "Options de réponse indisponibles.");
+        show("join-error");
+        return;
+      }
+
+      options.slice(0, 4).forEach((opt, idx) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "bouton bouton-secondaire";
+        btn.style.width = "100%";
+        btn.style.margin = "6px 0";
+        btn.textContent = String(opt);
+        btn.addEventListener("click", () => {
+          // Envoi réponse
+          const s = getSocket();
+          if (!s) return;
+          s.emit("submitAnswer", {
+            code: currentCode,
+            answerIndex: idx,
+            answer: String(opt),
+          });
+          // Désactive pour éviter double click
+          Array.from(answerBox.querySelectorAll("button")).forEach((b) => (b.disabled = true));
+        });
+        answerBox.appendChild(btn);
       });
-    }
-  }
 
-  function renderQuestion(q) {
-    const box = $("#online-question-box");
-    if (!box) return;
-
-    const num = q?.questionNumber ? `${q.questionNumber}/${q.totalQuestions || "?"}` : "";
-
-    box.innerHTML = `
-      <div style="text-align:center; opacity:.9;">Question ${safeText(num)}</div>
-      <div style="font-size: 20px; font-weight: 700; text-align:center; margin-top: 8px;">${safeText(q?.question)}</div>
-    `;
-  }
-
-  function enableBuzzer(enabled) {
-    const buzzer = $("#online-buzzer");
-    if (!buzzer) return;
-    buzzer.disabled = !enabled;
-    buzzer.style.opacity = enabled ? "1" : "0.6";
-  }
-
-  function hideAnswerOptions() {
-    const zone = $("#online-answer-zone");
-    if (!zone) return;
-    zone.style.display = "none";
-    zone.innerHTML = "";
-  }
-
-  function showWaitingForAnswer(playerName) {
-    const wait = $("#online-wait-zone");
-    if (!wait) return;
-    wait.style.display = "block";
-    wait.textContent = `${safeText(playerName)} va répondre…`;
-    hideAnswerOptions();
-  }
-
-  function showAnswerOptions() {
-    const zone = $("#online-answer-zone");
-    const wait = $("#online-wait-zone");
-    if (wait) wait.style.display = "none";
-    if (!zone) return;
-
-    const opts = currentQuestion?.options;
-    if (!Array.isArray(opts) || opts.length === 0) {
-      // Empêche le crash (votre erreur forEach)
-      console.error("❌ Options manquantes dans currentQuestion:", currentQuestion);
-      notify("error", "Options de réponse indisponibles.");
-      return;
+      show("answer-options");
     }
 
-    zone.style.display = "block";
+    function showResult(payload) {
+      if (!resultBox) return;
+      const p = payload || {};
+      const msg = p.message || p.resultMessage || (p.isCorrect === true ? "Bonne réponse" : p.isCorrect === false ? "Mauvaise réponse" : "Résultat");
+      const score = (typeof p.score === "number") ? p.score : null;
+      const delta = (typeof p.delta === "number") ? p.delta : (typeof p.points === "number") ? p.points : null;
 
-    zone.innerHTML = `
-      <div style="text-align:center; font-weight:700; margin-bottom: 10px;">Choisissez votre réponse</div>
-      <div style="display:grid; gap: 10px; grid-template-columns: 1fr 1fr;">
-        ${opts
-          .map(
-            (o, idx) =>
-              `<button class="btn" type="button" data-opt="${idx}" style="padding: 14px; border-radius: 14px;">${safeText(o)}</button>`
-          )
-          .join("")}
-      </div>
-    `;
+      const line = [
+        String(msg),
+        delta !== null ? (delta >= 0 ? `+${delta}` : `${delta}`) + " points" : "",
+        score !== null ? "Score: " + score : "",
+      ].filter(Boolean).join(" — ");
 
-    zone.querySelectorAll("button[data-opt]").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const idx = Number(btn.dataset.opt);
-        const answer = opts[idx];
-        const correct = currentQuestion?.correctAnswer;
-        const isCorrect = answer != null && correct != null && String(answer) === String(correct);
+      if (resultText) resultText.textContent = line;
+      show("result-box");
+      // Cache options après résultat
+      if (answerBox) {
+        answerBox.innerHTML = "";
+        hide("answer-options");
+      }
+      enableBuzzer(false);
+      if (btnNextInfo) btnNextInfo.textContent = "Question suivante...";
+    }
 
-        // désactiver pour éviter double envoi
-        zone.querySelectorAll("button").forEach((b) => (b.disabled = true));
+    safeOn(btnJoin, "click", async () => {
+      hide("join-error");
+      const code = String(inputCode?.value || "").trim().toUpperCase();
+      const name = String(inputName?.value || "Joueur").trim() || "Joueur";
 
-        socket.emit("submit-answer", {
-          gameCode: currentGameCode,
-          answer,
-          isCorrect,
+      if (!code) {
+        setText("join-error", "Entrez un code de partie.");
+        show("join-error");
+        return;
+      }
+
+      const s = getSocket();
+      if (!s) return;
+
+      currentCode = code;
+
+      const ok = await new Promise((resolve) => {
+        const timer = setTimeout(() => resolve(false), 8000);
+        s.emit("joinGame", { code, playerName: name, mode: "online" }, (res) => {
+          clearTimeout(timer);
+          if (!res) return resolve(true);
+          if (res.ok === false || res.success === false) return resolve(false);
+          return resolve(true);
         });
       });
+
+      if (!ok) {
+        setText("join-error", "Impossible de rejoindre la partie.");
+        show("join-error");
+        return;
+      }
+
+      joined = true;
+      hide("join-form");
+      if (gameScreen) gameScreen.style.display = "";
+      resetForQuestion();
     });
-  }
 
-  function showResultPanel(res) {
-    const zone = $("#online-result-zone");
-    if (!zone) return;
+    // Buzzer
+    safeOn(buzzerBtn, "click", () => {
+      if (!joined) return;
+      const s = getSocket();
+      if (!s) return;
+      enableBuzzer(false);
+      s.emit("buzz", { code: currentCode });
+    });
 
-    const correct = currentQuestion?.correctAnswer ?? res?.correctAnswer;
-    const isTimeout = !!res?.timeout;
-    const playerName = res?.playerName;
-    const isCorrect = !!res?.isCorrect;
+    // Events jeu (compat)
+    const s = getSocket();
+    if (s) {
+      s.on("enableBuzzers", () => {
+        if (!joined) return;
+        resetForQuestion();
+        enableBuzzer(true);
+      });
 
-    zone.style.display = "block";
+      s.on("disableBuzzers", () => {
+        if (!joined) return;
+        enableBuzzer(false);
+      });
 
-    let title = "Résultat";
-    let line = "";
+      // Serveur -> seulement le 1er buzzer doit recevoir cet event
+      s.on("showAnswerScreen", (payload) => {
+        if (!joined) return;
+        // On affiche options uniquement au joueur concerné
+        showAnswerOptions(payload);
+      });
 
-    if (isTimeout) {
-      line = "Personne n'a buzzé.";
-    } else if (playerName) {
-      line = `${safeText(playerName)} : ${isCorrect ? "Bonne réponse" : "Mauvaise réponse"}`;
+      // Résultat pour tout le monde (après réponse ou timeout)
+      s.on("answerResult", (payload) => {
+        if (!joined) return;
+        showResult(payload);
+      });
+
+      s.on("roundResult", (payload) => {
+        if (!joined) return;
+        showResult(payload);
+      });
+
+      // Nouvelle question -> on attend enableBuzzers
+      s.on("newQuestion", () => {
+        if (!joined) return;
+        resetForQuestion();
+      });
+
+      // En cas d'erreur backend
+      s.on("errorMessage", (payload) => {
+        if (!joined) return;
+        const msg = (payload && (payload.message || payload.error)) || "Erreur";
+        setText("join-error", msg);
+        show("join-error");
+      });
     }
-
-    zone.innerHTML = `
-      <div style="text-align:center; font-size: 20px; font-weight: 800;">${title}</div>
-      <div style="text-align:center; margin-top: 8px; opacity:.95;">${safeText(line)}</div>
-      <div style="text-align:center; margin-top: 10px; opacity:.9;">Réponse correcte : <strong>${safeText(correct)}</strong></div>
-    `;
-
-    hideAnswerOptions();
-
-    // On laisse le backend enchaîner automatiquement (timeout ou nextQuestion).
   }
 
-  function hideResultPanel() {
-    const zone = $("#online-result-zone");
-    if (!zone) return;
-    zone.style.display = "none";
-    zone.innerHTML = "";
-  }
-
-  function findPlayerIdByName(name, list) {
-    if (!name) return null;
-    const n = String(name);
-    const p = (list || []).find((x) => String(x.name) === n);
-    return p ? p.id : null;
-  }
+  // Init
+  document.addEventListener("DOMContentLoaded", () => {
+    initCreatePage();
+    initJoinPage();
+  });
 })();

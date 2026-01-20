@@ -1,59 +1,31 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mode en ligne</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body data-page="online-home">
-  <section class="ecran actif">
-    <div class="contenu">
-      <h1>Mode en ligne</h1>
-      <p class="sous-titre">Créez une partie pour obtenir un code, ou rejoignez une partie existante.</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org; https://cdn.socket.io"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mode en ligne</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <section class="ecran actif" id="online-home">
+      <div class="contenu">
+        <header>
+          <h1>Mode en ligne</h1>
+          <h2>Créez ou rejoignez une partie</h2>
+        </header>
 
-      <div class="groupe-nom" style="max-width: 520px; margin: 0 auto 18px;">
-        <label for="online-name">Votre nom</label>
-        <input id="online-name" type="text" placeholder="Ex: abdoul" autocomplete="nickname" />
-      </div>
+        <div class="separateur"></div>
 
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px; width:100%; max-width: 720px; margin: 0 auto;">
-        <div class="option-creer" style="padding:14px;">
-          <h3>Créer une partie</h3>
-          <p style="margin: 8px 0 14px; opacity:.9;">Partagez un code à 6 caractères.</p>
-          <button id="go-create" class="bouton bouton-principal" type="button">Créer</button>
-        </div>
-
-        <div class="option-rejoindre" style="padding:14px;">
-          <h3>Rejoindre</h3>
-          <p style="margin: 8px 0 14px; opacity:.9;">Saisissez le code reçu.</p>
-          <button id="go-join" class="bouton bouton-secondaire" type="button">Rejoindre</button>
+        <div class="actions" style="gap: 12px;">
+          <a class="bouton bouton-principal" href="online-create.html" style="text-decoration:none">Créer une partie</a>
+          <a class="bouton bouton-secondaire" href="online-join.html" style="text-decoration:none">Rejoindre une partie</a>
+          <a class="bouton bouton-secondaire" href="index.html" style="text-decoration:none">Retour</a>
         </div>
       </div>
-
-      <div style="margin-top: 18px;">
-        <a class="lien" href="index.html">Retour au menu</a>
-      </div>
-    </div>
-  </section>
-
-  <script>
-    (function(){
-      const nameInput = document.getElementById('online-name');
-      const goCreate = document.getElementById('go-create');
-      const goJoin = document.getElementById('go-join');
-
-      const saved = localStorage.getItem('qpc_online_name');
-      if (saved && nameInput) nameInput.value = saved;
-
-      function persistName(){
-        const v = (nameInput?.value || '').trim();
-        if (v) localStorage.setItem('qpc_online_name', v);
-      }
-
-      goCreate?.addEventListener('click', () => { persistName(); window.location.href = 'online-create.html'; });
-      goJoin?.addEventListener('click', () => { persistName(); window.location.href = 'online-join.html'; });
-    })();
-  </script>
-</body>
+    </section>
+  </body>
 </html>
