@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;"
+    />
+    <title>Une Question pour un Champion</title>
+    <link rel="stylesheet" href="style.css" />
+  <script src="config.js?v=20260119_4"></script>
+</head>
+  <body>
+    <section id="accueil" class="ecran actif">
+      <div class="contenu">
+        <header>
+          <h1>Une Question pour un Champion</h1>
+          <h2>Testez vos connaissances en culture générale</h2>
+        </header>
+
+        <div class="description">
+          <p>
+            Bienvenue dans le jeu "Une Question pour un Champion" ! Affrontez
+            vos amis dans un quiz palpitant rempli de défis intellectuels.
+          </p>
+        </div>
+
+        <div class="separateur"></div>
+
+        <div class="caracteristiques">
+          <div class="caracteristique">
+            <h3>Jusqu'à 4 joueurs</h3>
+            <p>Jouez seul ou avec vos amis</p>
+          </div>
+          <div class="caracteristique">
+            <h3>Chronométré</h3>
+            <p>Répondez avant la fin du temps</p>
+          </div>
+          <div class="caracteristique">
+            <h3>Défis variés</h3>
+            <p>Questions de culture générale</p>
+          </div>
+        </div>
+
+        <div class="separateur"></div>
+
+        <div class="actions">
+          <a id="btn-multijoueur" class="bouton bouton-secondaire" href="online-home.html" style="text-decoration:none">Mode en ligne</a>
+          <button id="btn-commencer" class="bouton bouton-principal">
+            Commencer le jeu
+          </button>
+          <button id="btn-historique" class="bouton bouton-secondaire">
+            Voir l'historique
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="selection-joueurs" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1>Sélection des joueurs</h1>
+          <p class="sous-titre">Maximum 4 joueurs</p>
+        </header>
+
+        <div class="parametres-joueurs">
+          <h2>Nombre de joueurs</h2>
+          <div class="options-joueurs options-joueurs-4">
+            <button class="option-joueur" data-joueurs="1">
+              <span class="nombre-joueurs">1</span>
+              <span class="texte-joueurs">joueur</span>
+            </button>
+            <button class="option-joueur" data-joueurs="2">
+              <span class="nombre-joueurs">2</span>
+              <span class="texte-joueurs">joueurs</span>
+            </button>
+            <button class="option-joueur" data-joueurs="3">
+              <span class="nombre-joueurs">3</span>
+              <span class="texte-joueurs">joueurs</span>
+            </button>
+            <button class="option-joueur" data-joueurs="4">
+              <span class="nombre-joueurs">4</span>
+              <span class="texte-joueurs">joueurs</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="separateur"></div>
+
+        <div class="formulaire-noms" id="formulaire-noms"></div>
+
+        <div class="actions">
+          <button id="btn-valider-joueurs" class="bouton bouton-principal">
+            ok
+          </button>
+          <button id="btn-retour-joueurs" class="bouton bouton-secondaire">
+            Retour
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="parametres" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1>Paramètres du jeu</h1>
+        </header>
+
+        <div class="parametres-partie">
+          <h2>Configuration de la partie</h2>
+
+          <div class="groupe-parametre">
+            <label for="nombre-questions">Nombre de questions par partie</label>
+            <select id="nombre-questions" class="select-choix">
+              <option value="5">5 questions</option>
+              <option value="10" selected>10 questions</option>
+              <option value="15">15 questions</option>
+              <option value="20">20 questions</option>
+              <option value="0">Toutes les questions</option>
+            </select>
+          </div>
+
+          <div class="groupe-parametre">
+            <label for="duree-question-param"
+              >Temps par question (secondes)</label
+            >
+            <select id="duree-question-param" class="select-choix">
+              <option value="10">10 secondes</option>
+              <option value="15">15 secondes</option>
+              <option value="20">20 secondes</option>
+              <option value="25">25 secondes</option>
+              <option value="30" selected>30 secondes</option>
+            </select>
+          </div>
+
+          <div class="groupe-parametre">
+            <label for="duree-reponse-param"
+              >Temps pour répondre (secondes)</label
+            >
+            <select id="duree-reponse-param" class="select-choix">
+              <option value="10">10 secondes</option>
+              <option value="15" selected>15 secondes</option>
+              <option value="20">20 secondes</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="btn-demarrer-jeu" class="bouton bouton-principal">
+            Démarrer la partie
+          </button>
+          <button id="btn-retour-parametres" class="bouton bouton-secondaire">
+            Retour aux joueurs
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="jeu" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1>À vous de jouer !</h1>
+        </header>
+
+        <div class="chronometre-container">
+          <div class="chronometre">
+            <span id="temps-restant" class="temps-restant">30</span>
+            <span class="unite-temps">secondes</span>
+          </div>
+        </div>
+
+        <div class="scores" id="grille-scores"></div>
+
+        <div class="question">
+          <h2 id="question-actuelle">Quelle est la capitale de la France ?</h2>
+        </div>
+
+        <div class="buzzers-container">
+          <div class="buzzers-grid" id="grille-buzzers"></div>
+          <p class="indication-buzzers">
+            Utilisez les touches 1, 2, 3, 4 pour buzzer ou cliquez sur les
+            boutons !
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="reponses" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1><span id="nom-repondant-reponses">Joueur 1</span> va répondre</h1>
+        </header>
+
+        <div class="chronometre-container">
+          <div class="chronometre chronometre-reponse">
+            <span id="temps-reponse" class="temps-restant">15</span>
+            <span class="unite-temps">secondes</span>
+          </div>
+        </div>
+
+        <div class="question">
+          <h2 id="question-reponse">Quelle est la capitale de la France ?</h2>
+
+          <div class="options-reponse" id="options-reponse"></div>
+        </div>
+
+        <div class="actions">
+          <button id="btn-retour-reponses" class="bouton bouton-secondaire">
+            Retour
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="resultat" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1>Résultat</h1>
+        </header>
+
+        <div class="resultat-question">
+          <h2 id="question-resultat">Quelle est la capitale de la France ?</h2>
+          <p id="reponse-correcte" class="reponse-correcte">
+            Réponse correcte: Paris
+          </p>
+
+          <!-- Illustration: affichée uniquement au résultat (taille gérée en JS, sans modifier style.css) -->
+          <div id="resultat-illustration" class="illustration-container hidden">
+            <img id="resultat-image" alt="Illustration" loading="lazy" />
+            <p id="resultat-description" class="illustration-description"></p>
+          </div>
+          <p id="statut-reponse" class="statut-reponse">Bonne réponse!</p>
+          <p class="joueur-repondant">
+            <span id="nom-repondant">Joueur 1</span> a répondu
+          </p>
+        </div>
+
+        <div class="scores" id="grille-scores-resultat"></div>
+
+        <div class="actions">
+          <button id="btn-question-suivante" class="bouton bouton-principal">
+            Question suivante
+          </button>
+          <button id="btn-menu-principal" class="bouton bouton-secondaire">
+            Menu principal
+          </button>
+        </div>
+      </div>
+    </section>
+    <section id="resultat-multijoueur" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1>Résultats - Multijoueur</h1>
+          <h2>Classement final</h2>
+        </header>
+
+        <div class="resultat-question">
+          <h2 id="titre-resultat-multi">Fin de partie</h2>
+          <p id="sous-titre-resultat-multi">Bravo à tous les joueurs</p>
+        </div>
+
+        <div class="scores" id="grille-scores-resultat-multi"></div>
+
+        <div class="actions">
+          <button id="btn-retour-accueil-multi" class="bouton bouton-principal">
+            <i class="fas fa-home"></i> Retour à l'accueil
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="historique" class="ecran">
+      <div class="contenu">
+        <header>
+          <h1>Historique des parties</h1>
+        </header>
+
+        <div id="liste-historique"></div>
+
+        <div class="actions">
+          <button id="btn-retour-historique" class="bouton bouton-secondaire">
+            Retour
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <script src="script.js"></script>
+  </body>
+</html>
