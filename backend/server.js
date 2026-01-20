@@ -1,373 +1,758 @@
-/*
-  Backend Socket.IO - mode en ligne (hostless)
-  - Rooms (code 6 caracteres)
-  - Tout le monde est joueur
-  - Premier buzz => options uniquement pour ce joueur
-  - Resultat diffuse a tous, puis question suivante
-
-  Note: CommonJS volontaire pour eviter les problemes ESM sur Render.
-*/
-
 const express = require("express");
 const http = require("http");
+const socketIo = require("socket.io");
 const cors = require("cors");
-const { Server } = require("socket.io");
-
-const PORT = process.env.PORT || 3000;
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
-app.use(express.json({ limit: "1mb" }));
-
-// CORS: autoriser le front (Cloudflare Workers) + tests locaux
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-app.use(
-  cors({
-    origin: function (origin, cb) {
-      if (!origin) return cb(null, true);
-      if (allowedOrigins.length === 0) return cb(null, true);
-      return cb(null, allowedOrigins.includes(origin));
-    },
-    credentials: true,
-  })
-);
-
-app.get("/health", (req, res) => {
-  res.json({ ok: true });
-});
-
 const server = http.createServer(app);
 
-const io = new Server(server, {
-  cors: {
-    origin: function (origin, cb) {
-      if (!origin) return cb(null, true);
-      if (allowedOrigins.length === 0) return cb(null, true);
-      return cb(null, allowedOrigins.includes(origin));
-    },
-    credentials: true,
-  },
-});
+// ============================================
+// CORS / ORIGINS
+// ============================================
+// But: permettre la migration du frontend (ex: Cloudflare Workers) sans casser Socket.IO.
+// - Si ALLOWED_ORIGINS est défini (liste séparée par des virgules), on applique cette allow-list.
+// - Sinon, on garde une liste raisonnable par défaut (Vercel historique + localhost + Workers).
+function getAllowedOrigins() {
+  const raw = (process.env.ALLOWED_ORIGINS || "").trim();
+  if (raw) {
+    return raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
 
-// ------------------------
-// Questions (fallback)
-// ------------------------
-
-const DEFAULT_QUESTIONS = [
-  {
-    question: "Quelle est la capitale du Canada ?",
-    options: ["Ottawa", "Toronto", "Montréal", "Vancouver"],
-    answer: "Ottawa",
-  },
-  {
-    question: "Quel pays est célèbre pour la tour Eiffel ?",
-    options: ["France", "Italie", "Espagne", "Belgique"],
-    answer: "France",
-  },
-];
-
-function pickQuestions(n) {
-  const src = DEFAULT_QUESTIONS;
-  const out = [];
-  for (let i = 0; i < n; i++) out.push(src[i % src.length]);
-  return out;
+  return [
+    "https://question-pour-un-champion-murex.vercel.app",
+    "https://question-pour-un-championv2.bambaa148.workers.dev",
+    "http://localhost:3000",
+    "http://localhost:5173",
+  ];
 }
 
-// ------------------------
-// State
-// ------------------------
+const allowedOrigins = getAllowedOrigins();
 
-/** @type {Map<string, any>} */
-const rooms = new Map();
+// Configuration Socket.io
+const io = socketIo(server, {
+  cors: {
+    // Autoriser uniquement les origines listées.
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+  },
+  transports: ["websocket", "polling"],
+});
 
-function makeCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+// Middleware
+app.use(
+  cors({
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+  })
+);
+app.use(express.json());
+
+// Route de santé pour Render
+app.get("/health", (req, res) => {
+  res.json({
+    status: "online",
+    service: "Question pour un Champion - Serveur Multijoueur",
+    timestamp: new Date().toISOString(),
+    activeGames: Object.keys(games).length,
+    activePlayers: Object.keys(players).length,
+  });
+});
+
+app.get("/", (req, res) => {
+  res.json({
+    message: "Bienvenue sur Question pour un Champion - Serveur Multijoueur",
+    endpoints: {
+      health: "/health",
+      stats: "/stats",
+      websocket: "ws://" + req.get("host") + "/socket.io/",
+    },
+  });
+});
+
+app.get("/stats", (req, res) => {
+  res.json({
+    totalGames: Object.keys(games).length,
+    totalPlayers: Object.keys(players).length,
+    uptime: process.uptime(),
+  });
+});
+
+// ============================================
+// CHARGEMENT DES QUESTIONS (Optionnel - backup)
+// ============================================
+
+let allQuestions = [];
+
+function loadQuestions() {
+  try {
+    const questionsPath = path.join(__dirname, "questions.json");
+    if (fs.existsSync(questionsPath)) {
+      const data = fs.readFileSync(questionsPath, "utf8");
+      allQuestions = JSON.parse(data);
+      console.log(
+        `✅ ${allQuestions.length} questions chargées depuis questions.json`
+      );
+    } else {
+      console.log("ℹ️ Aucun fichier questions.json trouvé dans le backend");
+      allQuestions = [];
+    }
+  } catch (error) {
+    console.error("❌ Erreur de chargement des questions:", error);
+    allQuestions = [];
+  }
+}
+
+// Charger les questions au démarrage
+loadQuestions();
+
+// ============================================
+// FONCTIONS UTILITAIRES
+// ============================================
+
+function generateGameCode() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let code = "";
-  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
   return code;
 }
 
-function getScoreboard(room) {
-  return Object.values(room.players)
-    .map((p) => ({ id: p.id, name: p.name, score: p.score }))
-    .sort((a, b) => b.score - a.score);
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
 }
 
-function emitRoomUpdate(room) {
-  io.to(room.code).emit("room-update", {
-    gameCode: room.code,
-    state: room.state,
-    settings: room.settings,
-    players: getScoreboard(room),
-  });
-}
-
-function clearTimers(room) {
-  if (room.timers?.buzzer) clearTimeout(room.timers.buzzer);
-  if (room.timers?.answer) clearTimeout(room.timers.answer);
-  if (room.timers?.next) clearTimeout(room.timers.next);
-  room.timers = { buzzer: null, answer: null, next: null };
-}
-
-function startRound(room) {
-  clearTimers(room);
-  room.buzzWinner = null;
-  room.state = "playing";
-
-  const q = room.questions[room.currentIndex];
-  const payload = {
-    gameCode: room.code,
-    questionNumber: room.currentIndex + 1,
-    totalQuestions: room.questions.length,
-    question: q.question,
-    imageUrl: q.imageUrl || null,
-    illustrationTexte: q.illustrationTexte || null,
-    buzzerSeconds: room.settings.buzzerSeconds,
-  };
-
-  io.to(room.code).emit("question", payload);
-
-  // timer: personne ne buzz
-  room.timers.buzzer = setTimeout(() => {
-    finishRound(room, null, null);
-  }, room.settings.buzzerSeconds * 1000);
-}
-
-function finishRound(room, winnerId, answer) {
-  clearTimers(room);
-
-  const q = room.questions[room.currentIndex];
-  let winner = null;
-  let isCorrect = false;
-
-  if (winnerId && room.players[winnerId]) {
-    winner = { id: winnerId, name: room.players[winnerId].name };
-    isCorrect = answer != null && String(answer) === String(q.answer);
-    room.players[winnerId].score += isCorrect ? room.settings.pointsCorrect : room.settings.pointsWrong;
+function getRandomQuestions(count) {
+  if (count <= 0 || allQuestions.length === 0) {
+    // Questions par défaut si aucune disponible
+    return [
+      {
+        question: "Quelle est la capitale de la France ?",
+        options: ["Paris", "Londres", "Berlin", "Madrid"],
+        reponseCorrecte: "Paris",
+      },
+      {
+        question: "Quel est le plus grand océan du monde ?",
+        options: ["Atlantique", "Indien", "Pacifique", "Arctique"],
+        reponseCorrecte: "Pacifique",
+      },
+    ].slice(0, Math.min(count, 2));
   }
 
-  const resultPayload = {
-    gameCode: room.code,
-    winner,
-    answer: answer ?? null,
-    correctAnswer: q.answer,
-    isCorrect,
-    pointsCorrect: room.settings.pointsCorrect,
-    pointsWrong: room.settings.pointsWrong,
-    questionNumber: room.currentIndex + 1,
-    totalQuestions: room.questions.length,
-    scoreboard: getScoreboard(room),
-  };
+  if (count > allQuestions.length) {
+    count = allQuestions.length;
+  }
 
-  io.to(room.code).emit("round-result", resultPayload);
+  // Créer une copie mélangée
+  const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
 
-  // prochaine question
-  room.timers.next = setTimeout(() => {
-    room.currentIndex += 1;
-    if (room.currentIndex >= room.questions.length) {
-      room.state = "finished";
-      io.to(room.code).emit("game-over", {
-        gameCode: room.code,
-        scoreboard: getScoreboard(room),
+  // Retourner le nombre demandé
+  return shuffled.slice(0, count);
+}
+
+// ============================================
+// STOCKAGE DES PARTIES
+// ============================================
+
+const games = {};
+const players = {};
+
+// Nettoyage défensif des timers (buzzer/answer) par partie
+function clearGameTimers(game) {
+  if (!game) return;
+  if (game._buzzerTimer) {
+    clearTimeout(game._buzzerTimer);
+    game._buzzerTimer = null;
+  }
+  if (game._answerTimer) {
+    clearTimeout(game._answerTimer);
+    game._answerTimer = null;
+  }
+}
+
+// ============================================
+// GESTION SOCKET.IO
+// ============================================
+
+io.on("connection", (socket) => {
+  console.log("Nouveau joueur connecté:", socket.id);
+
+  // Normalise les paramètres envoyés par le frontend (plusieurs noms possibles selon les versions)
+  function normalizeSettings(raw = {}) {
+    const maxPlayers = Number(raw.maxPlayers ?? raw.playersCount ?? raw.nombreJoueurs ?? 4);
+    const questionsCount = Number(raw.questionsCount ?? raw.nombreQuestions ?? 10);
+    const timePerQuestion = Number(raw.timePerQuestion ?? raw.dureeQuestion ?? 30);
+    const timePerAnswer = Number(raw.timePerAnswer ?? raw.dureeReponse ?? 15);
+    return {
+      maxPlayers: Number.isFinite(maxPlayers) && maxPlayers > 0 ? maxPlayers : 4,
+      questionsCount: Number.isFinite(questionsCount) ? questionsCount : 10,
+      timePerQuestion: Number.isFinite(timePerQuestion) ? timePerQuestion : 30,
+      timePerAnswer: Number.isFinite(timePerAnswer) ? timePerAnswer : 15,
+    };
+  }
+
+  // Démarre une partie (sans concept d'hôte : n'importe quel joueur peut déclencher, et on démarre aussi automatiquement quand la salle est pleine)
+  function startGameInternal(gameCode, rawSettings = null) {
+    const game = games[gameCode];
+    if (!game || game.state !== "waiting") return;
+
+    const normalizedSettings = normalizeSettings(rawSettings || game.settings || {});
+    game.settings = normalizedSettings;
+
+    // Sélection questions côté serveur (évite la dépendance à GameLogic côté client)
+    game.questions = getRandomQuestions(normalizedSettings.questionsCount);
+    game.currentQuestionIndex = 0;
+    game.state = "playing";
+    game.buzzerActive = true;
+    game.buzzerWinner = null;
+
+    // Reset réponses/score structure
+    Object.keys(game.players).forEach((pid) => {
+      game.players[pid].hasAnswered = false;
+      if (typeof game.scores[pid] !== "number") game.scores[pid] = 0;
+    });
+
+    io.to(gameCode).emit("game-started", {
+      gameCode: gameCode,
+      settings: game.settings,
+      players: Object.values(game.players).map((p) => ({
+        id: p.id,
+        name: p.name,
+        score: game.scores[p.id] ?? 0,
+        isHost: false,
+      })),
+    });
+
+    // Lancer première question
+    sendQuestionToAll(gameCode);
+  }
+
+  // Créer une partie
+  socket.on("create-game", ({ playerName, settings }) => {
+    const gameCode = generateGameCode();
+
+    const normalizedSettings = normalizeSettings(settings || {});
+
+    games[gameCode] = {
+      code: gameCode,
+      // compat : conservé pour l'UI (affiche le créateur), mais aucun privilège spécial côté serveur
+      hostId: socket.id,
+      hostName: playerName,
+      players: {},
+      state: "waiting",
+      settings: normalizedSettings,
+      currentQuestionIndex: 0,
+      questions: [],
+      scores: {},
+      buzzerActive: false,
+      buzzerWinner: null,
+      createdAt: Date.now(),
+    };
+
+    // Le créateur est un joueur comme les autres
+    players[socket.id] = {
+      id: socket.id,
+      gameCode: gameCode,
+      name: playerName,
+      score: 0,
+      isHost: false,
+      hasAnswered: false,
+    };
+
+    games[gameCode].players[socket.id] = players[socket.id];
+    games[gameCode].scores[socket.id] = 0;
+
+    socket.join(gameCode);
+
+    socket.emit("game-created", {
+      success: true,
+      gameCode: gameCode,
+      message: "Partie créée avec succès",
+    });
+
+    console.log(`Partie créée: ${gameCode} par ${playerName}`);
+  });
+
+  // Rejoindre une partie
+  socket.on("join-game", ({ gameCode, playerName }) => {
+    const game = games[gameCode];
+
+    if (!game) {
+      socket.emit("join-error", { message: "Code de partie invalide" });
+      return;
+    }
+
+    if (game.state !== "waiting") {
+      socket.emit("join-error", { message: "La partie a déjà commencé" });
+      return;
+    }
+
+    const maxPlayers = Number(game.settings?.maxPlayers ?? 4);
+    if (Object.keys(game.players).length >= maxPlayers) {
+      socket.emit("join-error", {
+        message: `La partie est complète (max ${maxPlayers} joueurs)`,
       });
       return;
     }
-    startRound(room);
-  }, 2500);
-}
 
-function startGame(room) {
-  if (!room) return;
-  if (room.state === "playing") return;
+    // Vérifier nom unique
+    const existingPlayer = Object.values(game.players).find(
+      (p) => p.name.toLowerCase() === playerName.toLowerCase()
+    );
 
-  room.state = "playing";
-  room.currentIndex = 0;
-  room.buzzWinner = null;
-  clearTimers(room);
-
-  // reset scores
-  Object.values(room.players).forEach((p) => (p.score = 0));
-
-  // questions
-  room.questions = pickQuestions(room.settings.questionsCount);
-
-  io.to(room.code).emit("game-started", {
-    gameCode: room.code,
-    totalQuestions: room.questions.length,
-  });
-
-  startRound(room);
-}
-
-io.on("connection", (socket) => {
-  socket.on("create-room", ({ playerName, settings }) => {
-    try {
-      const name = String(playerName || "").trim().slice(0, 24);
-      if (!name) return socket.emit("error-message", { message: "Nom invalide." });
-
-      let code = makeCode();
-      while (rooms.has(code)) code = makeCode();
-
-      const s = {
-        maxPlayers: clampInt(settings?.maxPlayers, 2, 4, 2),
-        questionsCount: clampInt(settings?.questionsCount, 5, 50, 10),
-        buzzerSeconds: clampInt(settings?.buzzerSeconds, 5, 90, 30),
-        answerSeconds: clampInt(settings?.answerSeconds, 5, 60, 15),
-        pointsCorrect: clampInt(settings?.pointsCorrect, 1, 50, 5),
-        pointsWrong: clampInt(settings?.pointsWrong, -50, -1, -5),
-      };
-
-      const room = {
-        code,
-        settings: s,
-        players: {},
-        state: "waiting",
-        questions: [],
-        currentIndex: 0,
-        buzzWinner: null,
-        awaitingAnswerFor: null,
-        timers: { buzzer: null, answer: null, next: null },
-      };
-
-      rooms.set(code, room);
-
-      room.players[socket.id] = { id: socket.id, name, score: 0 };
-      socket.join(code);
-
-      socket.emit("room-created", { gameCode: code, settings: room.settings });
-      emitRoomUpdate(room);
-    } catch (e) {
-      socket.emit("error-message", { message: "Erreur création partie." });
-    }
-  });
-
-  socket.on("join-room", ({ gameCode, playerName }) => {
-    const code = String(gameCode || "").trim().toUpperCase();
-    const room = rooms.get(code);
-    if (!room) return socket.emit("error-message", { message: "Partie introuvable." });
-    if (room.state !== "waiting") return socket.emit("error-message", { message: "Partie déjà commencée." });
-
-    const name = String(playerName || "").trim().slice(0, 24);
-    if (!name) return socket.emit("error-message", { message: "Nom invalide." });
-
-    const count = Object.keys(room.players).length;
-    if (count >= room.settings.maxPlayers) return socket.emit("error-message", { message: "Salle pleine." });
-
-    room.players[socket.id] = { id: socket.id, name, score: 0 };
-    socket.join(code);
-
-    socket.emit("room-joined", { gameCode: code, settings: room.settings });
-    emitRoomUpdate(room);
-  });
-
-  socket.on("leave-room", ({ gameCode }) => {
-    const code = String(gameCode || "").trim().toUpperCase();
-    const room = rooms.get(code);
-    if (!room) return;
-    socket.leave(code);
-    if (room.players[socket.id]) delete room.players[socket.id];
-
-    // supprimer si vide
-    if (Object.keys(room.players).length === 0) {
-      clearTimers(room);
-      rooms.delete(code);
+    if (existingPlayer) {
+      socket.emit("join-error", { message: "Ce nom est déjà pris" });
       return;
     }
-    emitRoomUpdate(room);
+
+    // Ajouter le joueur
+    players[socket.id] = {
+      id: socket.id,
+      gameCode: gameCode,
+      name: playerName,
+      score: 0,
+      isHost: false,
+      hasAnswered: false,
+    };
+
+    game.players[socket.id] = players[socket.id];
+    game.scores[socket.id] = 0;
+
+    socket.join(gameCode);
+
+    // Informer tous les joueurs
+    io.to(gameCode).emit("player-joined", {
+      playerId: socket.id,
+      playerName: playerName,
+      players: Object.values(game.players).map((p) => ({
+        id: p.id,
+        name: p.name,
+        score: p.score,
+        isHost: p.isHost,
+      })),
+    });
+
+    socket.emit("join-success", {
+      gameCode: gameCode,
+      hostName: game.hostName,
+      players: Object.values(game.players).map((p) => ({
+        id: p.id,
+        name: p.name,
+        score: p.score,
+        isHost: p.isHost,
+      })),
+      settings: game.settings,
+    });
+
+    console.log(`${playerName} a rejoint ${gameCode}`);
+
+    // Démarrage automatique dès que la salle est pleine
+    if (Object.keys(game.players).length >= maxPlayers) {
+      startGameInternal(gameCode);
+    }
   });
 
-  socket.on("start-game", ({ gameCode }) => {
-    const code = String(gameCode || "").trim().toUpperCase();
-    const room = rooms.get(code);
-    if (!room) return;
-    if (room.state !== "waiting") return;
-    if (Object.keys(room.players).length < 2) return;
-    startGame(room);
+  // Démarrer la partie
+  socket.on("start-game", ({ gameCode, settings }) => {
+    const game = games[gameCode];
+    if (!game) {
+      socket.emit("error", { message: "Code de partie invalide" });
+      return;
+    }
+
+    // Déjà en cours
+    if (game.state !== "waiting") {
+      return;
+    }
+
+    // Mettre à jour/normaliser les paramètres (si fournis)
+    if (settings) {
+      game.settings = normalizeSettings(settings);
+    }
+
+    // Démarrage uniquement si au moins 2 joueurs (évite une partie vide)
+    if (Object.keys(game.players).length < 2) {
+      socket.emit("error", { message: "Au moins 2 joueurs requis" });
+      return;
+    }
+
+    // Démarrer la partie de manière centralisée (questions côté serveur)
+    startGameInternal(gameCode);
   });
 
+  // Envoyer une question (pour l'hôte qui contrôle manuellement)
+  socket.on(
+    "send-question",
+    ({
+      gameCode,
+      question,
+      options,
+      correctAnswer,
+      questionNumber,
+      totalQuestions,
+      timeLimit,
+    }) => {
+      const game = games[gameCode];
+
+      if (!game || socket.id !== game.hostId) return;
+
+      // Activer le buzzer
+      game.buzzerActive = true;
+      game.buzzerWinner = null;
+      game.buzzerWinnerAnswered = false;
+      game.currentQuestion = {
+        question,
+        options,
+        correctAnswer,
+      };
+
+      clearGameTimers(game);
+
+      // Réinitialiser les réponses
+      Object.keys(game.players).forEach((playerId) => {
+        if (players[playerId]) {
+          players[playerId].hasAnswered = false;
+        }
+      });
+
+      io.to(gameCode).emit("new-question", {
+        question: question,
+        options: shuffleArray([...options]),
+        correctAnswer: correctAnswer,
+        timeLimit: timeLimit || game.settings.timePerQuestion * 1000,
+        questionNumber: questionNumber || game.currentQuestionIndex + 1,
+        totalQuestions: totalQuestions || game.totalQuestions,
+      });
+
+      console.log(`Question envoyée par l'hôte dans ${gameCode}`);
+
+      // Désactiver le buzzer après le temps
+      game._buzzerTimer = setTimeout(() => {
+        if (games[gameCode] && game.buzzerActive) {
+          game.buzzerActive = false;
+          io.to(gameCode).emit("buzzer-timeout");
+        }
+      }, timeLimit || game.settings.timePerQuestion * 1000);
+    }
+  );
+
+  // Buzzer
   socket.on("buzz", ({ gameCode }) => {
-    const code = String(gameCode || "").trim().toUpperCase();
-    const room = rooms.get(code);
-    if (!room) return;
-    if (room.state !== "playing") return;
-    if (room.buzzWinner) return;
-    if (!room.players[socket.id]) return;
+    const game = games[gameCode];
+    const player = players[socket.id];
 
-    room.buzzWinner = socket.id;
-    room.awaitingAnswerFor = socket.id;
+    if (!game || !player || !game.buzzerActive || game.buzzerWinner) return;
 
-    // stop timer buzzer
-    if (room.timers?.buzzer) clearTimeout(room.timers.buzzer);
-    room.timers.buzzer = null;
+    game.buzzerWinner = socket.id;
+    game.buzzerActive = false;
+    game.buzzerWinnerAnswered = false;
 
-    io.to(room.code).emit("buzz-winner", {
-      gameCode: room.code,
-      winner: { id: socket.id, name: room.players[socket.id].name },
-    });
+    // Timer de réponse: si le joueur ne répond pas, on considère la réponse comme incorrecte et on passe à la suite.
+    clearGameTimers(game);
+    game._answerTimer = setTimeout(() => {
+      const g = games[gameCode];
+      if (!g) return;
+      if (g.buzzerWinner === socket.id && !g.buzzerWinnerAnswered) {
+        const p = players[socket.id];
+        if (!p) return;
+        // Pas de réponse -> incorrect (0 point minimum)
+        p.score = Math.max(0, (p.score || 0) - 5);
+        g.scores[socket.id] = p.score;
+        g.buzzerWinnerAnswered = true;
 
-    const q = room.questions[room.currentIndex];
-    // options uniquement au winner
-    io.to(socket.id).emit("answer-options", {
-      gameCode: room.code,
-      options: q.options,
-      answerSeconds: room.settings.answerSeconds,
-    });
+        const rankings = Object.values(g.players)
+          .sort((a, b) => (b.score || 0) - (a.score || 0))
+          .map((pl, idx) => ({ position: idx + 1, name: pl.name, score: pl.score || 0 }));
 
-    // timer reponse
-    room.timers.answer = setTimeout(() => {
-      if (room.awaitingAnswerFor) {
-        finishRound(room, room.awaitingAnswerFor, null);
-        room.awaitingAnswerFor = null;
+        io.to(gameCode).emit("answer-result", {
+          playerId: socket.id,
+          playerName: p.name,
+          answer: null,
+          isCorrect: false,
+          score: p.score,
+          correctAnswer: g.currentQuestion?.correctAnswer || null,
+          question: g.currentQuestion?.question || null,
+          rankings,
+          reason: "timeout",
+        });
+
+        setTimeout(() => nextQuestion(gameCode), 2500);
       }
-    }, room.settings.answerSeconds * 1000);
+    }, (game.settings.timePerAnswer || 15) * 1000);
+
+    console.log(`${player.name} a buzzé dans ${gameCode}`);
+
+    io.to(gameCode).emit("player-buzzed", {
+      playerId: socket.id,
+      playerName: player.name,
+    });
+
+    // Donner du temps pour répondre (2 secondes avant d'afficher l'écran de réponse)
+    setTimeout(() => {
+      if (games[gameCode] && game.buzzerWinner === socket.id) {
+        // Options envoyées au moment de l'écran de réponse pour éviter tout état "undefined" côté client.
+        const safeOptions = Array.isArray(game.currentQuestion?.options)
+          ? shuffleArray([...game.currentQuestion.options])
+          : [];
+
+        io.to(gameCode).emit("show-answer-screen", {
+          answeringPlayer: player.name,
+          options: safeOptions,
+        });
+
+        // Event redondant (si le client préfère écouter un canal dédié)
+        io.to(socket.id).emit("answer-options", { options: safeOptions });
+      }
+    }, 2000);
   });
 
+  // Demande explicite des options de réponse (uniquement le gagnant du buzzer)
+  socket.on("request-answer-options", ({ gameCode }) => {
+    const game = games[gameCode];
+    if (!game) return;
+    if (!game.buzzerWinner || game.buzzerWinner !== socket.id) return;
+
+    const safeOptions = Array.isArray(game.currentQuestion?.options)
+      ? shuffleArray([...game.currentQuestion.options])
+      : [];
+
+    io.to(socket.id).emit("answer-options", { options: safeOptions });
+  });
+
+  // Soumettre une réponse
   socket.on("submit-answer", ({ gameCode, answer }) => {
-    const code = String(gameCode || "").trim().toUpperCase();
-    const room = rooms.get(code);
-    if (!room) return;
-    if (room.state !== "playing") return;
-    if (!room.awaitingAnswerFor) return;
-    if (room.awaitingAnswerFor !== socket.id) return;
+    const game = games[gameCode];
+    const player = players[socket.id];
 
-    room.awaitingAnswerFor = null;
-    if (room.timers?.answer) clearTimeout(room.timers.answer);
-    room.timers.answer = null;
+    if (!game || !player) return;
 
-    finishRound(room, socket.id, answer);
+    // Seul le vainqueur du buzzer est autorisé à répondre.
+    if (!game.buzzerWinner || game.buzzerWinner !== socket.id) return;
+    if (game.buzzerWinnerAnswered) return;
+
+    game.buzzerWinnerAnswered = true;
+    clearGameTimers(game);
+
+    const correctAnswer = game.currentQuestion?.correctAnswer;
+    const isCorrect = typeof correctAnswer === "string" && String(answer) === correctAnswer;
+
+    if (isCorrect) {
+      player.score = (player.score || 0) + 10;
+    } else {
+      player.score = Math.max(0, (player.score || 0) - 5);
+    }
+    game.scores[socket.id] = player.score;
+
+    const rankings = Object.values(game.players)
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .map((pl, idx) => ({ position: idx + 1, name: pl.name, score: pl.score || 0 }));
+
+    // Informer tous les joueurs
+    io.to(gameCode).emit("answer-result", {
+      playerId: socket.id,
+      playerName: player.name,
+      answer: answer,
+      isCorrect: isCorrect,
+      score: player.score,
+      correctAnswer: correctAnswer || null,
+      question: game.currentQuestion?.question || null,
+      rankings,
+    });
+
+    // En multijoueur "buzzer": un seul joueur répond. On passe à la question suivante après un court délai.
+    setTimeout(() => nextQuestion(gameCode), 2500);
   });
 
-  socket.on("disconnect", () => {
-    // retirer de toutes les rooms
-    for (const room of rooms.values()) {
-      if (room.players[socket.id]) {
-        delete room.players[socket.id];
-        if (room.awaitingAnswerFor === socket.id) {
-          // si le winner part, on termine la manche comme "pas de reponse"
-          room.awaitingAnswerFor = null;
-          finishRound(room, null, null);
-        }
+  // Passer à la question suivante (hôte seulement)
+  socket.on("next-question", ({ gameCode }) => {
+    const game = games[gameCode];
+    if (!game || socket.id !== game.hostId) return;
 
-        if (Object.keys(room.players).length === 0) {
-          clearTimers(room);
-          rooms.delete(room.code);
+    nextQuestion(gameCode);
+  });
+
+  // Terminer la partie
+  socket.on("end-game", ({ gameCode }) => {
+    const game = games[gameCode];
+    if (!game || socket.id !== game.hostId) return;
+
+    endGame(gameCode);
+  });
+
+  // Déconnexion
+  socket.on("disconnect", () => {
+    console.log("Déconnexion:", socket.id);
+
+    const player = players[socket.id];
+    if (player) {
+      const gameCode = player.gameCode;
+      const game = games[gameCode];
+
+      if (game) {
+        delete game.players[socket.id];
+        delete game.scores[socket.id];
+
+        if (player.isHost) {
+          io.to(gameCode).emit("host-disconnected");
+          delete games[gameCode];
         } else {
-          emitRoomUpdate(room);
+          io.to(gameCode).emit("player-left", {
+            playerId: socket.id,
+            playerName: player.name,
+            players: Object.values(game.players).map((p) => ({
+              id: p.id,
+              name: p.name,
+              score: p.score,
+            })),
+          });
         }
       }
+
+      delete players[socket.id];
     }
   });
 });
 
-function clampInt(v, min, max, fallback) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, Math.trunc(n)));
+// ============================================
+// FONCTIONS INTERNES
+// ============================================
+
+function sendQuestionToAll(gameCode) {
+  const game = games[gameCode];
+
+  if (!game || game.state !== "playing") return;
+
+  // Vérifier s'il reste des questions
+  if (game.currentQuestionIndex >= game.questions.length) {
+    endGame(gameCode);
+    return;
+  }
+
+  const questionData = game.questions[game.currentQuestionIndex];
+
+  // Conserver la question courante côté serveur (évite de faire confiance au client pour la correction)
+  game.currentQuestion = {
+    question: questionData.question,
+    options: questionData.options,
+    correctAnswer: questionData.reponseCorrecte,
+  };
+  game.buzzerWinnerAnswered = false;
+  clearGameTimers(game);
+
+  // Activer le buzzer
+  game.buzzerActive = true;
+  game.buzzerWinner = null;
+
+  // Réinitialiser les réponses
+  Object.keys(game.players).forEach((playerId) => {
+    if (players[playerId]) {
+      players[playerId].hasAnswered = false;
+    }
+  });
+
+  // Mélanger les options
+  const shuffledOptions = shuffleArray([...questionData.options]);
+
+  // Envoyer à tous les joueurs
+  io.to(gameCode).emit("new-question", {
+    question: questionData.question,
+    options: shuffledOptions,
+    correctAnswer: questionData.reponseCorrecte,
+    timeLimit: game.settings.timePerQuestion * 1000,
+    questionNumber: game.currentQuestionIndex + 1,
+    totalQuestions: game.totalQuestions,
+  });
+
+  console.log(
+    `Question ${game.currentQuestionIndex + 1}/${game.totalQuestions} envoyée`
+  );
+
+  // Désactiver le buzzer après le temps
+  game._buzzerTimer = setTimeout(() => {
+    if (games[gameCode] && game.buzzerActive) {
+      game.buzzerActive = false;
+      io.to(gameCode).emit("buzzer-timeout");
+
+      // Si personne n'a buzzé, passer à la question suivante après 2 secondes
+      setTimeout(() => {
+        if (games[gameCode]) {
+          nextQuestion(gameCode);
+        }
+      }, 2000);
+    }
+  }, game.settings.timePerQuestion * 1000);
 }
 
+function nextQuestion(gameCode) {
+  const game = games[gameCode];
+  if (!game) return;
+
+  game.currentQuestionIndex++;
+
+  if (game.currentQuestionIndex >= game.questions.length) {
+    endGame(gameCode);
+  } else {
+    setTimeout(() => {
+      sendQuestionToAll(gameCode);
+    }, 2000);
+  }
+}
+
+function endGame(gameCode) {
+  const game = games[gameCode];
+  if (!game) return;
+
+  game.state = "finished";
+
+  // Calculer les classements
+  const rankings = Object.values(game.players)
+    .sort((a, b) => b.score - a.score)
+    .map((player, index) => ({
+      position: index + 1,
+      name: player.name,
+      score: player.score,
+    }));
+
+  io.to(gameCode).emit("game-finished", {
+    rankings: rankings,
+  });
+
+  console.log(
+    `Partie ${gameCode} terminée. Gagnant: ${rankings[0]?.name || "Aucun"}`
+  );
+
+  // Nettoyer après 5 minutes
+  setTimeout(() => {
+    if (games[gameCode]) {
+      Object.keys(game.players).forEach((playerId) => {
+        delete players[playerId];
+      });
+      delete games[gameCode];
+    }
+  }, 5 * 60 * 1000);
+}
+
+// ============================================
+// DÉMARRAGE DU SERVEUR
+// ============================================
+
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Backend listening on ${PORT}`);
+  console.log(`✅ Serveur démarré sur le port ${PORT}`);
+  if (allQuestions.length > 0) {
+    console.log(`✅ ${allQuestions.length} questions prêtes (backup)`);
+  } else {
+    console.log(
+      `ℹ️ Aucune question dans le backend, attente des questions du frontend`
+    );
+  }
 });
