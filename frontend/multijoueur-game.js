@@ -375,6 +375,12 @@ function generateQRCode(gameCode) {
   if (!qrContainer) return;
 
   qrContainer.innerHTML = "";
+  
+  // Créer un conteneur pour le QR code
+  const qrWrapper = document.createElement("div");
+  qrWrapper.id = "qr-wrapper";
+  qrWrapper.style.cssText = "display: flex; flex-direction: column; align-items: center; gap: 10px;";
+  qrContainer.appendChild(qrWrapper);
 
   // Construire l'URL de manière plus robuste
   let baseUrl = window.location.origin;
@@ -390,9 +396,12 @@ function generateQRCode(gameCode) {
   const url = `${baseUrl}${pathname}multijoueur.html?join=${gameCode}`;
 
   console.log("🔗 URL QR Code:", url);
+  console.log("🔗 Origin:", baseUrl);
+  console.log("🔗 Pathname:", pathname);
 
   try {
-    new QRCode(qrContainer, {
+    // Générer le QR code dans le wrapper
+    new QRCode(qrWrapper, {
       text: url,
       width: 200,
       height: 200,
@@ -402,19 +411,24 @@ function generateQRCode(gameCode) {
     });
     console.log("✅ QR Code généré:", url);
     
-    // Ajouter aussi un lien cliquable sous le QR code
+    // Ajouter le lien cliquable APRÈS le QR code (dans le wrapper)
     const linkDiv = document.createElement("div");
-    linkDiv.style.cssText = "margin-top: 10px; font-size: 0.8rem; word-break: break-all;";
-    linkDiv.innerHTML = `<a href="${url}" target="_blank" style="color: var(--p-bleu);">Ouvrir le lien</a>`;
-    qrContainer.appendChild(linkDiv);
+    linkDiv.style.cssText = "margin-top: 15px; text-align: center; max-width: 250px;";
+    linkDiv.innerHTML = `
+      <a href="${url}" target="_blank" style="color: var(--p-bleu); font-size: 0.9rem; text-decoration: underline; display: block; margin-bottom: 8px;">📱 Ouvrir le lien</a>
+      <span style="font-size: 0.7rem; color: rgba(255,255,255,0.5); word-break: break-all; display: block;">${url}</span>
+    `;
+    qrWrapper.appendChild(linkDiv);
     
   } catch (error) {
     console.error("❌ Erreur génération QR:", error);
     // Fallback : afficher le lien
     qrContainer.innerHTML = `
-      <p style="color: var(--p-rose);">QR Code indisponible</p>
-      <p style="font-size: 0.9rem;">Lien direct :</p>
-      <a href="${url}" target="_blank" style="color: var(--p-bleu); word-break: break-all;">${url}</a>
+      <div style="text-align: center; padding: 1rem;">
+        <p style="color: var(--p-rose);">QR Code indisponible</p>
+        <p style="font-size: 0.9rem; margin: 1rem 0;">Lien direct :</p>
+        <a href="${url}" target="_blank" style="color: var(--p-bleu); word-break: break-all; font-size: 0.85rem;">${url}</a>
+      </div>
     `;
   }
 }
