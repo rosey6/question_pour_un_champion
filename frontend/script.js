@@ -18,9 +18,7 @@ let jeu = {
 };
 
 // ============================================
-// ILLUSTRATIONS (affichées uniquement au résultat)
-// - Ne modifie pas style.css
-// - Taille et visibilité gérées en JS
+// ILLUSTRATIONS
 // ============================================
 
 function __setHiddenByClass(el, hidden) {
@@ -31,7 +29,6 @@ function __setHiddenByClass(el, hidden) {
 
 function __applyResultImageSizing(img) {
   if (!img) return;
-  // Plus petit, sans rognage
   img.style.display = "block";
   img.style.width = "100%";
   img.style.maxWidth = "520px";
@@ -43,15 +40,16 @@ function __applyResultImageSizing(img) {
 }
 
 function __hideAnyInGameIllustrations() {
-  // Si des anciens patches ont injecté une image dans l'écran "jeu", on la cache.
   try {
     const jeuScreen = document.getElementById("jeu");
     if (jeuScreen) {
       jeuScreen.querySelectorAll("img").forEach((img) => {
-        // On ne touche pas aux images du résultat
         if (img && img.id && img.id.startsWith("resultat-")) return;
-        // Cache uniquement les images injectées pour l'illustration
-        if (img && (img.classList.contains("illustration") || img.closest(".illustration-container"))) {
+        if (
+          img &&
+          (img.classList.contains("illustration") ||
+            img.closest(".illustration-container"))
+        ) {
           img.style.display = "none";
         }
       });
@@ -66,7 +64,9 @@ function __renderSoloResultIllustration(questionObj) {
   if (!box || !img || !txt) return;
 
   const url =
-    (questionObj && (questionObj.imageUrl || questionObj.imageURL || questionObj.image)) || "";
+    (questionObj &&
+      (questionObj.imageUrl || questionObj.imageURL || questionObj.image)) ||
+    "";
   const caption =
     (questionObj &&
       (questionObj.illustrationTexte ||
@@ -108,8 +108,6 @@ function obtenirQuestionsAleatoires(nombre) {
   if (nombre <= 0 || nombre > jeu.toutesLesQuestions.length) {
     nombre = jeu.toutesLesQuestions.length;
   }
-
-  // Mélanger et prendre X questions
   const indicesMelanges = melangerTableau([
     ...Array(jeu.toutesLesQuestions.length).keys(),
   ]);
@@ -121,7 +119,7 @@ function obtenirQuestionsAleatoires(nombre) {
 function traiterReponseMultijoueur(
   indexJoueur,
   reponseDonnee,
-  reponseCorrecte
+  reponseCorrecte,
 ) {
   if (reponseDonnee === reponseCorrecte) {
     jeu.scores[indexJoueur] += 10;
@@ -141,7 +139,7 @@ function reinitialiserPartieMultijoueur(
   nomsJoueurs,
   nbQuestions,
   dureeQuestion,
-  dureeReponse
+  dureeReponse,
 ) {
   jeu.nombreJoueurs = nomsJoueurs.length;
   jeu.nomsJoueurs = nomsJoueurs;
@@ -152,12 +150,11 @@ function reinitialiserPartieMultijoueur(
   jeu.questionActuelle = 0;
   jeu.joueurActuel = null;
   jeu.enCours = true;
-
   return obtenirQuestionsAleatoires(nbQuestions);
 }
 
 // ============================================
-// FONCTIONS ORIGINALES (inchangées)
+// CHARGEMENT QUESTIONS
 // ============================================
 
 async function chargerToutesLesQuestions() {
@@ -169,7 +166,6 @@ async function chargerToutesLesQuestions() {
   } catch (error) {
     console.error("Erreur:", error);
     jeu.toutesLesQuestions = [];
-    console.warn("Assurez-vous que questions.json est présent");
   }
 }
 
@@ -183,24 +179,17 @@ function melangerTableau(tableau) {
 }
 
 function preparerQuestionsPartie() {
-  console.log("Préparation des questions pour la partie");
-  console.log(`Questions demandées: ${jeu.nombreQuestionsParPartie}`);
-  console.log(`Questions disponibles: ${jeu.toutesLesQuestions.length}`);
-
   jeu.questionsDejaPosees = [];
   jeu.questionsTirees = [];
 
-  if (jeu.toutesLesQuestions.length === 0) {
-    console.error("Aucune question disponible!");
-    return;
-  }
+  if (jeu.toutesLesQuestions.length === 0) return;
 
   let indicesDisponibles = Array.from(
     { length: jeu.toutesLesQuestions.length },
-    (_, i) => i
+    (_, i) => i,
   );
-
   let nombreQuestionsATirer = jeu.nombreQuestionsParPartie;
+
   if (
     nombreQuestionsATirer === 0 ||
     nombreQuestionsATirer > indicesDisponibles.length
@@ -214,26 +203,13 @@ function preparerQuestionsPartie() {
   if (!jeu.melangerQuestions) indicesSelectionnes.sort((a, b) => a - b);
 
   jeu.questionsTirees = indicesSelectionnes;
-  console.log(`${jeu.questionsTirees.length} questions sélectionnées`);
 }
 
 function obtenirQuestionSuivante() {
-  if (jeu.questionActuelle >= jeu.questionsTirees.length) {
-    console.log("Plus de questions disponibles");
-    return null;
-  }
+  if (jeu.questionActuelle >= jeu.questionsTirees.length) return null;
 
   const indiceQuestion = jeu.questionsTirees[jeu.questionActuelle];
-  if (indiceQuestion >= jeu.toutesLesQuestions.length) {
-    console.error(`Indice de question invalide: ${indiceQuestion}`);
-    return null;
-  }
-
-  console.log(
-    `Question ${jeu.questionActuelle + 1}/${
-      jeu.questionsTirees.length
-    }: indice ${indiceQuestion}`
-  );
+  if (indiceQuestion >= jeu.toutesLesQuestions.length) return null;
 
   if (!jeu.questionsDejaPosees.includes(indiceQuestion)) {
     jeu.questionsDejaPosees.push(indiceQuestion);
@@ -243,17 +219,13 @@ function obtenirQuestionSuivante() {
 }
 
 function changerEcran(idEcran) {
-  console.log(`Changement vers écran: ${idEcran}`);
-
-  document.querySelectorAll(".ecran").forEach((ecran) => {
-    ecran.classList.remove("actif");
-  });
+  document
+    .querySelectorAll(".ecran")
+    .forEach((ecran) => ecran.classList.remove("actif"));
 
   const ecranCible = document.getElementById(idEcran);
   if (ecranCible) {
     ecranCible.classList.add("actif");
-  } else {
-    console.error(`Écran ${idEcran} non trouvé!`);
   }
 
   if (idEcran !== "jeu") {
@@ -275,12 +247,6 @@ function recupererParametres() {
     jeu.nombreQuestionsParPartie = parseInt(nombreQuestionsSelect.value);
     jeu.dureeQuestion = parseInt(dureeQuestionSelect.value);
     jeu.dureeReponse = parseInt(dureeReponseSelect.value);
-
-    console.log("Paramètres récupérés:", {
-      nombreQuestions: jeu.nombreQuestionsParPartie,
-      dureeQuestion: jeu.dureeQuestion,
-      dureeReponse: jeu.dureeReponse,
-    });
   }
 }
 
@@ -289,7 +255,6 @@ function definirNombreJoueurs(nombre) {
   if (nombre > 4) nombre = 4;
 
   jeu.nombreJoueurs = nombre;
-  console.log(`Nombre de joueurs défini à: ${nombre}`);
 
   document.querySelectorAll(".option-joueur").forEach((option) => {
     if (parseInt(option.dataset.joueurs) === nombre) {
@@ -306,6 +271,8 @@ function definirNombreJoueurs(nombre) {
 
 function genererChampsNoms() {
   const formulaire = document.getElementById("formulaire-noms");
+  if (!formulaire) return;
+
   formulaire.innerHTML = "";
 
   for (let i = 0; i < jeu.nombreJoueurs; i++) {
@@ -338,17 +305,14 @@ function recupererNomsJoueurs() {
       jeu.nomsJoueurs.push(`Joueur ${i + 1}`);
     }
   }
-  console.log("Noms des joueurs:", jeu.nomsJoueurs);
 }
 
 function validerJoueursEtParametrer() {
   recupererNomsJoueurs();
-
   if (jeu.nomsJoueurs.length === 0) {
     alert("Veuillez entrer au moins un nom de joueur !");
     return;
   }
-
   changerEcran("parametres");
 }
 
@@ -373,15 +337,14 @@ function demarrerPartie() {
 
   const question = obtenirQuestionSuivante();
   if (question) {
-    document.getElementById("question-actuelle").textContent =
-      question.question;
+    const questionEl = document.getElementById("question-actuelle");
+    if (questionEl) questionEl.textContent = question.question;
   } else {
     alert("Erreur: Aucune question disponible !");
     return;
   }
 
   demarrerChronometreQuestion();
-  // S'assure qu'aucune illustration ne s'affiche pendant la question
   __hideAnyInGameIllustrations();
   changerEcran("jeu");
 }
@@ -455,7 +418,6 @@ function genererBuzzers() {
       if (jeu.enCours && !jeu.joueurActuel) {
         buzzer.classList.add("buzzer-active");
         jeu.joueurActuel = i;
-        console.log(`${jeu.nomsJoueurs[i]} a buzzé!`);
 
         document.querySelectorAll(".bouton-buzzer").forEach((btn) => {
           btn.disabled = true;
@@ -463,10 +425,7 @@ function genererBuzzers() {
         });
 
         clearInterval(jeu.chronometreQuestion);
-
-        setTimeout(() => {
-          afficherEcranReponse();
-        }, 1000);
+        setTimeout(() => afficherEcranReponse(), 1000);
       }
     });
 
@@ -511,8 +470,6 @@ function initialiserControlesClavier() {
 
 function activerBuzzerParClavier(indexJoueur) {
   if (jeu.enCours && !jeu.joueurActuel) {
-    console.log(`${jeu.nomsJoueurs[indexJoueur]} a buzzé avec le clavier!`);
-
     const boutonsBuzzer = document.querySelectorAll(".bouton-buzzer");
     if (boutonsBuzzer[indexJoueur]) {
       boutonsBuzzer[indexJoueur].classList.add("buzzer-active");
@@ -524,10 +481,7 @@ function activerBuzzerParClavier(indexJoueur) {
 
       jeu.joueurActuel = indexJoueur;
       clearInterval(jeu.chronometreQuestion);
-
-      setTimeout(() => {
-        afficherEcranReponse();
-      }, 1000);
+      setTimeout(() => afficherEcranReponse(), 1000);
     }
   }
 }
@@ -548,10 +502,7 @@ function demarrerChronometreQuestion() {
 
     if (tempsRestant <= 0) {
       clearInterval(jeu.chronometreQuestion);
-      if (!jeu.joueurActuel) {
-        console.log("Temps écoulé, personne n'a buzzé");
-        passerQuestionSuivante();
-      }
+      if (!jeu.joueurActuel) passerQuestionSuivante();
     }
   }, 1000);
 }
@@ -563,26 +514,29 @@ function afficherEcranReponse() {
     return;
   }
 
-  document.getElementById("nom-repondant-reponses").textContent =
-    jeu.nomsJoueurs[jeu.joueurActuel];
-  document.getElementById("question-reponse").textContent = question.question;
+  const nomRepondantEl = document.getElementById("nom-repondant-reponses");
+  const questionReponseEl = document.getElementById("question-reponse");
+
+  if (nomRepondantEl)
+    nomRepondantEl.textContent = jeu.nomsJoueurs[jeu.joueurActuel];
+  if (questionReponseEl) questionReponseEl.textContent = question.question;
 
   const optionsConteneur = document.getElementById("options-reponse");
-  optionsConteneur.innerHTML = "";
+  if (optionsConteneur) {
+    optionsConteneur.innerHTML = "";
 
-  const optionsMelangees = melangerTableau(question.options);
+    const optionsMelangees = melangerTableau(question.options);
 
-  optionsMelangees.forEach((option) => {
-    const boutonOption = document.createElement("button");
-    boutonOption.className = "option-reponse";
-    boutonOption.textContent = option;
-
-    boutonOption.addEventListener("click", () => {
-      verifierReponse(option, question.reponseCorrecte);
+    optionsMelangees.forEach((option) => {
+      const boutonOption = document.createElement("button");
+      boutonOption.className = "option-reponse";
+      boutonOption.textContent = option;
+      boutonOption.addEventListener("click", () =>
+        verifierReponse(option, question.reponseCorrecte),
+      );
+      optionsConteneur.appendChild(boutonOption);
     });
-
-    optionsConteneur.appendChild(boutonOption);
-  });
+  }
 
   demarrerChronometreReponse();
   changerEcran("reponses");
@@ -610,42 +564,50 @@ function demarrerChronometreReponse() {
 function verifierReponse(reponseDonnee, reponseCorrecte, tempsEcoule = false) {
   clearInterval(jeu.chronometreReponse);
 
-  document.getElementById("question-resultat").textContent =
-    jeu.toutesLesQuestions[jeu.questionsTirees[jeu.questionActuelle]].question;
+  const questionResultatEl = document.getElementById("question-resultat");
+  const reponseCorrecteEl = document.getElementById("reponse-correcte");
+  const nomRepondantEl = document.getElementById("nom-repondant");
+  const statutReponseEl = document.getElementById("statut-reponse");
 
-  document.getElementById(
-    "reponse-correcte"
-  ).textContent = `Réponse correcte: ${reponseCorrecte}`;
-  document.getElementById("nom-repondant").textContent =
-    jeu.nomsJoueurs[jeu.joueurActuel];
+  if (
+    questionResultatEl &&
+    jeu.questionsTirees[jeu.questionActuelle] !== undefined
+  ) {
+    questionResultatEl.textContent =
+      jeu.toutesLesQuestions[
+        jeu.questionsTirees[jeu.questionActuelle]
+      ].question;
+  }
 
-  let bonneReponse = false;
+  if (reponseCorrecteEl)
+    reponseCorrecteEl.textContent = `Réponse correcte: ${reponseCorrecte}`;
+  if (nomRepondantEl)
+    nomRepondantEl.textContent = jeu.nomsJoueurs[jeu.joueurActuel];
 
   if (tempsEcoule) {
-    document.getElementById("statut-reponse").textContent =
-      "Temps écoulé! -5 points";
-    document.getElementById("statut-reponse").className =
-      "statut-reponse incorrect";
+    if (statutReponseEl) {
+      statutReponseEl.textContent = "Temps écoulé! -5 points";
+      statutReponseEl.className = "statut-reponse incorrect";
+    }
     jeu.scores[jeu.joueurActuel] -= 5;
     if (jeu.scores[jeu.joueurActuel] < 0) jeu.scores[jeu.joueurActuel] = 0;
   } else if (reponseDonnee === reponseCorrecte) {
-    document.getElementById("statut-reponse").textContent =
-      "Bonne réponse! +10 points";
-    document.getElementById("statut-reponse").className = "statut-reponse";
+    if (statutReponseEl) {
+      statutReponseEl.textContent = "Bonne réponse! +10 points";
+      statutReponseEl.className = "statut-reponse";
+    }
     jeu.scores[jeu.joueurActuel] += 10;
-    bonneReponse = true;
   } else {
-    document.getElementById("statut-reponse").textContent =
-      "Mauvaise réponse! -5 points";
-    document.getElementById("statut-reponse").className =
-      "statut-reponse incorrect";
+    if (statutReponseEl) {
+      statutReponseEl.textContent = "Mauvaise réponse! -5 points";
+      statutReponseEl.className = "statut-reponse incorrect";
+    }
     jeu.scores[jeu.joueurActuel] -= 5;
     if (jeu.scores[jeu.joueurActuel] < 0) jeu.scores[jeu.joueurActuel] = 0;
   }
 
   genererGrilleScores("grille-scores-resultat");
 
-  // Illustration uniquement au résultat (solo)
   try {
     const qIndex = jeu.questionsTirees[jeu.questionActuelle];
     const qObj = jeu.toutesLesQuestions[qIndex];
@@ -672,10 +634,11 @@ function passerQuestionSuivante() {
     btn.classList.remove("buzzer-active");
   });
 
-  document.getElementById("question-actuelle").textContent = question.question;
+  const questionEl = document.getElementById("question-actuelle");
+  if (questionEl) questionEl.textContent = question.question;
+
   genererGrilleScores("grille-scores");
   demarrerChronometreQuestion();
-  // S'assure qu'aucune illustration ne s'affiche pendant la question
   __hideAnyInGameIllustrations();
   changerEcran("jeu");
 }
@@ -689,13 +652,11 @@ function terminerPartie() {
 
   if (gagnants.length === 1) {
     alert(
-      `Partie terminée !\n\nLe gagnant est ${gagnants[0]} avec ${maxScore} points !`
+      `Partie terminée !\n\nLe gagnant est ${gagnants[0]} avec ${maxScore} points !`,
     );
   } else {
     alert(
-      `Partie terminée !\n\nÉgalité entre : ${gagnants.join(
-        ", "
-      )} avec ${maxScore} points chacun !`
+      `Partie terminée !\n\nÉgalité entre : ${gagnants.join(", ")} avec ${maxScore} points chacun !`,
     );
   }
 
@@ -769,20 +730,27 @@ function sauvegarderPartie() {
 }
 
 function initialiserEvenements() {
-  document.getElementById("btn-commencer").addEventListener("click", () => {
-    changerEcran("selection-joueurs");
-  });
+  const btnCommencer = document.getElementById("btn-commencer");
+  if (btnCommencer) {
+    btnCommencer.addEventListener("click", () =>
+      changerEcran("selection-joueurs"),
+    );
+  }
 
-  document.getElementById("btn-historique").addEventListener("click", () => {
-    afficherHistorique();
-    changerEcran("historique");
-  });
-
-  document
-    .getElementById("btn-retour-historique")
-    .addEventListener("click", () => {
-      changerEcran("accueil");
+  const btnHistorique = document.getElementById("btn-historique");
+  if (btnHistorique) {
+    btnHistorique.addEventListener("click", () => {
+      afficherHistorique();
+      changerEcran("historique");
     });
+  }
+
+  const btnRetourHistorique = document.getElementById("btn-retour-historique");
+  if (btnRetourHistorique) {
+    btnRetourHistorique.addEventListener("click", () =>
+      changerEcran("accueil"),
+    );
+  }
 
   document.querySelectorAll(".option-joueur").forEach((option) => {
     option.addEventListener("click", () => {
@@ -791,31 +759,33 @@ function initialiserEvenements() {
     });
   });
 
-  document
-    .getElementById("btn-valider-joueurs")
-    .addEventListener("click", () => {
-      validerJoueursEtParametrer();
-    });
+  const btnValiderJoueurs = document.getElementById("btn-valider-joueurs");
+  if (btnValiderJoueurs) {
+    btnValiderJoueurs.addEventListener("click", () =>
+      validerJoueursEtParametrer(),
+    );
+  }
 
-  document
-    .getElementById("btn-retour-joueurs")
-    .addEventListener("click", () => {
-      changerEcran("accueil");
-    });
+  const btnRetourJoueurs = document.getElementById("btn-retour-joueurs");
+  if (btnRetourJoueurs) {
+    btnRetourJoueurs.addEventListener("click", () => changerEcran("accueil"));
+  }
 
-  document.getElementById("btn-demarrer-jeu").addEventListener("click", () => {
-    demarrerPartie();
-  });
+  const btnDemarrerJeu = document.getElementById("btn-demarrer-jeu");
+  if (btnDemarrerJeu) {
+    btnDemarrerJeu.addEventListener("click", () => demarrerPartie());
+  }
 
-  document
-    .getElementById("btn-retour-parametres")
-    .addEventListener("click", () => {
-      changerEcran("selection-joueurs");
-    });
+  const btnRetourParametres = document.getElementById("btn-retour-parametres");
+  if (btnRetourParametres) {
+    btnRetourParametres.addEventListener("click", () =>
+      changerEcran("selection-joueurs"),
+    );
+  }
 
-  document
-    .getElementById("btn-retour-reponses")
-    .addEventListener("click", () => {
+  const btnRetourReponses = document.getElementById("btn-retour-reponses");
+  if (btnRetourReponses) {
+    btnRetourReponses.addEventListener("click", () => {
       jeu.joueurActuel = null;
       document.querySelectorAll(".bouton-buzzer").forEach((btn) => {
         btn.disabled = false;
@@ -824,19 +794,22 @@ function initialiserEvenements() {
       });
       changerEcran("jeu");
     });
+  }
 
-  document
-    .getElementById("btn-question-suivante")
-    .addEventListener("click", () => {
-      passerQuestionSuivante();
-    });
+  const btnQuestionSuivante = document.getElementById("btn-question-suivante");
+  if (btnQuestionSuivante) {
+    btnQuestionSuivante.addEventListener("click", () =>
+      passerQuestionSuivante(),
+    );
+  }
 
-  document
-    .getElementById("btn-menu-principal")
-    .addEventListener("click", () => {
+  const btnMenuPrincipal = document.getElementById("btn-menu-principal");
+  if (btnMenuPrincipal) {
+    btnMenuPrincipal.addEventListener("click", () => {
       sauvegarderPartie();
       changerEcran("accueil");
     });
+  }
 
   initialiserControlesClavier();
 }
@@ -846,7 +819,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   initialiserEvenements();
   definirNombreJoueurs(2);
   console.log("Jeu initialisé avec succès!");
-  console.log("Questions disponibles:", jeu.toutesLesQuestions.length);
 
   if (jeu.toutesLesQuestions.length === 0) {
     console.warn("ATTENTION: Aucune question chargée.");
