@@ -720,6 +720,10 @@ function displayAnswerResult(data) {
   // Mise à jour scores
   updateScores(data.rankings);
 
+  // Récupérer l'illustration depuis data ou currentQuestionData en secours
+  const imageUrl = data.imageUrl || currentQuestionData?.imageUrl || null;
+  const illustrationTexte = data.illustrationTexte || currentQuestionData?.illustrationTexte || null;
+
   // Vue hôte
   if (isHost) {
     const resultatScreen = document.getElementById("ecran-resultat-multi");
@@ -733,6 +737,24 @@ function displayAnswerResult(data) {
       bonneReponse.style.color = data.isCorrect
         ? "var(--p-bleu)"
         : "var(--p-rose)";
+    }
+
+    // Afficher l'illustration (vue hôte)
+    const illustrationContainer = document.getElementById("resultat-multi-illustration");
+    const illustrationImage = document.getElementById("resultat-multi-image");
+    const illustrationDescription = document.getElementById("resultat-multi-description");
+
+    if (illustrationContainer && illustrationImage) {
+      if (imageUrl) {
+        illustrationImage.src = imageUrl;
+        illustrationImage.alt = illustrationTexte || "Illustration";
+        if (illustrationDescription) {
+          illustrationDescription.textContent = illustrationTexte || "";
+        }
+        illustrationContainer.classList.remove("hidden");
+      } else {
+        illustrationContainer.classList.add("hidden");
+      }
     }
 
     if (resultatScreen) resultatScreen.classList.remove("hidden");
@@ -752,6 +774,26 @@ function displayAnswerResult(data) {
 
     if (correct) {
       correct.textContent = `Réponse correcte : ${data.correctAnswer}`;
+    }
+
+    // Afficher l'illustration (vue joueur)
+    const illustrationImage = document.getElementById("resultat-joueur-image");
+    const illustrationDescription = document.getElementById("resultat-joueur-description");
+
+    if (illustrationImage) {
+      if (imageUrl) {
+        illustrationImage.src = imageUrl;
+        illustrationImage.alt = illustrationTexte || "Illustration";
+        illustrationImage.style.display = "block";
+        if (illustrationDescription) {
+          illustrationDescription.textContent = illustrationTexte || "";
+        }
+      } else {
+        illustrationImage.style.display = "none";
+        if (illustrationDescription) {
+          illustrationDescription.textContent = "";
+        }
+      }
     }
 
     if (resultatJoueur) resultatJoueur.classList.remove("hidden");

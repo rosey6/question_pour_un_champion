@@ -565,6 +565,8 @@ io.on("connection", (socket) => {
       score: player.score,
       correctAnswer: correctAnswer || null,
       question: game.currentQuestion?.question || null,
+      imageUrl: game.currentQuestion?.imageUrl || null,
+      illustrationTexte: game.currentQuestion?.illustrationTexte || null,
       rankings,
     });
 
@@ -644,6 +646,8 @@ function sendQuestionToAll(gameCode) {
     question: questionData.question,
     options: questionData.options,
     correctAnswer: questionData.reponseCorrecte,
+    imageUrl: questionData.imageUrl || null,
+    illustrationTexte: questionData.illustrationTexte || null,
   };
   game.buzzerWinnerAnswered = false;
   clearGameTimers(game);
@@ -669,11 +673,14 @@ function sendQuestionToAll(gameCode) {
     correctAnswer: questionData.reponseCorrecte,
     timeLimit: game.settings.timePerQuestion * 1000,
     questionNumber: game.currentQuestionIndex + 1,
-    totalQuestions: game.totalQuestions,
+    totalQuestions: game.questions.length,
+    // Illustration pour l'écran de résultat
+    imageUrl: questionData.imageUrl || null,
+    illustrationTexte: questionData.illustrationTexte || null,
   });
 
   console.log(
-    `Question ${game.currentQuestionIndex + 1}/${game.totalQuestions} envoyée`
+    `Question ${game.currentQuestionIndex + 1}/${game.questions.length} envoyée`
   );
 
   // Désactiver le buzzer après le temps
