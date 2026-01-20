@@ -77,10 +77,10 @@
                 <label for="multi-mode">Mode multijoueur</label>
                 <select id="multi-mode" class="select-choix">
                   <option value="spectator" selected>
-                    Hôte spectateur (PC) — joueurs au téléphone
+                    PC Hôte — joueurs au téléphone (l'hôte ne joue pas)
                   </option>
-                  <option value="hostplay">
-                    Hôte joueur (PC) — l'hôte participe
+                  <option value="classic">
+                    Mode Classique — tout le monde voit les questions sur le même écran
                   </option>
                 </select>
               </div>
@@ -201,7 +201,7 @@
           </div>
         </header>
 
-        <!-- VUE HÔTE (PC) -->
+        <!-- VUE HÔTE (PC) - Mode spectateur -->
         <div id="vue-hote-multi" class="vue-multi">
           <div class="scores-multijoueur" id="grille-scores-multi"></div>
 
@@ -288,6 +288,34 @@
                 style="text-decoration: none; display: inline-block"
                 >Menu principal</a
               >
+            </div>
+          </div>
+        </div>
+
+        <!-- VUE MODE CLASSIQUE - Tous sur le même écran -->
+        <div id="vue-classique-multi" class="vue-multi hidden">
+          <div class="classique-question-zone">
+            <div class="question-multijoueur">
+              <h2 id="question-classique">Question...</h2>
+            </div>
+            
+            <div class="classique-options" id="options-classique"></div>
+          </div>
+
+          <div class="classique-buzzers-grid" id="buzzers-classique"></div>
+
+          <!-- ÉCRAN RÉSULTAT CLASSIQUE -->
+          <div id="ecran-resultat-classique" class="hidden">
+            <h2>Résultat</h2>
+            <p id="resultat-classique-info" class="reponse-correcte"></p>
+            <div id="resultat-classique-illustration" class="illustration-container hidden">
+              <img id="resultat-classique-image" alt="Illustration" loading="lazy" />
+              <p id="resultat-classique-description" class="illustration-description"></p>
+            </div>
+            <div class="resultat-actions">
+              <button id="btn-resultat-classique-continuer" class="bouton bouton-principal">
+                Question suivante
+              </button>
             </div>
           </div>
         </div>

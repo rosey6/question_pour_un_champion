@@ -469,31 +469,247 @@ function startMultiplayerGame() {
 
   const vueHote = document.getElementById("vue-hote-multi");
   const vueJoueur = document.getElementById("vue-joueur-multi");
+  const vueClassique = document.getElementById("vue-classique-multi");
   const hostPanel = document.getElementById("host-player-panel");
 
-  // Afficher la vue appropriée
-  if (isHost && multiplayerMode === "spectator") {
+  // Masquer toutes les vues d'abord
+  if (vueHote) vueHote.classList.add("hidden");
+  if (vueJoueur) vueJoueur.classList.add("hidden");
+  if (vueClassique) vueClassique.classList.add("hidden");
+  if (hostPanel) hostPanel.classList.add("hidden");
+
+  // Afficher la vue appropriée selon le mode
+  if (multiplayerMode === "classic") {
+    // Mode classique - tout le monde voit les questions sur le même écran
+    if (vueClassique) vueClassique.classList.remove("hidden");
+    setupClassicModeBuzzers();
+    console.log("Vue: Mode classique");
+  } else if (isHost && multiplayerMode === "spectator") {
     // Hôte spectateur (PC) - Affiche tout sauf le panneau joueur
     if (vueHote) vueHote.classList.remove("hidden");
-    if (vueJoueur) vueJoueur.classList.add("hidden");
-    if (hostPanel) hostPanel.classList.add("hidden");
     console.log("Vue: Hôte spectateur");
-  } else if (isHost && multiplayerMode === "hostplay") {
-    // Hôte joueur (PC) - Affiche tout y compris le panneau joueur
-    if (vueHote) vueHote.classList.remove("hidden");
-    if (vueJoueur) vueJoueur.classList.add("hidden");
-    if (hostPanel) hostPanel.classList.remove("hidden");
-    console.log("Vue: Hôte joueur");
   } else {
     // Joueur (téléphone) - Affiche uniquement la vue joueur
-    if (vueHote) vueHote.classList.add("hidden");
     if (vueJoueur) vueJoueur.classList.remove("hidden");
-    if (hostPanel) hostPanel.classList.add("hidden");
     console.log("Vue: Joueur mobile");
   }
 
   updateMultiScores(multiState.players);
   updatePlayerCount(multiState.players.length);
+}
+
+// ============================================
+// MODE CLASSIQUE - SETUP
+// ============================================
+
+function setupClassicModeBuzzers() {
+  const container = document.getElementById("buzzers-classique");
+  if (!container) return;
+  
+  container.innerHTML = "";
+  
+  multiState.players.forEach((player, index) => {
+    const card = document.createElement("div");
+    card.className = "classique-buzzer-card";
+    card.id = `buzzer-card-${player.id}`;
+    
+    const colors = ['#ff5252', '#4caf50', '#2196f3', '#ffc107'];
+    const color = colors[index % colors.length];
+    
+    card.innerHTML = `
+      <h4>${player.name}</h4>
+      <button class="buzzer-btn" id="buzzer-${player.id}" style="border-color: ${color};">
+        BUZZ
+      </button>
+      <div class="score" id="score-${player.id}">${player.score || 0} pts</div>
+    `;
+    
+    container.appendChild(card);
+    
+    // Ajouter l'event listener pour le buzzer
+    const buzzerBtn = document.getElementById(`buzzer-${player.id}`);
+    if (buzzerBtn) {
+      buzzerBtn.addEventListener("click", () => {
+        if (!multiState.buzzerEnabled) return;
+        handleClassicBuzz(player.id, player.name);
+      });
+    }
+  });
+  
+  // Ajouter les raccourcis clavier (1, 2, 3, 4)
+  document.addEventListener("keydown", handleClassicKeyPress);
+}
+
+function handleClassicKeyPress(e) {
+  if (!multiState.buzzerEnabled) return;
+  
+  const keyNum = parseInt(e.key);
+  if (keyNum >= 1 && keyNum <= 4) {
+    const playerIndex = keyNum - 1;
+    if (multiState.players[playerIndex]) {
+      const player = multiState.players[playerIndex];
+      handleClassicBuzz(player.id, player.name);
+    }
+  }
+}
+
+function handleClassicBuzz(playerId, playerName) {
+  if (!multiState.buzzerEnabled || !currentGameCode) return;
+  
+  multiState.buzzerEnabled = false;
+  multiState.answeringPlayer = playerId;
+  
+  // Marquer visuellement le buzzer
+  const buzzerBtn = document.getElementById(`buzzer-${playerId}`);
+  if (buzzerBtn) {
+    buzzerBtn.classList.add("buzzed");
+    buzzerBtn.textContent = "BUZZÉ!";
+  }
+  
+  // Désactiver tous les buzzers
+  multiState.players.forEach(p => {
+    const btn = document.getElementById(`buzzer-${p.id}`);
+    if (btn) btn.disabled = true;
+  });
+  
+  // Afficher les options de réponse
+  showClassicAnswerOptions(playerId, playerName);
+  
+  showNotification(`${playerName} a buzzé !`, "info");
+}
+
+function showClassicAnswerOptions(playerId, playerName) {
+  const optionsContainer = document.getElementById("options-classique");
+  if (!optionsContainer || !currentQuestionData) return;
+  
+  // Activer les boutons d'options
+  const optionBtns = optionsContainer.querySelectorAll(".option-btn");
+  optionBtns.forEach(btn => {
+    btn.disabled = false;
+    btn.classList.remove("selected", "correct", "incorrect");
+    
+    // Ajouter un event listener unique pour ce joueur
+    btn.onclick = () => {
+      if (multiState.answeringPlayer !== playerId) return;
+      
+      const answer = btn.dataset.answer;
+      handleClassicAnswer(playerId, answer, optionBtns);
+    };
+  });
+}
+
+function handleClassicAnswer(playerId, answer, optionBtns) {
+  const correctAnswer = currentQuestionData.correctAnswer;
+  const isCorrect = answer === correctAnswer;
+  
+  // Marquer les réponses
+  optionBtns.forEach(btn => {
+    btn.disabled = true;
+    if (btn.dataset.answer === answer) {
+      btn.classList.add(isCorrect ? "correct" : "incorrect");
+      btn.classList.add("selected");
+    }
+    if (btn.dataset.answer === correctAnswer) {
+      btn.classList.add("correct");
+    }
+  });
+  
+  // Mettre à jour le score
+  const player = multiState.players.find(p => p.id === playerId);
+  if (player) {
+    if (isCorrect) {
+      player.score = (player.score || 0) + 10;
+    } else {
+      player.score = Math.max(0, (player.score || 0) - 5);
+    }
+    
+    const scoreEl = document.getElementById(`score-${playerId}`);
+    if (scoreEl) scoreEl.textContent = `${player.score} pts`;
+  }
+  
+  // Afficher le résultat
+  showClassicResult(isCorrect, correctAnswer, player?.name);
+}
+
+function showClassicResult(isCorrect, correctAnswer, playerName) {
+  const resultatEl = document.getElementById("ecran-resultat-classique");
+  const infoEl = document.getElementById("resultat-classique-info");
+  
+  if (infoEl) {
+    infoEl.innerHTML = isCorrect 
+      ? `<span style="color: var(--p-bleu);">✅ ${playerName} a bien répondu !</span><br>Réponse : ${correctAnswer}`
+      : `<span style="color: var(--p-rose);">❌ ${playerName} s'est trompé</span><br>Réponse correcte : ${correctAnswer}`;
+  }
+  
+  // Afficher l'illustration si disponible
+  const illustrationContainer = document.getElementById("resultat-classique-illustration");
+  const illustrationImage = document.getElementById("resultat-classique-image");
+  const illustrationDesc = document.getElementById("resultat-classique-description");
+  
+  if (illustrationContainer && illustrationImage && currentQuestionData) {
+    if (currentQuestionData.imageUrl) {
+      illustrationImage.src = currentQuestionData.imageUrl;
+      illustrationImage.alt = currentQuestionData.illustrationTexte || "Illustration";
+      if (illustrationDesc) {
+        illustrationDesc.textContent = currentQuestionData.illustrationTexte || "";
+      }
+      illustrationContainer.classList.remove("hidden");
+    } else {
+      illustrationContainer.classList.add("hidden");
+    }
+  }
+  
+  if (resultatEl) resultatEl.classList.remove("hidden");
+}
+
+function setupClassicContinueButton() {
+  const btn = document.getElementById("btn-resultat-classique-continuer");
+  if (btn) {
+    btn.addEventListener("click", () => {
+      hideElement("ecran-resultat-classique");
+      nextClassicQuestion();
+    });
+  }
+}
+
+function nextClassicQuestion() {
+  multiState.currentQuestionIndex++;
+  
+  if (multiState.currentQuestionIndex >= multiState.totalQuestions) {
+    showClassicFinalResults();
+  } else {
+    // Demander la prochaine question au serveur ou utiliser les questions locales
+    if (socket && currentGameCode) {
+      socket.emit("next-question", { gameCode: currentGameCode });
+    }
+  }
+}
+
+function showClassicFinalResults() {
+  // Trier les joueurs par score
+  const rankings = [...multiState.players].sort((a, b) => (b.score || 0) - (a.score || 0));
+  
+  changerEcranMulti("resultat-multijoueur");
+  
+  const container = document.getElementById("grille-scores-resultat-multi");
+  if (container) {
+    container.innerHTML = "";
+    rankings.forEach((player, idx) => {
+      const div = document.createElement("div");
+      div.className = "carte-joueur";
+      
+      let medal = "";
+      if (idx === 0) medal = "🥇";
+      else if (idx === 1) medal = "🥈";
+      else if (idx === 2) medal = "🥉";
+      
+      div.innerHTML = `
+        <h3>${medal} #${idx + 1} - ${player.name}</h3>
+        <div class="points">${player.score || 0} points</div>
+      `;
+      container.appendChild(div);
+    });
+  }
 }
 
 // ============================================
@@ -571,11 +787,54 @@ function displayNewQuestion(data) {
     }
   }
 
+  // Mode classique - afficher la question et les options
+  if (multiplayerMode === "classic") {
+    displayClassicQuestion(data);
+  }
+
   // Réinitialiser et activer les buzzers
   resetBuzzers();
   enableBuzzers();
 
   updatePlayerCount(multiState.players.length);
+}
+
+// Affichage question mode classique
+function displayClassicQuestion(data) {
+  hideElement("ecran-resultat-classique");
+  
+  // Afficher la question
+  const questionEl = document.getElementById("question-classique");
+  if (questionEl) {
+    questionEl.textContent = data.question;
+  }
+  
+  // Afficher les options
+  const optionsContainer = document.getElementById("options-classique");
+  if (optionsContainer && data.options) {
+    optionsContainer.innerHTML = "";
+    data.options.forEach((opt) => {
+      const btn = document.createElement("button");
+      btn.className = "option-btn";
+      btn.textContent = opt;
+      btn.dataset.answer = opt;
+      btn.disabled = true; // Désactivé jusqu'à ce que quelqu'un buzze
+      optionsContainer.appendChild(btn);
+    });
+  }
+  
+  // Réinitialiser les buzzers du mode classique
+  multiState.players.forEach(player => {
+    const buzzerBtn = document.getElementById(`buzzer-${player.id}`);
+    if (buzzerBtn) {
+      buzzerBtn.disabled = false;
+      buzzerBtn.classList.remove("buzzed");
+      buzzerBtn.textContent = "BUZZ";
+    }
+  });
+  
+  multiState.buzzerEnabled = true;
+  multiState.answeringPlayer = null;
 }
 
 // ============================================
@@ -1207,6 +1466,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupStartGameButton();
   setupBuzzers();
   setupNavigationButtons();
+  setupClassicContinueButton();
   checkAutoJoin();
 
   console.log("✅ Multijoueur Game initialisé");
