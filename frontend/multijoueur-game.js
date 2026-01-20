@@ -376,62 +376,31 @@ function generateQRCode(gameCode) {
 
   qrContainer.innerHTML = "";
   
-  // Créer un conteneur pour le QR code
-  const qrWrapper = document.createElement("div");
-  qrWrapper.id = "qr-wrapper";
-  qrWrapper.style.cssText = "display: flex; flex-direction: column; align-items: center; gap: 10px;";
-  qrContainer.appendChild(qrWrapper);
-
-  // Construire l'URL - simplement remplacer le fichier actuel par multijoueur.html
+  // Simplement utiliser l'URL actuelle et ajouter le paramètre join
   const currentUrl = window.location.href.split('?')[0]; // Enlever les query params existants
-  let url;
-  
-  if (currentUrl.endsWith('multijoueur.html')) {
-    // On est déjà sur multijoueur.html, juste ajouter le code
-    url = `${currentUrl}?join=${gameCode}`;
-  } else if (currentUrl.endsWith('/')) {
-    // On est sur un dossier
-    url = `${currentUrl}multijoueur.html?join=${gameCode}`;
-  } else if (currentUrl.endsWith('.html')) {
-    // On est sur un autre fichier .html, le remplacer
-    url = currentUrl.replace(/[^\/]+\.html$/, `multijoueur.html?join=${gameCode}`);
-  } else {
-    // Autre cas, ajouter directement
-    url = `${currentUrl}/multijoueur.html?join=${gameCode}`;
-  }
+  const url = `${currentUrl}?join=${gameCode}`;
 
-  console.log("🔗 URL actuelle:", currentUrl);
   console.log("🔗 URL QR Code générée:", url);
 
   try {
-    // Générer le QR code dans le wrapper
-    new QRCode(qrWrapper, {
+    // Générer le QR code directement dans le conteneur
+    new QRCode(qrContainer, {
       text: url,
-      width: 200,
-      height: 200,
-      colorDark: "#8093F1",
+      width: 220,
+      height: 220,
+      colorDark: "#000000",
       colorLight: "#ffffff",
-      correctLevel: QRCode.CorrectLevel.H,
+      correctLevel: QRCode.CorrectLevel.L,
     });
     console.log("✅ QR Code généré:", url);
     
-    // Ajouter le lien cliquable APRÈS le QR code (dans le wrapper)
-    const linkDiv = document.createElement("div");
-    linkDiv.style.cssText = "margin-top: 15px; text-align: center; max-width: 250px;";
-    linkDiv.innerHTML = `
-      <a href="${url}" target="_blank" style="color: var(--p-bleu); font-size: 0.9rem; text-decoration: underline; display: block; margin-bottom: 8px;">📱 Ouvrir le lien</a>
-      <span style="font-size: 0.7rem; color: rgba(255,255,255,0.5); word-break: break-all; display: block;">${url}</span>
-    `;
-    qrWrapper.appendChild(linkDiv);
-    
   } catch (error) {
     console.error("❌ Erreur génération QR:", error);
-    // Fallback : afficher le lien
     qrContainer.innerHTML = `
       <div style="text-align: center; padding: 1rem;">
         <p style="color: var(--p-rose);">QR Code indisponible</p>
-        <p style="font-size: 0.9rem; margin: 1rem 0;">Lien direct :</p>
-        <a href="${url}" target="_blank" style="color: var(--p-bleu); word-break: break-all; font-size: 0.85rem;">${url}</a>
+        <p style="font-size: 0.9rem; margin: 1rem 0;">Code à entrer manuellement :</p>
+        <strong style="font-size: 1.5rem; color: var(--p-bleu);">${gameCode}</strong>
       </div>
     `;
   }
