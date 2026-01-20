@@ -307,11 +307,16 @@
   }
 
   function readSettingsFromForm() {
+    const maxPlayers = Number(($("online-players")?.value) || 2);
+    const questionsCount = Number(($("online-questions")?.value) || 10);
+    const buzzerSeconds = Number(($("online-time-question")?.value) || 30);
+    const answerSeconds = Number(($("online-time-answer")?.value) || 15);
+
     return {
-      maxPlayers: Number($("online-players").value || 2),
-      questionsCount: Number($("online-questions").value || 10),
-      buzzerSeconds: Number($("online-time-question").value || 30),
-      answerSeconds: Number($("online-time-answer").value || 15),
+      maxPlayers,
+      questionsCount,
+      buzzerSeconds,
+      answerSeconds,
       pointsCorrect: 5,
       pointsWrong: -5,
     };
@@ -333,7 +338,7 @@
     setError("");
     const name = getName();
     if (!name) return setError("Veuillez saisir votre nom.");
-    const code = normalizeCode($("join-code").value);
+    const code = normalizeCode(($('join-code')?.value) || '');
     if (code.length !== 6) return setError("Veuillez saisir un code de 6 caractères.");
 
     me.name = name;
@@ -364,17 +369,24 @@
   // Init
   // -------------------------
   function bind() {
-    $("btn-create").addEventListener("click", createRoom);
-    $("btn-join").addEventListener("click", joinRoom);
-    $("btn-start").addEventListener("click", startGameManual);
-    $("btn-leave").addEventListener("click", leaveRoom);
-    $("btn-back-lobby").addEventListener("click", () => switchScreen("screen-lobby"));
-    $("btn-buzzer").addEventListener("click", buzz);
+    const on = (id, evt, fn) => {
+      const el = $(id);
+      if (el) el.addEventListener(evt, fn);
+    };
 
-    // Enter pour rejoindre
-    $("join-code").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") joinRoom();
-    });
+    on('btn-create', 'click', createRoom);
+    on('btn-join', 'click', joinRoom);
+    on('btn-start', 'click', startGameManual);
+    on('btn-leave', 'click', leaveRoom);
+    on('btn-back-lobby', 'click', () => switchScreen('screen-lobby'));
+    on('btn-buzzer', 'click', buzz);
+
+    const joinCode = $('join-code');
+    if (joinCode) {
+      joinCode.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') joinRoom();
+      });
+    }
   }
 
   document.addEventListener("DOMContentLoaded", () => {
