@@ -69,7 +69,9 @@ function setupSocketListeners() {
   socket.on("game-created", (data) => {
     console.log("✅ Partie créée:", data);
     currentGameCode = data.gameCode;
-    isHost = true;
+    
+    // En mode classique, le créateur est aussi un joueur (pas un hôte spectateur)
+    isHost = (multiplayerMode !== "classic");
 
     const codeEl = document.getElementById("code-partie");
     if (codeEl) codeEl.textContent = data.gameCode;
@@ -78,7 +80,13 @@ function setupSocketListeners() {
     if (container) container.classList.remove("hidden");
 
     generateQRCode(data.gameCode);
-    updatePlayersList([]);
+    
+    // En mode classique, le créateur est dans la liste des joueurs
+    if (multiplayerMode === "classic") {
+      updatePlayersList([{ name: currentPlayerName, score: 0, isHost: false }]);
+    } else {
+      updatePlayersList([]);
+    }
 
     showNotification(`Partie créée: ${data.gameCode}`, "success");
   });
@@ -105,6 +113,12 @@ function setupSocketListeners() {
     currentGameCode = data.gameCode;
     isHost = false;
     multiState.players = data.players;
+    
+    // Récupérer le mode de la partie
+    if (data.mode) {
+      multiplayerMode = data.mode;
+      console.log("📌 Mode de la partie:", multiplayerMode);
+    }
 
     const codeEl = document.getElementById("code-salle-jointe");
     const hoteEl = document.getElementById("nom-hote");
@@ -141,6 +155,12 @@ function setupSocketListeners() {
     gameSettings = data.settings;
     multiState.players = data.players;
     multiState.totalQuestions = data.settings.questionsCount;
+    
+    // Récupérer le mode de la partie
+    if (data.mode) {
+      multiplayerMode = data.mode;
+      console.log("📌 Mode de la partie:", multiplayerMode);
+    }
 
     initializeScores(data.players);
     startMultiplayerGame();
@@ -262,12 +282,14 @@ function setupCreateGameButton() {
       socket.emit("create-game", {
         playerName: playerName,
         settings: settings,
+        mode: multiplayerMode, // Envoyer le mode au serveur
       });
     } else {
       socket.once("connect", () => {
         socket.emit("create-game", {
           playerName: playerName,
           settings: settings,
+          mode: multiplayerMode, // Envoyer le mode au serveur
         });
       });
     }
@@ -471,6 +493,7 @@ function startMultiplayerGame() {
   const vueJoueur = document.getElementById("vue-joueur-multi");
   const vueClassique = document.getElementById("vue-classique-multi");
   const hostPanel = document.getElementById("host-player-panel");
+  const questionJoueurContainer = document.getElementById("question-joueur-container");
 
   // Masquer toutes les vues d'abord
   if (vueHote) vueHote.classList.add("hidden");
@@ -480,18 +503,23 @@ function startMultiplayerGame() {
 
   // Afficher la vue appropriée selon le mode
   if (multiplayerMode === "classic") {
-    // Mode classique - tout le monde voit les questions sur le même écran
-    if (vueClassique) vueClassique.classList.remove("hidden");
-    setupClassicModeBuzzers();
-    console.log("Vue: Mode classique");
+    // Mode classique - chaque joueur voit la question et son buzzer sur son écran
+    if (vueJoueur) vueJoueur.classList.remove("hidden");
+    // Afficher la zone de question pour le mode classique
+    if (questionJoueurContainer) questionJoueurContainer.classList.remove("hidden");
+    console.log("Vue: Mode classique (joueur en ligne)");
   } else if (isHost && multiplayerMode === "spectator") {
     // Hôte spectateur (PC) - Affiche tout sauf le panneau joueur
     if (vueHote) vueHote.classList.remove("hidden");
+    // Cacher la question joueur en mode spectator (l'hôte voit sur son écran)
+    if (questionJoueurContainer) questionJoueurContainer.classList.add("hidden");
     console.log("Vue: Hôte spectateur");
   } else {
-    // Joueur (téléphone) - Affiche uniquement la vue joueur
+    // Joueur (téléphone) - Mode spectator, juste le buzzer
     if (vueJoueur) vueJoueur.classList.remove("hidden");
-    console.log("Vue: Joueur mobile");
+    // Cacher la question joueur en mode spectator (l'hôte affiche sur son écran)
+    if (questionJoueurContainer) questionJoueurContainer.classList.add("hidden");
+    console.log("Vue: Joueur mobile (mode spectator)");
   }
 
   updateMultiScores(multiState.players);
@@ -757,13 +785,55 @@ function displayNewQuestion(data) {
     }
   }
 
-  // Réinitialiser la vue joueur (téléphone)
-  if (!isHost) {
+  // Mode classique - chaque joueur voit la question et son buzzer
+  if (multiplayerMode === "classic") {
+    // Afficher la question dans la vue joueur
+    const questionJoueurContainer = document.getElementById("question-joueur-container");
+    const questionJoueur = document.getElementById("question-joueur");
+    if (questionJoueurContainer) questionJoueurContainer.classList.remove("hidden");
+    if (questionJoueur) questionJoueur.textContent = data.question;
+    
+    // Réinitialiser le buzzer et l'état
+    const btnBuzz = document.getElementById("btn-buzz-player");
+    if (btnBuzz) {
+      btnBuzz.classList.remove("hidden");
+      btnBuzz.style.display = "block";
+      btnBuzz.disabled = false;
+      btnBuzz.textContent = "BUZZ";
+      btnBuzz.style.opacity = "1";
+    }
+    
+    const etatBuzzer = document.getElementById("etat-buzzer-player");
+    if (etatBuzzer) {
+      etatBuzzer.style.display = "block";
+      etatBuzzer.textContent = "Appuyez pour buzzer dès que vous êtes prêt.";
+      etatBuzzer.style.color = "";
+    }
+    
+    // Masquer les options de réponse jusqu'à ce qu'on buzze
+    const optionsReponse = document.getElementById("options-reponse-multi");
+    if (optionsReponse) optionsReponse.innerHTML = "";
+    
+    // Masquer le résultat
+    const resultatJoueur = document.getElementById("resultat-joueur-multi");
+    if (resultatJoueur) {
+      resultatJoueur.classList.add("hidden");
+      resultatJoueur.style.display = "none";
+    }
+    
+    multiState.buzzerEnabled = true;
+    multiState.answeringPlayer = null;
+  }
+  // Réinitialiser la vue joueur (téléphone) - mode spectateur
+  else if (!isHost) {
     // Réafficher le buzzer
     const btnBuzz = document.getElementById("btn-buzz-player");
     if (btnBuzz) {
       btnBuzz.classList.remove("hidden");
       btnBuzz.style.display = "block";
+      btnBuzz.disabled = false;
+      btnBuzz.textContent = "BUZZ";
+      btnBuzz.style.opacity = "1";
     }
     
     // Réafficher l'état du buzzer
@@ -785,11 +855,10 @@ function displayNewQuestion(data) {
       resultatJoueur.classList.add("hidden");
       resultatJoueur.style.display = "none";
     }
-  }
-
-  // Mode classique - afficher la question et les options
-  if (multiplayerMode === "classic") {
-    displayClassicQuestion(data);
+    
+    // Masquer la question en mode non-classique (le joueur ne voit pas la question)
+    const questionJoueurContainer = document.getElementById("question-joueur-container");
+    if (questionJoueurContainer) questionJoueurContainer.classList.add("hidden");
   }
 
   // Réinitialiser et activer les buzzers
@@ -797,44 +866,6 @@ function displayNewQuestion(data) {
   enableBuzzers();
 
   updatePlayerCount(multiState.players.length);
-}
-
-// Affichage question mode classique
-function displayClassicQuestion(data) {
-  hideElement("ecran-resultat-classique");
-  
-  // Afficher la question
-  const questionEl = document.getElementById("question-classique");
-  if (questionEl) {
-    questionEl.textContent = data.question;
-  }
-  
-  // Afficher les options
-  const optionsContainer = document.getElementById("options-classique");
-  if (optionsContainer && data.options) {
-    optionsContainer.innerHTML = "";
-    data.options.forEach((opt) => {
-      const btn = document.createElement("button");
-      btn.className = "option-btn";
-      btn.textContent = opt;
-      btn.dataset.answer = opt;
-      btn.disabled = true; // Désactivé jusqu'à ce que quelqu'un buzze
-      optionsContainer.appendChild(btn);
-    });
-  }
-  
-  // Réinitialiser les buzzers du mode classique
-  multiState.players.forEach(player => {
-    const buzzerBtn = document.getElementById(`buzzer-${player.id}`);
-    if (buzzerBtn) {
-      buzzerBtn.disabled = false;
-      buzzerBtn.classList.remove("buzzed");
-      buzzerBtn.textContent = "BUZZ";
-    }
-  });
-  
-  multiState.buzzerEnabled = true;
-  multiState.answeringPlayer = null;
 }
 
 // ============================================
@@ -945,17 +976,22 @@ function handlePlayerBuzzed(data) {
 function showAnswerScreen(data) {
   console.log("📝 Affichage écran réponse pour:", data.answeringPlayer);
 
-  // Vue hôte
-  const reponseScreen = document.getElementById("ecran-reponse-multi");
-  const nomRepondant = document.getElementById("nom-repondant-multi");
+  // Mode classique ou spectateur avec vue hôte
+  if (isHost && multiplayerMode === "spectator") {
+    // Vue hôte spectateur - afficher qui répond
+    const reponseScreen = document.getElementById("ecran-reponse-multi");
+    const nomRepondant = document.getElementById("nom-repondant-multi");
 
-  if (reponseScreen && isHost) {
-    if (nomRepondant) nomRepondant.textContent = data.answeringPlayer;
-    reponseScreen.classList.remove("hidden");
+    if (reponseScreen) {
+      if (nomRepondant) nomRepondant.textContent = data.answeringPlayer;
+      reponseScreen.classList.remove("hidden");
+    }
   }
 
-  // Demander les options si c'est le joueur qui a buzzé
-  if (socket && currentGameCode) {
+  // Demander les options SEULEMENT si c'est le joueur qui a buzzé
+  // Le serveur vérifie que c'est bien le bon joueur
+  if (socket && currentGameCode && multiState.answeringPlayer === socket.id) {
+    console.log("📋 Je suis le joueur qui a buzzé, je demande les options");
     socket.emit("request-answer-options", { gameCode: currentGameCode });
   }
 

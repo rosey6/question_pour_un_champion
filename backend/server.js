@@ -223,6 +223,7 @@ io.on("connection", (socket) => {
 
     io.to(gameCode).emit("game-started", {
       gameCode: gameCode,
+      mode: game.mode || "spectator", // Inclure le mode
       settings: game.settings,
       players: Object.values(game.players).map((p) => ({
         id: p.id,
@@ -237,16 +238,18 @@ io.on("connection", (socket) => {
   }
 
   // Créer une partie
-  socket.on("create-game", ({ playerName, settings }) => {
+  socket.on("create-game", ({ playerName, settings, mode }) => {
     const gameCode = generateGameCode();
 
     const normalizedSettings = normalizeSettings(settings || {});
+    const gameMode = mode || "spectator"; // "spectator" ou "classic"
 
     games[gameCode] = {
       code: gameCode,
       // compat : conservé pour l'UI (affiche le créateur), mais aucun privilège spécial côté serveur
       hostId: socket.id,
       hostName: playerName,
+      mode: gameMode, // Mode de jeu
       players: {},
       state: "waiting",
       settings: normalizedSettings,
@@ -258,13 +261,13 @@ io.on("connection", (socket) => {
       createdAt: Date.now(),
     };
 
-    // Le créateur est un joueur comme les autres
+    // Le créateur est un joueur comme les autres (surtout en mode classic)
     players[socket.id] = {
       id: socket.id,
       gameCode: gameCode,
       name: playerName,
       score: 0,
-      isHost: false,
+      isHost: gameMode === "spectator", // En mode spectator, le créateur est hôte, en classic il est joueur
       hasAnswered: false,
     };
 
@@ -276,10 +279,11 @@ io.on("connection", (socket) => {
     socket.emit("game-created", {
       success: true,
       gameCode: gameCode,
+      mode: gameMode,
       message: "Partie créée avec succès",
     });
 
-    console.log(`Partie créée: ${gameCode} par ${playerName}`);
+    console.log(`Partie créée: ${gameCode} par ${playerName} (mode: ${gameMode})`);
   });
 
   // Rejoindre une partie
@@ -344,6 +348,7 @@ io.on("connection", (socket) => {
     socket.emit("join-success", {
       gameCode: gameCode,
       hostName: game.hostName,
+      mode: game.mode || "spectator", // Envoyer le mode au joueur qui rejoint
       players: Object.values(game.players).map((p) => ({
         id: p.id,
         name: p.name,

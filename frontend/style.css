@@ -1805,3 +1805,78 @@ button.option-reponse:hover{
     font-size: 0.9rem;
   }
 }
+
+
+/* ===== QUESTION VISIBLE JOUEUR (MODE CLASSIQUE) ===== */
+.question-joueur-zone {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto 1.5rem auto;
+  padding: 0 1rem;
+}
+
+.question-joueur-zone .question-multijoueur {
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 15px;
+  padding: 1.5rem;
+  border-left: 4px solid var(--p-indigo);
+}
+
+.question-joueur-zone .question-multijoueur h2 {
+  font-size: 1.3rem;
+  line-height: 1.5;
+  color: white;
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .question-joueur-zone .question-multijoueur h2 {
+    font-size: 1.1rem;
+  }
+}
+
+
+/* ===== MODE CLASSIQUE - QUESTION VISIBLE POUR LE JOUEUR ===== */
+
+.question-joueur-zone {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto 1.5rem;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 15px;
+  border-left: 4px solid var(--p-indigo);
+}
+
+.question-joueur-zone h2 {
+  font-size: 1.3rem;
+  line-height: 1.5;
+  color: white;
+  margin: 0;
+  text-align: center;
+}
+
+/* Vue joueur améliorée pour mode classique */
+#vue-joueur-multi.classic-mode {
+  padding-top: 1rem;
+}
+
+/* Options cachées jusqu'au buzz - message d'attente */
+.waiting-buzz-message {
+  text-align: center;
+  padding: 1rem;
+  color: var(--p-rose-clair);
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .question-joueur-zone {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .question-joueur-zone h2 {
+    font-size: 1.1rem;
+  }
+}

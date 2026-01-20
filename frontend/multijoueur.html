@@ -80,7 +80,7 @@
                     PC Hôte — joueurs au téléphone (l'hôte ne joue pas)
                   </option>
                   <option value="classic">
-                    Mode Classique — tout le monde voit les questions sur le même écran
+                    Mode Classique — chaque joueur sur son téléphone (pas d'hôte)
                   </option>
                 </select>
               </div>
@@ -322,6 +322,13 @@
 
         <!-- VUE JOUEUR (TÉLÉPHONE) -->
         <div id="vue-joueur-multi" class="vue-multi hidden">
+          <!-- Question visible en mode classique -->
+          <div id="question-joueur-container" class="question-joueur-zone hidden">
+            <div class="question-multijoueur">
+              <h2 id="question-joueur">Question...</h2>
+            </div>
+          </div>
+
           <div class="mobile-buzzer-zone">
             <button
               id="btn-buzz-player"
