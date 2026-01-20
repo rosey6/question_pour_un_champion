@@ -1312,3 +1312,332 @@ button.option-joueur{
 button.option-reponse:hover{
   background: rgba(179,136,235,0.35) !important;
 }
+
+
+/* ===== STYLES VUE JOUEUR MOBILE (TÉLÉPHONE) ===== */
+
+/* Conteneur principal vue joueur */
+#vue-joueur-multi {
+  padding: 1rem;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1.5rem;
+}
+
+/* Zone buzzer mobile améliorée */
+.mobile-buzzer-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Bouton buzzer mobile grand et visible */
+.bouton-buzzer-mobile {
+  width: 180px !important;
+  height: 180px !important;
+  border-radius: 50% !important;
+  border: 6px solid var(--p-violet) !important;
+  background: radial-gradient(circle at 30% 30%, var(--p-indigo), #2a2a4a) !important;
+  color: white !important;
+  font-weight: bold !important;
+  font-size: 2rem !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 10px 40px rgba(128, 147, 241, 0.4), 
+              inset 0 -5px 20px rgba(0, 0, 0, 0.3) !important;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.bouton-buzzer-mobile:hover:not(:disabled) {
+  transform: scale(1.1) !important;
+  box-shadow: 0 15px 50px rgba(179, 136, 235, 0.6),
+              inset 0 -5px 20px rgba(0, 0, 0, 0.3) !important;
+  border-color: var(--p-rose) !important;
+}
+
+.bouton-buzzer-mobile:active:not(:disabled) {
+  transform: scale(0.95) !important;
+  box-shadow: 0 5px 20px rgba(128, 147, 241, 0.3) !important;
+}
+
+.bouton-buzzer-mobile:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+  background: radial-gradient(circle at 30% 30%, #555, #333) !important;
+  border-color: #666 !important;
+}
+
+/* État du buzzer */
+#etat-buzzer-player,
+#etat-buzzer-host {
+  margin-top: 1rem;
+  font-size: 1.1rem;
+  text-align: center;
+  color: var(--p-rose-clair);
+  transition: all 0.3s ease;
+}
+
+/* Options de réponse mobile */
+.options-reponse-mobile {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.options-reponse-mobile .option-reponse-multi {
+  padding: 1.5rem 1rem !important;
+  font-size: 1.2rem !important;
+  border-radius: 15px !important;
+  background: rgba(128, 147, 241, 0.15) !important;
+  border: 2px solid rgba(128, 147, 241, 0.4) !important;
+  transition: all 0.2s ease !important;
+}
+
+.options-reponse-mobile .option-reponse-multi:active {
+  transform: scale(0.98) !important;
+  background: rgba(179, 136, 235, 0.4) !important;
+}
+
+/* Résultat joueur mobile */
+.resultat-joueur {
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem 1.5rem;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 20px;
+  border: 2px solid var(--p-indigo);
+  text-align: center;
+}
+
+.resultat-joueur h2 {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+}
+
+.resultat-joueur .texte-secondaire {
+  color: var(--p-rose-clair);
+  margin-bottom: 1rem;
+}
+
+/* Scoreboard joueur */
+.scoreboard-joueur {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: rgba(128, 147, 241, 0.1);
+  border-radius: 15px;
+}
+
+.scoreboard-joueur h3 {
+  color: var(--p-violet);
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.liste-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Illustration résultat */
+.illustration-container {
+  margin: 1.5rem 0;
+  text-align: center;
+}
+
+.illustration-container img {
+  max-width: 100%;
+  max-height: 250px;
+  border-radius: 15px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+  object-fit: contain;
+}
+
+.illustration-description {
+  margin-top: 0.8rem;
+  font-size: 0.95rem;
+  color: var(--p-rose-clair);
+  font-style: italic;
+}
+
+/* Header multijoueur amélioré */
+.header-multijoueur {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.info-partie {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 15px;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+#info-question-multi,
+#joueurs-connectes {
+  font-size: 1rem;
+  color: var(--p-rose-clair);
+  font-weight: 500;
+}
+
+.chrono-multijoueur {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.8rem 1.5rem;
+  border-radius: 50px;
+  background: rgba(128, 147, 241, 0.2);
+  border: 3px solid var(--p-indigo);
+}
+
+#temps-multijoueur {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: var(--p-indigo);
+  line-height: 1;
+}
+
+/* Question multijoueur */
+.question-multijoueur {
+  font-size: 1.5rem;
+  line-height: 1.5;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 15px;
+  border-left: 5px solid var(--p-indigo);
+  margin: 1rem 0;
+  text-align: left;
+}
+
+/* Options hôte */
+.options-host {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.option-host {
+  padding: 1rem;
+  background: rgba(128, 147, 241, 0.12);
+  border: 1px solid rgba(128, 147, 241, 0.3);
+  border-radius: 10px;
+  text-align: center;
+  font-size: 1.1rem;
+  color: var(--p-rose-clair);
+}
+
+/* Écran résultat multijoueur hôte */
+#ecran-resultat-multi {
+  margin-top: 2rem;
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 20px;
+  border: 2px solid var(--p-violet);
+}
+
+#ecran-resultat-multi h2 {
+  color: var(--p-rose);
+  margin-bottom: 1.5rem;
+}
+
+.resultat-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+/* Scores multijoueur */
+.scores-multijoueur {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+  width: 100%;
+}
+
+.carte-joueur-multi {
+  padding: 1rem 1.5rem;
+  background: rgba(128, 147, 241, 0.12);
+  border: 2px solid rgba(128, 147, 241, 0.3);
+  border-radius: 15px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.carte-joueur-multi h3 {
+  color: white;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.carte-joueur-multi .points {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: var(--p-bleu);
+}
+
+.carte-joueur-multi.hote {
+  border-color: var(--p-bleu);
+  background: rgba(114, 221, 247, 0.15);
+}
+
+/* Contenu large pour vue jeu */
+.contenu-large {
+  max-width: 1100px;
+}
+
+/* Responsive mobile */
+@media (max-width: 600px) {
+  .info-partie {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .bouton-buzzer-mobile {
+    width: 150px !important;
+    height: 150px !important;
+    font-size: 1.6rem !important;
+  }
+  
+  .question-multijoueur {
+    font-size: 1.2rem;
+    padding: 1rem;
+  }
+  
+  .options-host {
+    grid-template-columns: 1fr;
+  }
+  
+  .scores-multijoueur {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Fin partie joueur */
+.fin-partie-joueur {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.fin-partie-joueur h2 {
+  color: var(--p-rose);
+  margin-bottom: 1rem;
+}

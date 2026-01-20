@@ -376,10 +376,20 @@ function generateQRCode(gameCode) {
 
   qrContainer.innerHTML = "";
 
-  const baseUrl =
-    window.location.origin +
-    window.location.pathname.replace("multijoueur.html", "");
-  const url = `${baseUrl}multijoueur.html?join=${gameCode}`;
+  // Construire l'URL de manière plus robuste
+  let baseUrl = window.location.origin;
+  let pathname = window.location.pathname;
+  
+  // Si on est sur un fichier spécifique, remonter au dossier
+  if (pathname.endsWith(".html")) {
+    pathname = pathname.substring(0, pathname.lastIndexOf("/") + 1);
+  } else if (!pathname.endsWith("/")) {
+    pathname += "/";
+  }
+  
+  const url = `${baseUrl}${pathname}multijoueur.html?join=${gameCode}`;
+
+  console.log("🔗 URL QR Code:", url);
 
   try {
     new QRCode(qrContainer, {
@@ -391,8 +401,21 @@ function generateQRCode(gameCode) {
       correctLevel: QRCode.CorrectLevel.H,
     });
     console.log("✅ QR Code généré:", url);
+    
+    // Ajouter aussi un lien cliquable sous le QR code
+    const linkDiv = document.createElement("div");
+    linkDiv.style.cssText = "margin-top: 10px; font-size: 0.8rem; word-break: break-all;";
+    linkDiv.innerHTML = `<a href="${url}" target="_blank" style="color: var(--p-bleu);">Ouvrir le lien</a>`;
+    qrContainer.appendChild(linkDiv);
+    
   } catch (error) {
     console.error("❌ Erreur génération QR:", error);
+    // Fallback : afficher le lien
+    qrContainer.innerHTML = `
+      <p style="color: var(--p-rose);">QR Code indisponible</p>
+      <p style="font-size: 0.9rem;">Lien direct :</p>
+      <a href="${url}" target="_blank" style="color: var(--p-bleu); word-break: break-all;">${url}</a>
+    `;
   }
 }
 
@@ -497,6 +520,10 @@ function displayNewQuestion(data) {
   hideElement("ecran-reponse-multi");
   hideElement("ecran-resultat-multi");
   hideElement("resultat-joueur-multi");
+  
+  // Supprimer l'info répondant temporaire
+  const infoTemp = document.getElementById("info-repondant-temp");
+  if (infoTemp) infoTemp.remove();
 
   // Mettre à jour le chronomètre et l'info
   const tempsEl = document.getElementById("temps-multijoueur");
@@ -524,6 +551,36 @@ function displayNewQuestion(data) {
         div.textContent = opt;
         optionsContainer.appendChild(div);
       });
+    }
+  }
+
+  // Réinitialiser la vue joueur (téléphone)
+  if (!isHost) {
+    // Réafficher le buzzer
+    const btnBuzz = document.getElementById("btn-buzz-player");
+    if (btnBuzz) {
+      btnBuzz.classList.remove("hidden");
+      btnBuzz.style.display = "block";
+    }
+    
+    // Réafficher l'état du buzzer
+    const etatBuzzer = document.getElementById("etat-buzzer-player");
+    if (etatBuzzer) {
+      etatBuzzer.style.display = "block";
+      etatBuzzer.textContent = "Appuyez pour buzzer dès que vous êtes prêt.";
+      etatBuzzer.style.color = "";
+      etatBuzzer.style.fontWeight = "";
+    }
+    
+    // Vider les options de réponse
+    const optionsReponse = document.getElementById("options-reponse-multi");
+    if (optionsReponse) optionsReponse.innerHTML = "";
+    
+    // Masquer le résultat joueur
+    const resultatJoueur = document.getElementById("resultat-joueur-multi");
+    if (resultatJoueur) {
+      resultatJoueur.classList.add("hidden");
+      resultatJoueur.style.display = "none";
     }
   }
 
@@ -733,10 +790,9 @@ function displayAnswerResult(data) {
     if (reponseScreen) reponseScreen.classList.add("hidden");
 
     if (bonneReponse) {
-      bonneReponse.textContent = `Réponse correcte : ${data.correctAnswer}`;
-      bonneReponse.style.color = data.isCorrect
-        ? "var(--p-bleu)"
-        : "var(--p-rose)";
+      bonneReponse.innerHTML = data.isCorrect 
+        ? `<span style="color: var(--p-bleu);">✅ Bonne réponse !</span><br>Réponse : ${data.correctAnswer}`
+        : `<span style="color: var(--p-rose);">❌ Mauvaise réponse</span><br>Réponse correcte : ${data.correctAnswer}`;
     }
 
     // Afficher l'illustration (vue hôte)
@@ -748,6 +804,9 @@ function displayAnswerResult(data) {
       if (imageUrl) {
         illustrationImage.src = imageUrl;
         illustrationImage.alt = illustrationTexte || "Illustration";
+        illustrationImage.onerror = () => {
+          illustrationContainer.classList.add("hidden");
+        };
         if (illustrationDescription) {
           illustrationDescription.textContent = illustrationTexte || "";
         }
@@ -757,13 +816,39 @@ function displayAnswerResult(data) {
       }
     }
 
+    // Afficher qui a répondu
+    const infoRepondant = document.createElement("p");
+    infoRepondant.id = "info-repondant-temp";
+    infoRepondant.innerHTML = `<strong>${data.playerName}</strong> a répondu : ${data.answer || "Temps écoulé"}`;
+    infoRepondant.style.marginTop = "1rem";
+    infoRepondant.style.color = "var(--p-rose-clair)";
+    
+    const existingInfo = document.getElementById("info-repondant-temp");
+    if (existingInfo) existingInfo.remove();
+    bonneReponse?.parentNode?.insertBefore(infoRepondant, bonneReponse.nextSibling);
+
     if (resultatScreen) resultatScreen.classList.remove("hidden");
+    
+    // Afficher le bouton question suivante
+    const btnContinuer = document.getElementById("btn-resultat-multi-continuer");
+    if (btnContinuer) {
+      btnContinuer.classList.remove("hidden");
+      btnContinuer.style.display = "inline-block";
+    }
   }
-  // Vue joueur
+  // Vue joueur (téléphone)
   else {
     const resultatJoueur = document.getElementById("resultat-joueur-multi");
     const titre = document.getElementById("titre-resultat-joueur");
     const correct = document.getElementById("resultat-joueur-correct");
+
+    // Masquer le buzzer et les options
+    hideElement("btn-buzz-player");
+    const etatBuzzer = document.getElementById("etat-buzzer-player");
+    if (etatBuzzer) etatBuzzer.style.display = "none";
+    
+    const optionsContainer = document.getElementById("options-reponse-multi");
+    if (optionsContainer) optionsContainer.innerHTML = "";
 
     if (titre) {
       titre.textContent = data.isCorrect
@@ -779,14 +864,25 @@ function displayAnswerResult(data) {
     // Afficher l'illustration (vue joueur)
     const illustrationImage = document.getElementById("resultat-joueur-image");
     const illustrationDescription = document.getElementById("resultat-joueur-description");
+    const illustrationContainer = illustrationImage?.parentElement;
 
     if (illustrationImage) {
       if (imageUrl) {
         illustrationImage.src = imageUrl;
         illustrationImage.alt = illustrationTexte || "Illustration";
         illustrationImage.style.display = "block";
+        illustrationImage.style.maxWidth = "100%";
+        illustrationImage.style.maxHeight = "200px";
+        illustrationImage.style.borderRadius = "10px";
+        illustrationImage.style.margin = "1rem auto";
+        illustrationImage.onerror = () => {
+          illustrationImage.style.display = "none";
+        };
         if (illustrationDescription) {
           illustrationDescription.textContent = illustrationTexte || "";
+        }
+        if (illustrationContainer) {
+          illustrationContainer.classList.remove("hidden");
         }
       } else {
         illustrationImage.style.display = "none";
@@ -796,17 +892,55 @@ function displayAnswerResult(data) {
       }
     }
 
-    if (resultatJoueur) resultatJoueur.classList.remove("hidden");
+    // Afficher les scores côté joueur
+    updatePlayerScoresDisplay(data.rankings);
 
-    // Masquer les options
-    hideElement("options-reponse-multi");
+    if (resultatJoueur) {
+      resultatJoueur.classList.remove("hidden");
+      resultatJoueur.style.display = "block";
+    }
+
+    // Message d'attente
+    const compteARebours = document.getElementById("compte-a-rebours-prochaine");
+    if (compteARebours) {
+      compteARebours.textContent = "En attente de l'hôte pour la prochaine question...";
+      compteARebours.style.color = "var(--p-violet)";
+    }
   }
 
-  // Auto-masquer après délai (le serveur gère la transition)
-  setTimeout(() => {
-    hideElement("ecran-resultat-multi");
-    hideElement("resultat-joueur-multi");
-  }, 3000);
+  // NE PAS auto-masquer - l'hôte décide quand passer à la suite
+}
+
+// Nouvelle fonction pour afficher les scores côté joueur
+function updatePlayerScoresDisplay(rankings) {
+  const container = document.getElementById("liste-scores-joueur");
+  if (!container || !rankings) return;
+
+  container.innerHTML = "";
+  rankings.forEach((player, idx) => {
+    const div = document.createElement("div");
+    div.className = "score-item-joueur";
+    div.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 1rem;
+      margin: 0.3rem 0;
+      background: rgba(128, 147, 241, 0.15);
+      border-radius: 8px;
+      border-left: 3px solid ${idx === 0 ? 'var(--p-bleu)' : 'var(--p-violet)'};
+    `;
+    
+    let medal = "";
+    if (idx === 0) medal = "🥇 ";
+    else if (idx === 1) medal = "🥈 ";
+    else if (idx === 2) medal = "🥉 ";
+    
+    div.innerHTML = `
+      <span>${medal}${player.name}</span>
+      <span style="color: var(--p-bleu); font-weight: bold;">${player.score} pts</span>
+    `;
+    container.appendChild(div);
+  });
 }
 
 // ============================================
@@ -1012,13 +1146,40 @@ function checkAutoJoin() {
 
   if (joinCode) {
     console.log("🔗 Auto-join détecté:", joinCode);
+    
     const codeInput = document.getElementById("code-rejoindre");
+    const nomInput = document.getElementById("nom-joueur");
+    const optionRejoindre = document.querySelector(".option-rejoindre");
+    
     if (codeInput) {
       codeInput.value = joinCode.toUpperCase();
-      // Scroll vers la section rejoindre
-      codeInput.scrollIntoView({ behavior: "smooth", block: "center" });
-      codeInput.focus();
+      codeInput.readOnly = true; // Le code est déjà rempli
+      codeInput.style.background = "rgba(114, 221, 247, 0.2)";
+      codeInput.style.borderColor = "var(--p-bleu)";
     }
+    
+    // Scroll vers la section rejoindre
+    if (optionRejoindre) {
+      setTimeout(() => {
+        optionRejoindre.scrollIntoView({ behavior: "smooth", block: "center" });
+        
+        // Focus sur le champ nom après le scroll
+        setTimeout(() => {
+          if (nomInput) {
+            nomInput.focus();
+            nomInput.placeholder = "Entrez votre prénom pour rejoindre";
+          }
+        }, 500);
+      }, 300);
+    }
+    
+    // Ajouter un indicateur visuel
+    if (optionRejoindre) {
+      optionRejoindre.style.border = "2px solid var(--p-bleu)";
+      optionRejoindre.style.boxShadow = "0 0 20px rgba(114, 221, 247, 0.3)";
+    }
+    
+    showNotification(`Code ${joinCode} détecté ! Entrez votre nom pour rejoindre.`, "info");
   }
 }
 
@@ -1032,7 +1193,17 @@ function setupNavigationButtons() {
   );
   if (btnResultatContinuer) {
     btnResultatContinuer.addEventListener("click", () => {
+      if (!isHost || !currentGameCode) return;
+      
+      // Envoyer l'événement au serveur pour passer à la question suivante
+      socket.emit("next-question", { gameCode: currentGameCode });
+      
+      // Masquer l'écran résultat
       hideElement("ecran-resultat-multi");
+      
+      // Supprimer l'info du répondant temporaire
+      const infoTemp = document.getElementById("info-repondant-temp");
+      if (infoTemp) infoTemp.remove();
     });
   }
 }

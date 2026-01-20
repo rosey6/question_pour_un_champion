@@ -570,8 +570,8 @@ io.on("connection", (socket) => {
       rankings,
     });
 
-    // En multijoueur "buzzer": un seul joueur répond. On passe à la question suivante après un court délai.
-    setTimeout(() => nextQuestion(gameCode), 2500);
+    // L'hôte décidera quand passer à la question suivante via le bouton
+    // Ne plus passer automatiquement
   });
 
   // Passer à la question suivante (hôte seulement)
