@@ -2,51 +2,150 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Question pour un Champion</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;"
+    />
+    <title>Une Question pour un Champion</title>
     <link rel="stylesheet" href="style.css" />
+    <style>
+      /* Petit ajustement pour aligner les boutons du menu principal */
+      .menu-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        align-items: center;
+        margin-top: 30px;
+      }
+      .bouton-menu {
+        width: 100%;
+        max-width: 300px;
+        text-decoration: none; /* Pour le lien <a> */
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+      }
+    </style>
   </head>
   <body>
-    <div class="container">
-      <div id="score-container" class="hide">
-        Score: <span id="score">0</span> | Temps: <span id="timer">10</span>s
-      </div>
-      <div id="question-container" class="hide">
-        <div id="question">Question ici</div>
-        <div id="answer-buttons" class="btn-grid">
-          <button class="btn">Réponse 1</button>
-          <button class="btn">Réponse 2</button>
-          <button class="btn">Réponse 3</button>
-          <button class="btn">Réponse 4</button>
+    <section id="accueil" class="ecran actif">
+      <div class="contenu">
+        <header>
+          <h1>Une Question pour un Champion</h1>
+          <h2>Testez vos connaissances en culture générale</h2>
+        </header>
+
+        <div class="description">
+          <p>Bienvenue ! Choisissez votre mode de jeu :</p>
         </div>
-        <div id="feedback" class="hide"></div>
+
+        <div class="separateur"></div>
+
+        <div class="menu-actions">
+          <button
+            id="btn-acces-parametres"
+            class="bouton bouton-menu"
+            onclick="changerEcran('selection-joueurs')"
+          >
+            👤 Mode Solo
+          </button>
+
+          <a href="multi.html" class="bouton bouton-secondaire bouton-menu">
+            🌐 Mode Multijoueur
+          </a>
+        </div>
       </div>
+    </section>
 
-      <div class="controls">
-        <button id="start-btn" class="btn">Mode Solo</button>
+    <section id="selection-joueurs" class="ecran">
+      <div class="contenu">
+        <h2>Configuration de la partie</h2>
 
-        <a
-          href="multi.html"
-          class="btn"
-          style="
-            text-decoration: none;
-            display: inline-block;
-            text-align: center;
-            line-height: normal;
-          "
-          >Mode Multijoueur 🌐</a
-        >
+        <div class="form-group">
+          <label>Nombre de joueurs :</label>
+          <div class="selecteur-joueurs">
+            <button class="btn-nb-joueurs selectionne" data-nb="2">2</button>
+            <button class="btn-nb-joueurs" data-nb="3">3</button>
+            <button class="btn-nb-joueurs" data-nb="4">4</button>
+          </div>
+        </div>
 
-        <button id="next-btn" class="btn hidden">Suivant</button>
+        <div id="noms-joueurs-container" class="noms-container"></div>
+
+        <button id="btn-demarrer-jeu" class="bouton">
+          Commencer la partie
+        </button>
+        <button id="btn-retour-joueurs" class="bouton bouton-secondaire">
+          Retour
+        </button>
       </div>
+    </section>
 
-      <div id="final-score-container" class="hide">
-        <h2>Partie Terminée !</h2>
-        <p>Votre score final est : <span id="final-score"></span></p>
-        <div id="score-message"></div>
-        <button id="restart-btn" class="btn">Rejouer</button>
+    <section id="jeu" class="ecran">
+      <div class="contenu-jeu">
+        <div class="hud">
+          <div id="chronometre" class="chronometre">
+            <span id="temps-restant" class="temps-restant">30</span>
+          </div>
+          <div class="info-question">
+            <span id="numero-question">Question 1/10</span>
+          </div>
+        </div>
+
+        <div id="zone-question" class="zone-question">
+          <h2 id="texte-question">Chargement...</h2>
+        </div>
+
+        <div id="feedback-reponse" class="feedback hidden"></div>
+
+        <div id="zone-reponses" class="zone-reponses">
+          <div id="zone-buzzers" class="grille-buzzers"></div>
+
+          <div id="options-reponse" class="options-reponse hidden"></div>
+        </div>
+
+        <div class="controles-jeu">
+          <button id="btn-question-suivante" class="bouton hidden">
+            Question Suivante
+          </button>
+          <p class="indication-buzzers">
+            Appuyez sur votre touche (A, P, Q, M) pour buzzer !
+          </p>
+        </div>
+
+        <div id="barre-scores" class="barre-scores"></div>
+      </div>
+    </section>
+
+    <section id="resultats" class="ecran">
+      <div class="contenu">
+        <h1>Résultats Finaux</h1>
+
+        <div id="podium" class="podium"></div>
+
+        <div class="classement-detail">
+          <ul id="liste-resultats"></ul>
+        </div>
+
+        <button id="btn-menu-principal" class="bouton">Retour au Menu</button>
+      </div>
+    </section>
+
+    <div id="resultat-joueur" class="overlay hidden">
+      <div class="contenu-overlay">
+        <h2 id="titre-resultat">Bonne réponse !</h2>
+
+        <div class="illustration-container hidden" id="img-container-res">
+          <img id="img-resultat" src="" alt="Illustration" />
+          <p id="txt-illustration"></p>
+        </div>
+
+        <p id="bonne-reponse-texte"></p>
+        <button id="btn-retour-reponses" class="bouton">Continuer</button>
       </div>
     </div>
+
+    <script src="questions.json"></script>
     <script src="script.js"></script>
   </body>
 </html>
