@@ -382,22 +382,26 @@ function generateQRCode(gameCode) {
   qrWrapper.style.cssText = "display: flex; flex-direction: column; align-items: center; gap: 10px;";
   qrContainer.appendChild(qrWrapper);
 
-  // Construire l'URL de manière plus robuste
-  let baseUrl = window.location.origin;
-  let pathname = window.location.pathname;
+  // Construire l'URL - simplement remplacer le fichier actuel par multijoueur.html
+  const currentUrl = window.location.href.split('?')[0]; // Enlever les query params existants
+  let url;
   
-  // Si on est sur un fichier spécifique, remonter au dossier
-  if (pathname.endsWith(".html")) {
-    pathname = pathname.substring(0, pathname.lastIndexOf("/") + 1);
-  } else if (!pathname.endsWith("/")) {
-    pathname += "/";
+  if (currentUrl.endsWith('multijoueur.html')) {
+    // On est déjà sur multijoueur.html, juste ajouter le code
+    url = `${currentUrl}?join=${gameCode}`;
+  } else if (currentUrl.endsWith('/')) {
+    // On est sur un dossier
+    url = `${currentUrl}multijoueur.html?join=${gameCode}`;
+  } else if (currentUrl.endsWith('.html')) {
+    // On est sur un autre fichier .html, le remplacer
+    url = currentUrl.replace(/[^\/]+\.html$/, `multijoueur.html?join=${gameCode}`);
+  } else {
+    // Autre cas, ajouter directement
+    url = `${currentUrl}/multijoueur.html?join=${gameCode}`;
   }
-  
-  const url = `${baseUrl}${pathname}multijoueur.html?join=${gameCode}`;
 
-  console.log("🔗 URL QR Code:", url);
-  console.log("🔗 Origin:", baseUrl);
-  console.log("🔗 Pathname:", pathname);
+  console.log("🔗 URL actuelle:", currentUrl);
+  console.log("🔗 URL QR Code générée:", url);
 
   try {
     // Générer le QR code dans le wrapper
