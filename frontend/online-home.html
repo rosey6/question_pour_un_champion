@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
@@ -6,21 +6,54 @@
   <title>Mode en ligne</title>
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
-  <div class="container">
-    <div class="card" style="max-width: 720px; margin: 0 auto;">
+<body data-page="online-home">
+  <section class="ecran actif">
+    <div class="contenu">
       <h1>Mode en ligne</h1>
-      <p style="opacity: .85;">Créez une partie pour obtenir un code, ou rejoignez une partie existante.</p>
+      <p class="sous-titre">Créez une partie pour obtenir un code, ou rejoignez une partie existante.</p>
 
-      <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-top: 18px;">
-        <a class="btn" href="online-create.html" style="text-decoration:none; min-width: 220px; text-align:center;">Créer une partie</a>
-        <a class="btn" href="online-join.html" style="text-decoration:none; min-width: 220px; text-align:center;">Rejoindre</a>
+      <div class="groupe-nom" style="max-width: 520px; margin: 0 auto 18px;">
+        <label for="online-name">Votre nom</label>
+        <input id="online-name" type="text" placeholder="Ex: abdoul" autocomplete="nickname" />
       </div>
 
-      <div style="text-align:center; margin-top: 18px;">
-        <a href="index.html">Retour au menu</a>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px; width:100%; max-width: 720px; margin: 0 auto;">
+        <div class="option-creer" style="padding:14px;">
+          <h3>Créer une partie</h3>
+          <p style="margin: 8px 0 14px; opacity:.9;">Partagez un code à 6 caractères.</p>
+          <button id="go-create" class="bouton bouton-principal" type="button">Créer</button>
+        </div>
+
+        <div class="option-rejoindre" style="padding:14px;">
+          <h3>Rejoindre</h3>
+          <p style="margin: 8px 0 14px; opacity:.9;">Saisissez le code reçu.</p>
+          <button id="go-join" class="bouton bouton-secondaire" type="button">Rejoindre</button>
+        </div>
+      </div>
+
+      <div style="margin-top: 18px;">
+        <a class="lien" href="index.html">Retour au menu</a>
       </div>
     </div>
-  </div>
+  </section>
+
+  <script>
+    (function(){
+      const nameInput = document.getElementById('online-name');
+      const goCreate = document.getElementById('go-create');
+      const goJoin = document.getElementById('go-join');
+
+      const saved = localStorage.getItem('qpc_online_name');
+      if (saved && nameInput) nameInput.value = saved;
+
+      function persistName(){
+        const v = (nameInput?.value || '').trim();
+        if (v) localStorage.setItem('qpc_online_name', v);
+      }
+
+      goCreate?.addEventListener('click', () => { persistName(); window.location.href = 'online-create.html'; });
+      goJoin?.addEventListener('click', () => { persistName(); window.location.href = 'online-join.html'; });
+    })();
+  </script>
 </body>
 </html>
