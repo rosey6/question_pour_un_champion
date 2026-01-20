@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multijoueur - Question pour un Champion</title>
+    <link rel="stylesheet" href="style.css" />
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+      #qr-container {
+        background: white;
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem auto;
+        width: fit-content;
+      }
+      .lobby-info {
+        margin-bottom: 2rem;
+      }
+      .code-salle {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: var(--p-jaune, #fdbb2d);
+        letter-spacing: 5px;
+        margin: 10px 0;
+      }
+      /* Liste des joueurs stylisée */
+      .liste-joueurs li {
+        background: rgba(255, 255, 255, 0.1);
+        margin: 5px 0;
+        padding: 10px;
+        border-radius: 5px;
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+      }
+    </style>
+  </head>
+  <body>
+    <section id="ecran-connexion" class="ecran actif">
+      <div class="contenu">
+        <header>
+          <h1>Mode Multijoueur 🌐</h1>
+          <p>Rejoignez une partie en temps réel !</p>
+        </header>
+
+        <div class="form-group" style="margin-top: 2rem">
+          <label>Votre Pseudo :</label>
+          <input
+            type="text"
+            id="pseudo"
+            placeholder="Ex: Julien"
+            maxlength="12"
+          />
+
+          <div class="separateur"></div>
+
+          <button id="btn-creer" class="bouton">Créer une salle</button>
+
+          <p class="texte-secondaire" style="margin: 1rem 0">- OU -</p>
+
+          <div style="display: flex; gap: 10px; justify-content: center">
+            <input
+              type="text"
+              id="input-room-code"
+              placeholder="Code (ex: ABCD)"
+              style="text-transform: uppercase; max-width: 150px"
+            />
+            <button id="btn-rejoindre" class="bouton bouton-secondaire">
+              Rejoindre
+            </button>
+          </div>
+        </div>
+
+        <br />
+        <a href="index.html" class="bouton-retour"
+          >⬅ Retour au menu principal</a
+        >
+      </div>
+    </section>
+
+    <section id="ecran-lobby" class="ecran">
+      <div class="contenu">
+        <h2>Salle d'attente</h2>
+
+        <div class="lobby-info">
+          <p>Partagez ce code avec vos amis :</p>
+          <div id="display-room-code" class="code-salle">...</div>
+
+          <div id="qr-area">
+            <div id="qr-container"></div>
+            <p class="texte-secondaire">
+              <small>Scannez pour rejoindre directement</small>
+            </p>
+          </div>
+        </div>
+
+        <div class="liste-joueurs-container">
+          <h3>Joueurs prêts :</h3>
+          <ul id="ul-joueurs" style="padding: 0"></ul>
+        </div>
+
+        <div id="zone-hote" class="hidden">
+          <button id="btn-lancer-partie" class="bouton">
+            Lancer la partie !
+          </button>
+        </div>
+        <div id="zone-invite" class="hidden">
+          <p class="message-attente">En attente de l'hôte...</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="ecran-jeu-multi" class="ecran">
+      <div class="contenu">
+        <div
+          class="hud"
+          style="
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+          "
+        >
+          <span id="chrono-multi" class="chronometre">⏳ --</span>
+          <span id="score-multi">Mon Score: 0</span>
+        </div>
+
+        <h2 id="question-texte" style="min-height: 60px">Chargement...</h2>
+
+        <div
+          id="media-container"
+          class="illustration-container hidden"
+          style="margin: 15px 0"
+        >
+          <img
+            id="img-question"
+            src=""
+            alt="Indice visuel"
+            style="max-width: 100%; max-height: 250px; border-radius: 10px"
+          />
+        </div>
+
+        <div
+          id="options-container"
+          class="options-reponse-multi"
+          style="
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+          "
+        ></div>
+
+        <p
+          id="feedback-reponse"
+          style="height: 20px; font-weight: bold; margin-top: 10px"
+        ></p>
+      </div>
+    </section>
+
+    <section id="ecran-fin" class="ecran">
+      <div class="contenu">
+        <h1>🏆 Fin de la partie !</h1>
+        <div class="scoreboard-joueur">
+          <h3>Classement Final</h3>
+          <div id="classement-final" class="liste-scores"></div>
+        </div>
+        <button
+          onclick="location.href = 'multi.html'"
+          class="bouton bouton-secondaire"
+        >
+          Rejouer
+        </button>
+        <button
+          onclick="location.href = 'index.html'"
+          class="bouton bouton-secondaire"
+        >
+          Menu Principal
+        </button>
+      </div>
+    </section>
+
+    <script src="multi_script.js"></script>
+  </body>
+</html>
