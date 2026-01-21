@@ -18,6 +18,48 @@ let jeu = {
 };
 
 // ============================================
+// GESTIONNAIRE DE SONS
+// ============================================
+
+const sons = {
+  buzzer: new Audio("buzzer.mp3"),
+  applaudissements: new Audio("Applaudissements.mp3"),
+  hue: new Audio("hue.mp3"),
+};
+
+// Précharger les sons
+Object.values(sons).forEach((son) => {
+  son.load();
+  son.volume = 0.7; // Volume par défaut à 70%
+});
+
+function jouerSon(nomSon) {
+  try {
+    const son = sons[nomSon];
+    if (son) {
+      son.currentTime = 0; // Remettre au début
+      son.play().catch((e) => console.log("Erreur audio:", e));
+    }
+  } catch (e) {
+    console.log("Erreur son:", e);
+  }
+}
+
+function arreterSon(nomSon) {
+  try {
+    const son = sons[nomSon];
+    if (son) {
+      son.pause();
+      son.currentTime = 0;
+    }
+  } catch (e) {}
+}
+
+function arreterTousLesSons() {
+  Object.keys(sons).forEach((nomSon) => arreterSon(nomSon));
+}
+
+// ============================================
 // ILLUSTRATIONS
 // ============================================
 
@@ -416,6 +458,7 @@ function genererBuzzers() {
 
     buzzer.addEventListener("click", () => {
       if (jeu.enCours && !jeu.joueurActuel) {
+        jouerSon("buzzer"); // Jouer le son du buzzer
         buzzer.classList.add("buzzer-active");
         jeu.joueurActuel = i;
 
@@ -472,6 +515,7 @@ function activerBuzzerParClavier(indexJoueur) {
   if (jeu.enCours && !jeu.joueurActuel) {
     const boutonsBuzzer = document.querySelectorAll(".bouton-buzzer");
     if (boutonsBuzzer[indexJoueur]) {
+      jouerSon("buzzer"); // Jouer le son du buzzer
       boutonsBuzzer[indexJoueur].classList.add("buzzer-active");
 
       document.querySelectorAll(".bouton-buzzer").forEach((btn) => {
@@ -584,7 +628,11 @@ function verifierReponse(reponseDonnee, reponseCorrecte, tempsEcoule = false) {
   if (nomRepondantEl)
     nomRepondantEl.textContent = jeu.nomsJoueurs[jeu.joueurActuel];
 
+  // Arrêter tous les sons avant de jouer le nouveau
+  arreterTousLesSons();
+
   if (tempsEcoule) {
+    jouerSon("hue"); // Son de mauvaise réponse
     if (statutReponseEl) {
       statutReponseEl.textContent = "Temps écoulé! -5 points";
       statutReponseEl.className = "statut-reponse incorrect";
@@ -592,12 +640,14 @@ function verifierReponse(reponseDonnee, reponseCorrecte, tempsEcoule = false) {
     jeu.scores[jeu.joueurActuel] -= 5;
     if (jeu.scores[jeu.joueurActuel] < 0) jeu.scores[jeu.joueurActuel] = 0;
   } else if (reponseDonnee === reponseCorrecte) {
+    jouerSon("applaudissements"); // Son de bonne réponse
     if (statutReponseEl) {
       statutReponseEl.textContent = "Bonne réponse! +10 points";
       statutReponseEl.className = "statut-reponse";
     }
     jeu.scores[jeu.joueurActuel] += 10;
   } else {
+    jouerSon("hue"); // Son de mauvaise réponse
     if (statutReponseEl) {
       statutReponseEl.textContent = "Mauvaise réponse! -5 points";
       statutReponseEl.className = "statut-reponse incorrect";
