@@ -1198,8 +1198,14 @@ function updatePlayerScoresDisplay(rankings) {
   const container = document.getElementById("liste-scores-joueur");
   if (!container || !rankings) return;
 
+  // En mode spectateur, filtrer l'hôte des classements
+  let rankingsToDisplay = rankings;
+  if (multiplayerMode === "spectator") {
+    rankingsToDisplay = rankings.filter(p => !p.isHost);
+  }
+
   container.innerHTML = "";
-  rankings.forEach((player, idx) => {
+  rankingsToDisplay.forEach((player, idx) => {
     const div = document.createElement("div");
     div.className = "score-item-joueur";
     div.style.cssText = `
@@ -1256,8 +1262,20 @@ function updateMultiScores(players) {
 
   if (!players || players.length === 0) return;
 
+  // En mode spectateur, filtrer l'hôte des scores (l'hôte ne joue pas)
+  let playersToDisplay = players;
+  if (multiplayerMode === "spectator") {
+    // Filtrer les joueurs qui sont marqués comme hôte
+    playersToDisplay = players.filter(p => !p.isHost);
+  }
+
+  if (playersToDisplay.length === 0) {
+    container.innerHTML = '<p class="texte-secondaire">En attente des joueurs...</p>';
+    return;
+  }
+
   // Trier par score décroissant
-  const sorted = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
+  const sorted = [...playersToDisplay].sort((a, b) => (b.score || 0) - (a.score || 0));
 
   sorted.forEach((player, idx) => {
     const div = document.createElement("div");
@@ -1293,7 +1311,13 @@ function showFinalResults(data) {
 
   if (!data.rankings || !Array.isArray(data.rankings)) return;
 
-  data.rankings.forEach((player, idx) => {
+  // En mode spectateur, filtrer l'hôte des classements
+  let rankingsToDisplay = data.rankings;
+  if (multiplayerMode === "spectator") {
+    rankingsToDisplay = data.rankings.filter(p => !p.isHost);
+  }
+
+  rankingsToDisplay.forEach((player, idx) => {
     const div = document.createElement("div");
     div.className = "carte-joueur";
 

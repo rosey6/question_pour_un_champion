@@ -229,7 +229,7 @@ io.on("connection", (socket) => {
         id: p.id,
         name: p.name,
         score: game.scores[p.id] ?? 0,
-        isHost: false,
+        isHost: p.isHost || false,
       })),
     });
 
@@ -476,7 +476,7 @@ io.on("connection", (socket) => {
 
         const rankings = Object.values(g.players)
           .sort((a, b) => (b.score || 0) - (a.score || 0))
-          .map((pl, idx) => ({ position: idx + 1, name: pl.name, score: pl.score || 0 }));
+          .map((pl, idx) => ({ position: idx + 1, name: pl.name, score: pl.score || 0, isHost: pl.isHost || false }));
 
         io.to(gameCode).emit("answer-result", {
           playerId: socket.id,
@@ -559,7 +559,7 @@ io.on("connection", (socket) => {
 
     const rankings = Object.values(game.players)
       .sort((a, b) => (b.score || 0) - (a.score || 0))
-      .map((pl, idx) => ({ position: idx + 1, name: pl.name, score: pl.score || 0 }));
+      .map((pl, idx) => ({ position: idx + 1, name: pl.name, score: pl.score || 0, isHost: pl.isHost || false }));
 
     // Informer tous les joueurs
     io.to(gameCode).emit("answer-result", {
@@ -732,6 +732,7 @@ function endGame(gameCode) {
       position: index + 1,
       name: player.name,
       score: player.score,
+      isHost: player.isHost || false,
     }));
 
   io.to(gameCode).emit("game-finished", {

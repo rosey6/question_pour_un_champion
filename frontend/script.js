@@ -615,6 +615,27 @@ function verifierReponse(reponseDonnee, reponseCorrecte, tempsEcoule = false) {
   } catch (e) {}
 
   changerEcran("resultat");
+
+  // Afficher un compte à rebours de 5 secondes avant de passer à la question suivante
+  const btnQuestionSuivante = document.getElementById("btn-question-suivante");
+  if (btnQuestionSuivante) {
+    let countdown = 5;
+    btnQuestionSuivante.textContent = `Question suivante (${countdown}s)`;
+    btnQuestionSuivante.disabled = true;
+    
+    const countdownInterval = setInterval(() => {
+      countdown--;
+      if (countdown > 0) {
+        btnQuestionSuivante.textContent = `Question suivante (${countdown}s)`;
+      } else {
+        clearInterval(countdownInterval);
+        btnQuestionSuivante.textContent = "Question suivante";
+        btnQuestionSuivante.disabled = false;
+        // Passer automatiquement à la question suivante
+        passerQuestionSuivante();
+      }
+    }, 1000);
+  }
 }
 
 function passerQuestionSuivante() {
