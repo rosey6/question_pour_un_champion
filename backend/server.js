@@ -575,8 +575,15 @@ io.on("connection", (socket) => {
       rankings,
     });
 
-    // L'hôte décidera quand passer à la question suivante via le bouton
-    // Ne plus passer automatiquement
+    // En mode classique, passer automatiquement à la question suivante après 5 secondes
+    // En mode spectateur, l'hôte décide quand passer à la suite
+    if (game.mode === "classic") {
+      setTimeout(() => {
+        if (games[gameCode]) {
+          nextQuestion(gameCode);
+        }
+      }, 5000);
+    }
   });
 
   // Passer à la question suivante (hôte seulement)

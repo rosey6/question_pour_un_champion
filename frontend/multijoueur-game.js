@@ -688,6 +688,28 @@ function showClassicResult(isCorrect, correctAnswer, playerName) {
   }
   
   if (resultatEl) resultatEl.classList.remove("hidden");
+  
+  // Compte à rebours automatique de 5 secondes pour passer à la question suivante
+  const btnContinuer = document.getElementById("btn-resultat-classique-continuer");
+  if (btnContinuer) {
+    let countdown = 5;
+    btnContinuer.textContent = `Question suivante (${countdown}s)`;
+    btnContinuer.disabled = true;
+    
+    const countdownInterval = setInterval(() => {
+      countdown--;
+      if (countdown > 0) {
+        btnContinuer.textContent = `Question suivante (${countdown}s)`;
+      } else {
+        clearInterval(countdownInterval);
+        btnContinuer.textContent = "Question suivante";
+        btnContinuer.disabled = false;
+        // Passer automatiquement à la question suivante
+        hideElement("ecran-resultat-classique");
+        nextClassicQuestion();
+      }
+    }, 1000);
+  }
 }
 
 function setupClassicContinueButton() {
@@ -1182,15 +1204,35 @@ function displayAnswerResult(data) {
       resultatJoueur.style.display = "block";
     }
 
-    // Message d'attente
+    // Message d'attente ou compte à rebours selon le mode
     const compteARebours = document.getElementById("compte-a-rebours-prochaine");
     if (compteARebours) {
-      compteARebours.textContent = "En attente de l'hôte pour la prochaine question...";
-      compteARebours.style.color = "var(--p-violet)";
+      if (multiplayerMode === "classic") {
+        // En mode classique, afficher un compte à rebours et passer automatiquement
+        let countdown = 5;
+        compteARebours.textContent = `Question suivante dans ${countdown} secondes...`;
+        compteARebours.style.color = "var(--p-bleu)";
+        
+        const countdownInterval = setInterval(() => {
+          countdown--;
+          if (countdown > 0) {
+            compteARebours.textContent = `Question suivante dans ${countdown} secondes...`;
+          } else {
+            clearInterval(countdownInterval);
+            compteARebours.textContent = "Chargement...";
+            // En mode classique côté joueur, attendre que le serveur envoie la prochaine question
+            // Le serveur gère le passage automatique
+          }
+        }, 1000);
+      } else {
+        // En mode spectateur, attendre l'hôte
+        compteARebours.textContent = "En attente de l'hôte pour la prochaine question...";
+        compteARebours.style.color = "var(--p-violet)";
+      }
     }
   }
 
-  // NE PAS auto-masquer - l'hôte décide quand passer à la suite
+  // NE PAS auto-masquer - l'hôte décide quand passer à la suite (sauf en mode classique)
 }
 
 // Nouvelle fonction pour afficher les scores côté joueur
