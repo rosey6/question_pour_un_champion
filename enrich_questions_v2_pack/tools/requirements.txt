@@ -1,0 +1,2 @@
+# Dépendances pour le script de génération de questions (Groq - GRATUIT)
+requests>=2.28.0

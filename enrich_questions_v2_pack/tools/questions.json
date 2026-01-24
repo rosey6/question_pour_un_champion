@@ -1,0 +1,52 @@
+[
+  {
+    "question": "Quelle est la capitale du Maroc ?",
+    "options": ["Casablanca", "Rabat", "Fès", "Marrakech"],
+    "reponseCorrecte": "Rabat"
+  },
+  {
+    "question": "Quel est le plus grand océan du monde ?",
+    "options": ["Atlantique", "Indien", "Pacifique", "Arctique"],
+    "reponseCorrecte": "Pacifique"
+  },
+  {
+    "question": "Combien de continents y a-t-il sur Terre ?",
+    "options": ["5", "6", "7", "8"],
+    "reponseCorrecte": "7"
+  },
+  {
+    "question": "Quelle planète est la plus proche du Soleil ?",
+    "options": ["Vénus", "Mercure", "Mars", "Jupiter"],
+    "reponseCorrecte": "Mercure"
+  },
+  {
+    "question": "Quel est le symbole chimique de l’eau ?",
+    "options": ["H2O", "CO2", "O2", "NaCl"],
+    "reponseCorrecte": "H2O"
+  },
+  {
+    "question": "Quel pays a pour capitale Tokyo ?",
+    "options": ["Chine", "Corée du Sud", "Japon", "Thaïlande"],
+    "reponseCorrecte": "Japon"
+  },
+  {
+    "question": "Combien de minutes y a-t-il dans une heure ?",
+    "options": ["30", "45", "60", "90"],
+    "reponseCorrecte": "60"
+  },
+  {
+    "question": "Quel est le plus grand mammifère du monde ?",
+    "options": ["Éléphant", "Baleine bleue", "Rhinocéros", "Girafe"],
+    "reponseCorrecte": "Baleine bleue"
+  },
+  {
+    "question": "Quel instrument mesure les tremblements de terre ?",
+    "options": ["Baromètre", "Thermomètre", "Sismographe", "Hygromètre"],
+    "reponseCorrecte": "Sismographe"
+  },
+  {
+    "question": "Quelle est la langue officielle du Brésil ?",
+    "options": ["Espagnol", "Portugais", "Français", "Anglais"],
+    "reponseCorrecte": "Portugais"
+  }
+]

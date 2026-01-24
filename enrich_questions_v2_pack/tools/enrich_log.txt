@@ -1,0 +1,149 @@
+[2026-01-14T17:50:46.526Z] 🚀 enrich_questions_v2: démarrage
+[2026-01-14T17:50:46.527Z] 📁 Dossier courant: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools
+[2026-01-14T17:50:46.528Z] 📝 Log: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\enrich_log.txt
+[2026-01-14T17:50:46.528Z] Erreur:
+🚀 enrich_questions_v2: démarrage
+📁 Dossier courant: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools
+📝 Log: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\enrich_log.txt
+📊 113 questions chargées
+✅ Terminé. Fichier généré: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\questions.enriched.json
+🚀 enrich_questions_v3: démarrage
+📁 Dossier courant: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools
+📝 Log: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\enrich_log.txt
+📊 113 questions chargées
+⏳ Progression: 10/113 (ok=8, placeholder=2, erreurs=0)
+⏳ Progression: 20/113 (ok=16, placeholder=4, erreurs=0)
+⏳ Progression: 30/113 (ok=26, placeholder=4, erreurs=0)
+⏳ Progression: 40/113 (ok=33, placeholder=7, erreurs=0)
+⏳ Progression: 50/113 (ok=40, placeholder=10, erreurs=0)
+⏳ Progression: 60/113 (ok=49, placeholder=11, erreurs=0)
+⏳ Progression: 70/113 (ok=56, placeholder=14, erreurs=0)
+⏳ Progression: 80/113 (ok=66, placeholder=14, erreurs=0)
+⏳ Progression: 90/113 (ok=75, placeholder=15, erreurs=0)
+⚠️ Erreur question 92 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q40&props=claims|descriptions|labels&languages=fr&format=json&origin=*
+⚠️ Erreur question 93 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=C&language=fr&uselang=fr&format=json&limit=10&origin=*
+⚠️ Erreur question 94 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q3870&props=claims|descriptions|labels&languages=fr&format=json&origin=*
+⚠️ Erreur question 95 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Grande%20Muraille%20de%20Chine&language=fr&uselang=fr&format=json&limit=10&origin=*
+⚠️ Erreur question 96 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Estomac&language=fr&uselang=fr&format=json&limit=10&origin=*
+⚠️ Erreur question 97 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Accra&language=fr&uselang=fr&format=json&limit=10&origin=*
+⚠️ Erreur question 98 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q23907&props=claims|descriptions|labels&languages=fr&format=json&origin=*
+⚠️ Erreur question 99 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Rouge&language=fr&uselang=fr&format=json&limit=10&origin=*
+⚠️ Erreur question 100 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Inde&language=fr&uselang=fr&format=json&limit=10&origin=*
+⏳ Progression: 100/113 (ok=76, placeholder=15, erreurs=9)
+⚠️ Erreur question 101 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=S%C3%A9oul&language=fr&uselang=fr&format=json&limit=10&origin=*
+⚠️ Erreur question 102 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q712701&props=claims|descriptions|labels&languages=fr&format=json&origin=*
+⚠️ Erreur question 103 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Fer&language=fr&uselang=fr&format=json&limit=10&origin=*
+⚠️ Erreur question 104 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Buenos%20Aires&language=fr&uselang=fr&format=json&limit=10&origin=*
+⚠️ Erreur question 105 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Pacifique&language=fr&uselang=fr&format=json&limit=10&origin=*
+⚠️ Erreur question 106 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q65099397&props=claims|descriptions|labels&languages=fr&format=json&origin=*
+⚠️ Erreur question 107 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Addis-Abeba&language=fr&uselang=fr&format=json&limit=10&origin=*
+⚠️ Erreur question 108 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=H&language=fr&uselang=fr&format=json&limit=10&origin=*
+⚠️ Erreur question 109 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Rugby&language=fr&uselang=fr&format=json&limit=10&origin=*
+⚠️ Erreur question 110 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q3808&props=claims|descriptions|labels&languages=fr&format=json&origin=*
+⏳ Progression: 110/113 (ok=76, placeholder=15, erreurs=19)
+⚠️ Erreur question 111 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Antarctique&language=fr&uselang=fr&format=json&limit=10&origin=*
+⚠️ Erreur question 112 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=7&language=fr&uselang=fr&format=json&limit=10&origin=*
+⚠️ Erreur question 113 : HTTP 429 Too many requests (f061ab2) for https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Finlande&language=fr&uselang=fr&format=json&limit=10&origin=*
+✅ Terminé. Fichier généré: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\questions.enriched.json
+📌 Résumé: images Wikidata/Commons=76, placeholders=15, erreurs=22
+[2026-01-14T18:45:07.380Z] 🚀 enrich_questions_v3_2: démarrage
+[2026-01-14T18:45:07.392Z] 📁 Dossier courant: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools
+[2026-01-14T18:45:07.393Z] 📝 Log: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\enrich_log.txt
+[2026-01-14T18:45:07.394Z] ⚙️ Options: concurrency=1, minDelayMs=700, maxRetries=10
+[2026-01-14T18:45:07.395Z] ❌ Erreur fatale: ENOENT: no such file or directory, open 'C:\Users\HP\Downloads\enrich_questions_v2_pack\questions.json'
+[2026-01-14T18:45:28.706Z] 🚀 enrich_questions_v3_2: démarrage
+[2026-01-14T18:45:28.720Z] 📁 Dossier courant: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools
+[2026-01-14T18:45:28.721Z] 📝 Log: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\enrich_log.txt
+[2026-01-14T18:45:28.722Z] ⚙️ Options: concurrency=1, minDelayMs=700, maxRetries=10
+[2026-01-14T18:45:28.723Z] 📊 113 questions chargées
+[2026-01-14T18:45:39.709Z] ⏳ Progression: 10/113 (ok=7, placeholder=3, erreurs=0)
+[2026-01-14T18:45:50.815Z] ⏳ Progression: 20/113 (ok=15, placeholder=5, erreurs=0)
+[2026-01-14T18:46:09.023Z] ⏳ Progression: 30/113 (ok=23, placeholder=7, erreurs=0)
+[2026-01-14T18:46:23.798Z] ⏳ Progression: 40/113 (ok=32, placeholder=8, erreurs=0)
+[2026-01-14T18:46:34.025Z] ⏳ Progression: 50/113 (ok=39, placeholder=11, erreurs=0)
+[2026-01-14T18:46:50.607Z] ⏳ Progression: 60/113 (ok=46, placeholder=14, erreurs=0)
+[2026-01-14T18:47:02.922Z] ⏳ Progression: 70/113 (ok=53, placeholder=17, erreurs=0)
+[2026-01-14T18:47:14.905Z] ⏳ Progression: 80/113 (ok=61, placeholder=19, erreurs=0)
+[2026-01-14T18:47:29.626Z] ⏳ Progression: 90/113 (ok=69, placeholder=21, erreurs=0)
+[2026-01-14T18:47:44.522Z] ⏳ Progression: 100/113 (ok=78, placeholder=22, erreurs=0)
+[2026-01-14T18:47:52.636Z] ⏳ Progression: 110/113 (ok=84, placeholder=26, erreurs=0)
+[2026-01-14T18:47:56.727Z] ⏳ Progression: 113/113 (ok=85, placeholder=28, erreurs=0)
+[2026-01-14T18:47:56.733Z] ✅ Terminé. Fichier généré: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\questions.enriched.json
+[2026-01-14T18:47:56.735Z] 📌 Résumé: images Wikidata/Commons=85, placeholders=28, erreurs=0
+[2026-01-14T18:47:57.105Z] 💾 Cache sauvegardé: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\.cache_wikidata.json / C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\.cache_commons.json
+[2026-01-14T19:13:21.414Z] 🚀 enrich_questions_v3_2: démarrage
+[2026-01-14T19:13:21.423Z] 📁 Dossier courant: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools
+[2026-01-14T19:13:21.424Z] 📝 Log: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\enrich_log.txt
+[2026-01-14T19:13:21.425Z] ⚙️ Options: concurrency=1, minDelayMs=700, maxRetries=10
+[2026-01-14T19:13:21.426Z] 📊 113 questions chargées
+[2026-01-14T19:13:21.720Z] ⏳ Progression: 10/113 (ok=7, placeholder=3, erreurs=0)
+[2026-01-14T19:13:21.722Z] ⏳ Progression: 20/113 (ok=15, placeholder=5, erreurs=0)
+[2026-01-14T19:13:21.723Z] ⏳ Progression: 30/113 (ok=23, placeholder=7, erreurs=0)
+[2026-01-14T19:13:21.724Z] ⏳ Progression: 40/113 (ok=32, placeholder=8, erreurs=0)
+[2026-01-14T19:13:21.725Z] ⏳ Progression: 50/113 (ok=39, placeholder=11, erreurs=0)
+[2026-01-14T19:13:21.726Z] ⏳ Progression: 60/113 (ok=46, placeholder=14, erreurs=0)
+[2026-01-14T19:13:21.726Z] ⏳ Progression: 70/113 (ok=53, placeholder=17, erreurs=0)
+[2026-01-14T19:13:21.727Z] ⏳ Progression: 80/113 (ok=61, placeholder=19, erreurs=0)
+[2026-01-14T19:13:21.728Z] ⏳ Progression: 90/113 (ok=69, placeholder=21, erreurs=0)
+[2026-01-14T19:13:21.729Z] ⏳ Progression: 100/113 (ok=78, placeholder=22, erreurs=0)
+[2026-01-14T19:13:21.730Z] ⏳ Progression: 110/113 (ok=84, placeholder=26, erreurs=0)
+[2026-01-14T19:13:21.730Z] ⏳ Progression: 113/113 (ok=85, placeholder=28, erreurs=0)
+[2026-01-14T19:13:21.732Z] ✅ Terminé. Fichier généré: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\questions.enriched.json
+[2026-01-14T19:13:21.733Z] 📌 Résumé: images Wikidata/Commons=85, placeholders=28, erreurs=0
+[2026-01-14T19:13:22.140Z] 💾 Cache sauvegardé: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\.cache_wikidata.json / C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\.cache_commons.json
+🚀 enrich_questions_v3.3: démarrage
+📁 Dossier courant: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools
+📝 Log: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\enrich_log.txt
+📊 113 questions chargées
+⏳ Progression: 10/113 (ok=2, placeholder=8, erreurs=0)
+⏳ Progression: 20/113 (ok=6, placeholder=14, erreurs=0)
+⏳ Progression: 30/113 (ok=11, placeholder=19, erreurs=0)
+⏳ Progression: 40/113 (ok=13, placeholder=27, erreurs=0)
+⏳ Progression: 50/113 (ok=15, placeholder=35, erreurs=0)
+⏳ Progression: 60/113 (ok=20, placeholder=40, erreurs=0)
+⏳ Progression: 70/113 (ok=23, placeholder=47, erreurs=0)
+⏳ Progression: 80/113 (ok=26, placeholder=54, erreurs=0)
+⏳ HTTP 429 - retry dans 1245 ms (tentative 1/8)
+⏳ HTTP 429 - retry dans 1239 ms (tentative 1/8)
+⏳ Progression: 90/113 (ok=30, placeholder=60, erreurs=0)
+⏳ HTTP 429 - retry dans 1042 ms (tentative 1/8)
+⏳ HTTP 429 - retry dans 1080 ms (tentative 1/8)
+⏳ HTTP 429 - retry dans 1135 ms (tentative 1/8)
+⏳ HTTP 429 - retry dans 1000 ms (tentative 1/8)
+⏳ Progression: 100/113 (ok=33, placeholder=67, erreurs=0)
+⏳ HTTP 429 - retry dans 1119 ms (tentative 1/8)
+⏳ HTTP 429 - retry dans 1005 ms (tentative 1/8)
+⏳ HTTP 429 - retry dans 1196 ms (tentative 1/8)
+⏳ HTTP 429 - retry dans 1116 ms (tentative 1/8)
+⏳ HTTP 429 - retry dans 1076 ms (tentative 1/8)
+⏳ Progression: 110/113 (ok=35, placeholder=75, erreurs=0)
+⏳ HTTP 429 - retry dans 1132 ms (tentative 1/8)
+✅ Terminé. Fichier généré: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\questions.enriched.json
+📌 Résumé: images Wikidata/Commons=35, placeholders=78, erreurs=0
+💾 Cache: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\.cache_enrich
+🚀 enrich_questions_v3.3: démarrage
+📁 Dossier courant: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools
+📝 Log: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\enrich_log.txt
+📊 113 questions chargées
+⏳ Progression: 10/113 (ok=2, placeholder=8, erreurs=0)
+⏳ Progression: 20/113 (ok=6, placeholder=14, erreurs=0)
+⏳ Progression: 30/113 (ok=11, placeholder=19, erreurs=0)
+⏳ Progression: 40/113 (ok=13, placeholder=27, erreurs=0)
+⏳ Progression: 50/113 (ok=15, placeholder=35, erreurs=0)
+⏳ Progression: 60/113 (ok=20, placeholder=40, erreurs=0)
+⏳ Progression: 70/113 (ok=23, placeholder=47, erreurs=0)
+⏳ Progression: 80/113 (ok=26, placeholder=54, erreurs=0)
+⏳ Progression: 90/113 (ok=30, placeholder=60, erreurs=0)
+⏳ Progression: 100/113 (ok=33, placeholder=67, erreurs=0)
+⏳ Progression: 110/113 (ok=35, placeholder=75, erreurs=0)
+✅ Terminé. Fichier généré: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\questions.enriched.json
+📌 Résumé: images Wikidata/Commons=35, placeholders=78, erreurs=0
+💾 Cache: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\.cache_enrich
+🚀 enrich_questions_v3.3: démarrage
+📁 Dossier courant: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools
+📝 Log: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\enrich_log.txt
+📊 10 questions chargées
+⏳ Progression: 10/10 (ok=2, placeholder=8, erreurs=0)
+✅ Terminé. Fichier généré: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\questions.enriched.json
+📌 Résumé: images Wikidata/Commons=2, placeholders=8, erreurs=0
+💾 Cache: C:\Users\HP\Downloads\enrich_questions_v2_pack\tools\.cache_enrich
