@@ -23,48 +23,6 @@ let multiState = {
 };
 
 // ============================================
-// GESTIONNAIRE DE SONS MULTIJOUEUR
-// ============================================
-
-const sonsMulti = {
-  buzzer: new Audio("buzzer.mp3"),
-  applaudissements: new Audio("Applaudissements.mp3"),
-  hue: new Audio("hue.mp3"),
-};
-
-// Précharger les sons
-Object.values(sonsMulti).forEach((son) => {
-  son.load();
-  son.volume = 0.7;
-});
-
-function jouerSonMulti(nomSon) {
-  try {
-    const son = sonsMulti[nomSon];
-    if (son) {
-      son.currentTime = 0;
-      son.play().catch((e) => console.log("Erreur audio:", e));
-    }
-  } catch (e) {
-    console.log("Erreur son:", e);
-  }
-}
-
-function arreterSonMulti(nomSon) {
-  try {
-    const son = sonsMulti[nomSon];
-    if (son) {
-      son.pause();
-      son.currentTime = 0;
-    }
-  } catch (e) {}
-}
-
-function arreterTousLesSonsMulti() {
-  Object.keys(sonsMulti).forEach((nomSon) => arreterSonMulti(nomSon));
-}
-
-// ============================================
 // INITIALISATION SOCKET.IO
 // ============================================
 
@@ -626,8 +584,6 @@ function handleClassicKeyPress(e) {
 function handleClassicBuzz(playerId, playerName) {
   if (!multiState.buzzerEnabled || !currentGameCode) return;
   
-  jouerSonMulti("buzzer"); // Jouer le son du buzzer
-  
   multiState.buzzerEnabled = false;
   multiState.answeringPlayer = playerId;
   
@@ -704,14 +660,6 @@ function handleClassicAnswer(playerId, answer, optionBtns) {
 }
 
 function showClassicResult(isCorrect, correctAnswer, playerName) {
-  // Arrêter tous les sons et jouer le son approprié
-  arreterTousLesSonsMulti();
-  if (isCorrect) {
-    jouerSonMulti("applaudissements"); // Son de bonne réponse
-  } else {
-    jouerSonMulti("hue"); // Son de mauvaise réponse
-  }
-
   const resultatEl = document.getElementById("ecran-resultat-classique");
   const infoEl = document.getElementById("resultat-classique-info");
   
@@ -1023,7 +971,6 @@ function disableBuzzers() {
 function handlePlayerBuzzed(data) {
   console.log(`🔔 ${data.playerName} a buzzé !`);
 
-  jouerSonMulti("buzzer"); // Jouer le son du buzzer
   disableBuzzers();
 
   // Afficher notification
@@ -1130,14 +1077,6 @@ function displayAnswerOptions(options) {
 
 function displayAnswerResult(data) {
   console.log("✔️ Affichage résultat:", data);
-
-  // Arrêter tous les sons et jouer le son approprié
-  arreterTousLesSonsMulti();
-  if (data.isCorrect) {
-    jouerSonMulti("applaudissements"); // Son de bonne réponse
-  } else {
-    jouerSonMulti("hue"); // Son de mauvaise réponse
-  }
 
   // Mise à jour scores
   updateScores(data.rankings);
