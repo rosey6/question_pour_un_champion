@@ -15,7 +15,56 @@ let jeu = {
   questionsTirees: [],
   questionsDejaPosees: [],
   toutesLesQuestions: [],
+  // Nouvelles propriétés pour la génération IA
+  sourceQuestions: "existantes", // "existantes" ou "ia"
+  themeSelectionne: null,
+  questionsGenerees: [],
 };
+
+// URL du backend pour la génération IA
+const BACKEND_URL = "https://questionpourunchampion-backend.onrender.com";
+
+// ============================================
+// GESTIONNAIRE DE SONS
+// ============================================
+
+const sons = {
+  buzzer: new Audio("buzzer.mp3"),
+  applaudissements: new Audio("Applaudissements.mp3"),
+  hue: new Audio("hue.mp3"),
+};
+
+// Précharger les sons
+Object.values(sons).forEach((son) => {
+  son.load();
+  son.volume = 0.7; // Volume par défaut à 70%
+});
+
+function jouerSon(nomSon) {
+  try {
+    const son = sons[nomSon];
+    if (son) {
+      son.currentTime = 0; // Remettre au début
+      son.play().catch((e) => console.log("Erreur audio:", e));
+    }
+  } catch (e) {
+    console.log("Erreur son:", e);
+  }
+}
+
+function arreterSon(nomSon) {
+  try {
+    const son = sons[nomSon];
+    if (son) {
+      son.pause();
+      son.currentTime = 0;
+    }
+  } catch (e) {}
+}
+
+function arreterTousLesSons() {
+  Object.keys(sons).forEach((nomSon) => arreterSon(nomSon));
+}
 
 // ============================================
 // ILLUSTRATIONS
@@ -313,11 +362,213 @@ function validerJoueursEtParametrer() {
     alert("Veuillez entrer au moins un nom de joueur !");
     return;
   }
-  changerEcran("parametres");
+  // Aller à l'écran de sélection de thème au lieu des paramètres
+  changerEcran("selection-theme");
+  initialiserEcranTheme();
 }
 
-function demarrerPartie() {
+// ============================================
+// GÉNÉRATION DE QUESTIONS PAR IA
+// ============================================
+
+function initialiserEcranTheme() {
+  // Réinitialiser l'état
+  jeu.sourceQuestions = "existantes";
+  jeu.themeSelectionne = null;
+
+  // Masquer la section des thèmes par défaut
+  const sectionThemes = document.getElementById("section-themes");
+  const chargementIa = document.getElementById("chargement-ia");
+  const erreurIa = document.getElementById("erreur-ia");
+
+  if (sectionThemes) sectionThemes.classList.add("hidden");
+  if (chargementIa) chargementIa.classList.add("hidden");
+  if (erreurIa) erreurIa.classList.add("hidden");
+
+  // Activer le bouton "Questions existantes" par défaut
+  document.querySelectorAll(".option-source").forEach((btn) => {
+    btn.classList.remove("actif");
+  });
+  const btnExistantes = document.getElementById("btn-source-existantes");
+  if (btnExistantes) btnExistantes.classList.add("actif");
+
+  // Réinitialiser les thèmes
+  document.querySelectorAll(".bouton-theme").forEach((btn) => {
+    btn.classList.remove("actif");
+  });
+
+  const themeSelectionneDiv = document.getElementById("theme-selectionne");
+  if (themeSelectionneDiv) themeSelectionneDiv.classList.add("hidden");
+
+  const inputTheme = document.getElementById("input-theme-personnalise");
+  if (inputTheme) inputTheme.value = "";
+}
+
+function selectionnerSourceQuestions(source) {
+  jeu.sourceQuestions = source;
+
+  // Mettre à jour l'UI
+  document.querySelectorAll(".option-source").forEach((btn) => {
+    btn.classList.remove("actif");
+  });
+
+  const btnSource = document.querySelector(`[data-source="${source}"]`);
+  if (btnSource) btnSource.classList.add("actif");
+
+  const sectionThemes = document.getElementById("section-themes");
+  if (source === "ia") {
+    sectionThemes?.classList.remove("hidden");
+  } else {
+    sectionThemes?.classList.add("hidden");
+    jeu.themeSelectionne = null;
+  }
+}
+
+function selectionnerTheme(theme) {
+  jeu.themeSelectionne = theme;
+
+  // Mettre à jour l'UI
+  document.querySelectorAll(".bouton-theme").forEach((btn) => {
+    btn.classList.remove("actif");
+    if (btn.dataset.theme === theme) {
+      btn.classList.add("actif");
+    }
+  });
+
+  // Afficher le thème sélectionné
+  const themeSelectionneDiv = document.getElementById("theme-selectionne");
+  const nomTheme = document.getElementById("nom-theme-selectionne");
+  if (themeSelectionneDiv && nomTheme) {
+    nomTheme.textContent = theme;
+    themeSelectionneDiv.classList.remove("hidden");
+  }
+
+  // Vider l'input personnalisé
+  const inputTheme = document.getElementById("input-theme-personnalise");
+  if (inputTheme) inputTheme.value = "";
+}
+
+function validerThemePersonnalise() {
+  const inputTheme = document.getElementById("input-theme-personnalise");
+  if (!inputTheme) return;
+
+  const theme = inputTheme.value.trim();
+  if (theme.length < 2) {
+    alert("Veuillez entrer un thème valide (au moins 2 caractères)");
+    return;
+  }
+
+  // Désélectionner les thèmes prédéfinis
+  document.querySelectorAll(".bouton-theme").forEach((btn) => {
+    btn.classList.remove("actif");
+  });
+
+  jeu.themeSelectionne = theme;
+
+  // Afficher le thème sélectionné
+  const themeSelectionneDiv = document.getElementById("theme-selectionne");
+  const nomTheme = document.getElementById("nom-theme-selectionne");
+  if (themeSelectionneDiv && nomTheme) {
+    nomTheme.textContent = theme;
+    themeSelectionneDiv.classList.remove("hidden");
+  }
+}
+
+async function genererQuestionsIA(theme, count) {
+  const chargementIa = document.getElementById("chargement-ia");
+  const erreurIa = document.getElementById("erreur-ia");
+  const sectionThemes = document.getElementById("section-themes");
+
+  // Afficher le chargement
+  sectionThemes?.classList.add("hidden");
+  erreurIa?.classList.add("hidden");
+  chargementIa?.classList.remove("hidden");
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/generate-questions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        theme: theme,
+        count: count,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || "Erreur lors de la génération");
+    }
+
+    jeu.questionsGenerees = data.questions;
+    console.log(`${data.questions.length} questions générées sur "${theme}"`);
+
+    // Masquer le chargement et continuer
+    chargementIa?.classList.add("hidden");
+    return data.questions;
+
+  } catch (error) {
+    console.error("Erreur génération IA:", error);
+
+    // Afficher l'erreur
+    chargementIa?.classList.add("hidden");
+    if (erreurIa) {
+      const messageErreur = erreurIa.querySelector(".message-erreur");
+      if (messageErreur) {
+        messageErreur.textContent = error.message || "Impossible de générer les questions. Vérifiez votre connexion.";
+      }
+      erreurIa.classList.remove("hidden");
+    }
+
+    return null;
+  }
+}
+
+async function validerThemeEtContinuer() {
+  if (jeu.sourceQuestions === "existantes") {
+    // Utiliser les questions existantes
+    changerEcran("parametres");
+    return;
+  }
+
+  // Vérifier qu'un thème est sélectionné
+  if (!jeu.themeSelectionne) {
+    alert("Veuillez sélectionner un thème pour générer les questions");
+    return;
+  }
+
+  // Générer les questions
+  const questions = await genererQuestionsIA(
+    jeu.themeSelectionne,
+    jeu.nombreQuestionsParPartie || 10
+  );
+
+  if (questions && questions.length > 0) {
+    // Remplacer les questions par celles générées
+    jeu.toutesLesQuestions = questions;
+    changerEcran("parametres");
+  }
+}
+
+function reessayerGeneration() {
+  const erreurIa = document.getElementById("erreur-ia");
+  const sectionThemes = document.getElementById("section-themes");
+
+  erreurIa?.classList.add("hidden");
+  sectionThemes?.classList.remove("hidden");
+}
+
+async function demarrerPartie() {
   recupererParametres();
+
+  // Si on utilise les questions existantes et qu'elles ont été remplacées par l'IA,
+  // les recharger
+  if (jeu.sourceQuestions === "existantes" && jeu.questionsGenerees.length > 0) {
+    await chargerToutesLesQuestions();
+    jeu.questionsGenerees = [];
+  }
 
   if (jeu.toutesLesQuestions.length === 0) {
     alert("Erreur: Aucune question disponible !");
@@ -416,6 +667,7 @@ function genererBuzzers() {
 
     buzzer.addEventListener("click", () => {
       if (jeu.enCours && !jeu.joueurActuel) {
+        jouerSon("buzzer"); // Jouer le son du buzzer
         buzzer.classList.add("buzzer-active");
         jeu.joueurActuel = i;
 
@@ -472,6 +724,7 @@ function activerBuzzerParClavier(indexJoueur) {
   if (jeu.enCours && !jeu.joueurActuel) {
     const boutonsBuzzer = document.querySelectorAll(".bouton-buzzer");
     if (boutonsBuzzer[indexJoueur]) {
+      jouerSon("buzzer"); // Jouer le son du buzzer
       boutonsBuzzer[indexJoueur].classList.add("buzzer-active");
 
       document.querySelectorAll(".bouton-buzzer").forEach((btn) => {
@@ -584,7 +837,11 @@ function verifierReponse(reponseDonnee, reponseCorrecte, tempsEcoule = false) {
   if (nomRepondantEl)
     nomRepondantEl.textContent = jeu.nomsJoueurs[jeu.joueurActuel];
 
+  // Arrêter tous les sons avant de jouer le nouveau
+  arreterTousLesSons();
+
   if (tempsEcoule) {
+    jouerSon("hue"); // Son de mauvaise réponse
     if (statutReponseEl) {
       statutReponseEl.textContent = "Temps écoulé! -5 points";
       statutReponseEl.className = "statut-reponse incorrect";
@@ -592,12 +849,14 @@ function verifierReponse(reponseDonnee, reponseCorrecte, tempsEcoule = false) {
     jeu.scores[jeu.joueurActuel] -= 5;
     if (jeu.scores[jeu.joueurActuel] < 0) jeu.scores[jeu.joueurActuel] = 0;
   } else if (reponseDonnee === reponseCorrecte) {
+    jouerSon("applaudissements"); // Son de bonne réponse
     if (statutReponseEl) {
       statutReponseEl.textContent = "Bonne réponse! +10 points";
       statutReponseEl.className = "statut-reponse";
     }
     jeu.scores[jeu.joueurActuel] += 10;
   } else {
+    jouerSon("hue"); // Son de mauvaise réponse
     if (statutReponseEl) {
       statutReponseEl.textContent = "Mauvaise réponse! -5 points";
       statutReponseEl.className = "statut-reponse incorrect";
@@ -800,8 +1059,63 @@ function initialiserEvenements() {
   const btnRetourParametres = document.getElementById("btn-retour-parametres");
   if (btnRetourParametres) {
     btnRetourParametres.addEventListener("click", () =>
-      changerEcran("selection-joueurs"),
+      changerEcran("selection-theme"),
     );
+  }
+
+  // ========== ÉCRAN SÉLECTION THÈME ==========
+  const btnSourceExistantes = document.getElementById("btn-source-existantes");
+  if (btnSourceExistantes) {
+    btnSourceExistantes.addEventListener("click", () =>
+      selectionnerSourceQuestions("existantes")
+    );
+  }
+
+  const btnSourceIa = document.getElementById("btn-source-ia");
+  if (btnSourceIa) {
+    btnSourceIa.addEventListener("click", () =>
+      selectionnerSourceQuestions("ia")
+    );
+  }
+
+  // Boutons de thème prédéfinis
+  document.querySelectorAll(".bouton-theme").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectionnerTheme(btn.dataset.theme);
+    });
+  });
+
+  // Thème personnalisé
+  const btnThemePerso = document.getElementById("btn-theme-personnalise");
+  if (btnThemePerso) {
+    btnThemePerso.addEventListener("click", validerThemePersonnalise);
+  }
+
+  const inputThemePerso = document.getElementById("input-theme-personnalise");
+  if (inputThemePerso) {
+    inputThemePerso.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") validerThemePersonnalise();
+    });
+  }
+
+  // Valider le thème
+  const btnValiderTheme = document.getElementById("btn-valider-theme");
+  if (btnValiderTheme) {
+    btnValiderTheme.addEventListener("click", validerThemeEtContinuer);
+  }
+
+  // Retour depuis thème
+  const btnRetourTheme = document.getElementById("btn-retour-theme");
+  if (btnRetourTheme) {
+    btnRetourTheme.addEventListener("click", () =>
+      changerEcran("selection-joueurs")
+    );
+  }
+
+  // Réessayer la génération
+  const btnReessayer = document.getElementById("btn-reessayer");
+  if (btnReessayer) {
+    btnReessayer.addEventListener("click", reessayerGeneration);
   }
 
   const btnRetourReponses = document.getElementById("btn-retour-reponses");
