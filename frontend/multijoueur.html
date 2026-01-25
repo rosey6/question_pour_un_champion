@@ -1,434 +1,352 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;"
-    />
-    <title>Multijoueur - Question pour un Champion</title>
-    <link rel="stylesheet" href="style.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    />
-  </head>
-  <body>
-    <!-- ============================================ -->
-    <!-- ÉCRAN ACCUEIL MULTIJOUEUR -->
-    <!-- ============================================ -->
-    <section id="multijoueur" class="ecran actif">
-      <div class="contenu">
-        <header>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <title>Mode Multijoueur - Question pour un Champion</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+<body>
+  <!-- ============================================ -->
+  <!-- MENU PRINCIPAL MULTIJOUEUR -->
+  <!-- ============================================ -->
+  <section id="menu-multijoueur" class="ecran actif">
+    <div class="contenu">
+      <header class="header-multi">
+        <a href="index.html" class="btn-retour" aria-label="Retour">
+          <i class="fas fa-arrow-left"></i>
+        </a>
+        <div class="header-content">
           <h1>Mode Multijoueur</h1>
-          <h2>Affrontez vos amis en temps réel</h2>
-        </header>
-
-        <div class="multijoueur-options">
-          <!-- CRÉER UNE PARTIE -->
-          <div class="option-creer">
-            <h3><i class="fas fa-plus-circle"></i> Créer une partie</h3>
-
-            <div class="form-group">
-              <label for="nom-createur">Votre nom</label>
-              <input
-                type="text"
-                id="nom-createur"
-                placeholder="Ex: Julien"
-                maxlength="20"
-              />
-            </div>
-
-            <div class="parametres-partie">
-              <h4>Paramètres du jeu</h4>
-
-              <div class="groupe-parametre">
-                <label for="multi-nombre-questions">Nombre de questions</label>
-                <select id="multi-nombre-questions" class="select-choix">
-                  <option value="5">5 questions</option>
-                  <option value="10" selected>10 questions</option>
-                  <option value="15">15 questions</option>
-                  <option value="20">20 questions</option>
-                </select>
-              </div>
-
-              <div class="groupe-parametre">
-                <label for="multi-duree-question">Temps par question (s)</label>
-                <select id="multi-duree-question" class="select-choix">
-                  <option value="10">10 secondes</option>
-                  <option value="15">15 secondes</option>
-                  <option value="20">20 secondes</option>
-                  <option value="25">25 secondes</option>
-                  <option value="30" selected>30 secondes</option>
-                </select>
-              </div>
-
-              <div class="groupe-parametre">
-                <label for="multi-duree-reponse">Temps pour répondre (s)</label>
-                <select id="multi-duree-reponse" class="select-choix">
-                  <option value="10">10 secondes</option>
-                  <option value="15" selected>15 secondes</option>
-                  <option value="20">20 secondes</option>
-                </select>
-              </div>
-
-              <div class="groupe-parametre">
-                <label for="multi-mode">Mode multijoueur</label>
-                <select id="multi-mode" class="select-choix">
-                  <option value="spectator" selected>
-                    PC Hôte — joueurs au téléphone (l'hôte ne joue pas)
-                  </option>
-                  <option value="classic">
-                    Mode Classique — chaque joueur sur son téléphone (pas d'hôte)
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            <button id="btn-creer-partie" class="bouton bouton-principal">
-              <i class="fas fa-gamepad"></i> Créer la partie
-            </button>
-
-            <!-- CODE DE PARTIE -->
-            <div id="code-partie-container" class="hidden">
-              <div class="code-partie">
-                <p>Code de la partie :</p>
-                <h2 id="code-partie">XXXXXX</h2>
-                <p>Partagez ce code avec vos amis !</p>
-              </div>
-
-              <!-- QR CODE -->
-              <div
-                class="code-partie"
-                id="qr-partie-container"
-                aria-label="QR code de connexion"
-              >
-                <p>QR code (connexion rapide) :</p>
-                <div
-                  id="qr-code"
-                  style="display: flex; justify-content: center"
-                ></div>
-                <p class="info">Scannez pour rejoindre sur téléphone.</p>
-              </div>
-
-              <!-- LISTE JOUEURS -->
-              <div class="joueurs-salle">
-                <h3>Joueurs en attente :</h3>
-                <div id="liste-joueurs-salle"></div>
-                <button
-                  id="btn-demarrer-partie"
-                  class="bouton bouton-principal"
-                  disabled
-                >
-                  <i class="fas fa-play"></i> Démarrer (0/4)
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="separateur-vertical"></div>
-
-          <!-- REJOINDRE UNE PARTIE -->
-          <div class="option-rejoindre">
-            <h3><i class="fas fa-users"></i> Rejoindre une partie</h3>
-
-            <div class="form-group">
-              <label for="nom-joueur">Votre nom</label>
-              <input
-                type="text"
-                id="nom-joueur"
-                placeholder="Votre prénom"
-                maxlength="20"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="code-rejoindre">Code de la partie</label>
-              <input
-                type="text"
-                id="code-rejoindre"
-                placeholder="6 caractères"
-                maxlength="6"
-                style="text-transform: uppercase"
-              />
-            </div>
-
-            <button id="btn-rejoindre-partie" class="bouton bouton-secondaire">
-              <i class="fas fa-sign-in-alt"></i> Rejoindre
-            </button>
-
-            <!-- SALLE D'ATTENTE -->
-            <div id="salle-attente" class="hidden">
-              <div class="info-salle">
-                <p>Partie : <strong id="code-salle-jointe"></strong></p>
-                <p>Hôte : <strong id="nom-hote"></strong></p>
-              </div>
-              <div id="joueurs-attente"></div>
-              <p class="message-attente">
-                <i class="fas fa-spinner fa-spin"></i> En attente du début de la
-                partie...
-              </p>
-            </div>
-          </div>
+          <p class="sous-titre">Affrontez vos amis en temps reel</p>
         </div>
+      </header>
 
-        <div class="actions">
-          <a
-            href="index.html"
-            class="bouton bouton-secondaire"
-            style="text-decoration: none; display: inline-block"
-          >
-            <i class="fas fa-arrow-left"></i> Retour à l'accueil
-          </a>
-        </div>
+      <div class="separateur"></div>
+
+      <!-- Options du menu -->
+      <div class="menu-options-multi">
+        <!-- Creer une partie -->
+        <a href="multijoueur-creer.html" class="option-menu-card">
+          <div class="option-icon">
+            <i class="fas fa-plus-circle"></i>
+          </div>
+          <div class="option-content">
+            <h2>Creer une partie</h2>
+            <p>Configurez les parametres et invitez vos amis via un code ou QR code</p>
+          </div>
+          <div class="option-arrow">
+            <i class="fas fa-chevron-right"></i>
+          </div>
+        </a>
+
+        <!-- Rejoindre une partie -->
+        <a href="multijoueur-rejoindre.html" class="option-menu-card">
+          <div class="option-icon option-icon-cyan">
+            <i class="fas fa-sign-in-alt"></i>
+          </div>
+          <div class="option-content">
+            <h2>Rejoindre une partie</h2>
+            <p>Entrez le code de partie partage par l'hote pour rejoindre</p>
+          </div>
+          <div class="option-arrow">
+            <i class="fas fa-chevron-right"></i>
+          </div>
+        </a>
       </div>
-    </section>
 
-    <!-- ============================================ -->
-    <!-- ÉCRAN JEU MULTIJOUEUR -->
-    <!-- ============================================ -->
-    <section id="jeu-multijoueur" class="ecran">
-      <div class="contenu contenu-large">
-        <header class="header-multijoueur">
-          <div class="info-partie">
-            <span id="info-question-multi">Question 1/10</span>
-            <div class="chrono-multijoueur" aria-label="Chronomètre question">
-              <span id="temps-multijoueur">30</span>
-              <span>secondes</span>
-            </div>
-            <span id="joueurs-connectes">0 joueurs</span>
+      <div class="separateur"></div>
+
+      <!-- Informations -->
+      <div class="info-multi-section">
+        <h3><i class="fas fa-info-circle"></i> Comment jouer ?</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-number">1</span>
+            <p>L'hote cree une partie et partage le code</p>
           </div>
-        </header>
-
-        <!-- VUE HÔTE (PC) - Mode spectateur -->
-        <div id="vue-hote-multi" class="vue-multi">
-          <div class="scores-multijoueur" id="grille-scores-multi"></div>
-
-          <div class="question-multijoueur">
-            <h2 id="question-multijoueur">Question...</h2>
+          <div class="info-item">
+            <span class="info-number">2</span>
+            <p>Les joueurs rejoignent avec leur telephone</p>
           </div>
-
-          <div
-            class="options-host"
-            id="options-host-multi"
-            aria-label="Options de réponse (hôte)"
-          ></div>
-
-          <!-- PANNEAU HÔTE JOUEUR -->
-          <div
-            id="host-player-panel"
-            class="host-player-panel hidden"
-            aria-label="Panneau joueur hôte"
-          >
-            <div class="mobile-buzzer-zone">
-              <button
-                id="btn-buzz-host"
-                class="bouton-buzzer-mobile"
-                type="button"
-              >
-                BUZZ
-              </button>
-              <p id="etat-buzzer-host" class="texte-secondaire">
-                Appuyez pour buzzer.
-              </p>
-            </div>
-            <div
-              class="options-reponse-multi options-reponse-mobile"
-              id="options-reponse-hostlocal"
-            ></div>
-          </div>
-
-          <!-- ÉCRAN RÉPONSE -->
-          <div id="ecran-reponse-multi" class="hidden" aria-live="polite">
-            <div class="reponse-header">
-              <h2><span id="nom-repondant-multi">Joueur</span> va répondre</h2>
-              <div
-                class="chrono-reponse-multi"
-                aria-label="Chronomètre réponse"
-              >
-                <span id="temps-reponse-multi">15</span>
-                <span>secondes</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- ÉCRAN RÉSULTAT -->
-          <div id="ecran-resultat-multi" class="hidden">
-            <h2>Résultat</h2>
-            <p id="resultat-multi-bonne" class="reponse-correcte">
-              Réponse correcte : ...
-            </p>
-
-            <div
-              id="resultat-multi-illustration"
-              class="illustration-container hidden"
-            >
-              <img
-                id="resultat-multi-image"
-                alt="Illustration"
-                loading="lazy"
-              />
-              <p
-                id="resultat-multi-description"
-                class="illustration-description"
-              ></p>
-            </div>
-
-            <div class="resultat-actions">
-              <button
-                id="btn-resultat-multi-continuer"
-                class="bouton bouton-principal"
-              >
-                Question suivante
-              </button>
-              <a
-                href="index.html"
-                class="bouton bouton-secondaire"
-                style="text-decoration: none; display: inline-block"
-                >Menu principal</a
-              >
-            </div>
-          </div>
-        </div>
-
-        <!-- VUE MODE CLASSIQUE - Tous sur le même écran -->
-        <div id="vue-classique-multi" class="vue-multi hidden">
-          <div class="classique-question-zone">
-            <div class="question-multijoueur">
-              <h2 id="question-classique">Question...</h2>
-            </div>
-            
-            <div class="classique-options" id="options-classique"></div>
-          </div>
-
-          <div class="classique-buzzers-grid" id="buzzers-classique"></div>
-
-          <!-- ÉCRAN RÉSULTAT CLASSIQUE -->
-          <div id="ecran-resultat-classique" class="hidden">
-            <h2>Résultat</h2>
-            <p id="resultat-classique-info" class="reponse-correcte"></p>
-            <div id="resultat-classique-illustration" class="illustration-container hidden">
-              <img id="resultat-classique-image" alt="Illustration" loading="lazy" />
-              <p id="resultat-classique-description" class="illustration-description"></p>
-            </div>
-            <div class="resultat-actions">
-              <button id="btn-resultat-classique-continuer" class="bouton bouton-principal">
-                Question suivante
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- VUE JOUEUR (TÉLÉPHONE) -->
-        <div id="vue-joueur-multi" class="vue-multi hidden">
-          <!-- Question visible en mode classique -->
-          <div id="question-joueur-container" class="question-joueur-zone hidden">
-            <div class="question-multijoueur">
-              <h2 id="question-joueur">Question...</h2>
-            </div>
-          </div>
-
-          <div class="mobile-buzzer-zone">
-            <button
-              id="btn-buzz-player"
-              class="bouton-buzzer-mobile"
-              type="button"
-            >
-              BUZZ
-            </button>
-            <p id="etat-buzzer-player" class="texte-secondaire">
-              Appuyez pour buzzer dès que vous êtes prêt.
-            </p>
-          </div>
-
-          <div
-            class="options-reponse-multi options-reponse-mobile"
-            id="options-reponse-multi"
-          ></div>
-
-          <!-- RÉSULTAT JOUEUR -->
-          <div
-            id="resultat-joueur-multi"
-            class="hidden resultat-joueur"
-            aria-live="polite"
-          >
-            <h2 id="titre-resultat-joueur">Résultat</h2>
-            <p id="resultat-joueur-correct" class="texte-secondaire"></p>
-            <div class="illustration-container">
-              <img
-                id="resultat-joueur-image"
-                alt="Illustration"
-                loading="lazy"
-              />
-              <p
-                id="resultat-joueur-description"
-                class="illustration-description"
-              ></p>
-            </div>
-            <div class="scoreboard-joueur">
-              <h3>Points</h3>
-              <div id="liste-scores-joueur" class="liste-scores"></div>
-            </div>
-            <p id="compte-a-rebours-prochaine" class="texte-secondaire"></p>
-          </div>
-
-          <!-- FIN PARTIE JOUEUR -->
-          <div
-            id="fin-partie-joueur"
-            class="hidden fin-partie-joueur"
-            aria-live="polite"
-          >
-            <h2>Partie terminée</h2>
-            <p class="texte-secondaire">
-              Merci d'avoir joué. Vous pouvez fermer cette page.
-            </p>
-            <a
-              href="index.html"
-              class="bouton bouton-secondaire"
-              style="text-decoration: none; display: inline-block"
-              >Menu principal</a
-            >
+          <div class="info-item">
+            <span class="info-number">3</span>
+            <p>Buzzez en premier pour repondre et gagner des points !</p>
           </div>
         </div>
       </div>
-    </section>
 
-    <!-- ============================================ -->
-    <!-- ÉCRAN RÉSULTATS FINAUX -->
-    <!-- ============================================ -->
-    <section id="resultat-multijoueur" class="ecran">
-      <div class="contenu">
-        <header>
-          <h1>Résultats - Multijoueur</h1>
-          <h2>Classement final</h2>
-        </header>
-
-        <div class="resultat-question">
-          <h2 id="titre-resultat-multi">Fin de partie</h2>
-          <p id="sous-titre-resultat-multi">Bravo à tous les joueurs</p>
-        </div>
-
-        <div class="scores" id="grille-scores-resultat-multi"></div>
-
-        <div class="actions">
-          <a
-            href="index.html"
-            class="bouton bouton-principal"
-            style="text-decoration: none; display: inline-block"
-          >
-            <i class="fas fa-home"></i> Retour à l'accueil
-          </a>
-        </div>
+      <div class="actions">
+        <a href="index.html" class="bouton bouton-secondaire">
+          <i class="fas fa-home"></i> Retour a l'accueil
+        </a>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- ============================================ -->
-    <!-- SCRIPTS -->
-    <!-- ============================================ -->
-    <script src="script.js"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="multijoueur-game.js"></script>
-  </body>
+  <style>
+    /* Styles specifiques au menu multijoueur */
+    .header-multi {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-lg);
+      margin-bottom: var(--space-md);
+    }
+
+    .btn-retour {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-circle);
+      color: var(--gold-muted);
+      font-size: 1.2rem;
+      text-decoration: none;
+      transition: all var(--duration-fast) var(--ease-smooth);
+      flex-shrink: 0;
+    }
+
+    .btn-retour:hover {
+      background: rgba(245, 200, 66, 0.1);
+      color: var(--gold-bright);
+      transform: translateX(-3px);
+    }
+
+    .header-content {
+      flex: 1;
+      text-align: center;
+      padding-right: 48px; /* Compense le bouton retour */
+    }
+
+    .header-content h1 {
+      margin-bottom: var(--space-xs);
+    }
+
+    .menu-options-multi {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-lg);
+      margin: var(--space-xl) 0;
+    }
+
+    .option-menu-card {
+      display: flex;
+      align-items: center;
+      gap: var(--space-lg);
+      padding: var(--space-xl);
+      background: rgba(0, 60, 120, 0.08);
+      border: 2px solid rgba(0, 140, 200, 0.2);
+      border-radius: var(--radius-xl);
+      text-decoration: none;
+      color: inherit;
+      transition: all var(--duration-base) var(--ease-smooth);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .option-menu-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: linear-gradient(180deg, var(--gold-glow), var(--cyan-glow));
+      transform: scaleY(0);
+      transition: transform var(--duration-fast) var(--ease-smooth);
+    }
+
+    .option-menu-card:hover {
+      background: rgba(0, 140, 200, 0.12);
+      border-color: rgba(0, 212, 255, 0.4);
+      transform: translateX(8px);
+      box-shadow: 0 8px 32px rgba(0, 20, 40, 0.4), 0 0 30px rgba(0, 180, 255, 0.15);
+    }
+
+    .option-menu-card:hover::before {
+      transform: scaleY(1);
+    }
+
+    .option-menu-card:active {
+      transform: translateX(4px) scale(0.99);
+    }
+
+    .option-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 70px;
+      height: 70px;
+      background: radial-gradient(circle at 30% 30%, #00FFFF, #00B8E6 50%, #0088CC);
+      border-radius: var(--radius-lg);
+      color: var(--white);
+      font-size: 1.8rem;
+      flex-shrink: 0;
+      box-shadow: 0 4px 25px rgba(0, 212, 255, 0.4), 0 0 40px rgba(0, 180, 255, 0.2);
+    }
+
+    .option-icon-cyan {
+      background: radial-gradient(circle at 30% 30%, #FF00AA, #CC0088 50%, #990066);
+      box-shadow: 0 4px 25px rgba(255, 0, 170, 0.4);
+    }
+
+    .option-content {
+      flex: 1;
+      text-align: left;
+    }
+
+    .option-content h2 {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      color: var(--white);
+      margin-bottom: var(--space-xs);
+    }
+
+    .option-content p {
+      font-size: 0.9rem;
+      color: var(--steel);
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .option-arrow {
+      color: var(--gold-glow);
+      font-size: 1.5rem;
+      opacity: 0.5;
+      transition: all var(--duration-fast);
+    }
+
+    .option-menu-card:hover .option-arrow {
+      opacity: 1;
+      transform: translateX(5px);
+      color: var(--cyan-glow);
+    }
+
+    /* Info section */
+    .info-multi-section {
+      background: rgba(0, 20, 50, 0.4);
+      padding: var(--space-xl);
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(0, 140, 200, 0.2);
+    }
+
+    .info-multi-section h3 {
+      color: var(--gold-glow);
+      font-size: 1rem;
+      margin-bottom: var(--space-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-md);
+    }
+
+    .info-item {
+      text-align: center;
+      padding: var(--space-md);
+    }
+
+    .info-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--gold-glow), #0099CC);
+      color: var(--white);
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 700;
+      border-radius: var(--radius-circle);
+      margin-bottom: var(--space-sm);
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+    }
+
+    .info-item p {
+      font-size: 0.85rem;
+      color: var(--silver);
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header-multi {
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-md);
+      }
+
+      .btn-retour {
+        position: absolute;
+        top: var(--space-md);
+        left: var(--space-md);
+      }
+
+      .header-content {
+        padding-right: 0;
+        padding-top: var(--space-lg);
+      }
+
+      .option-menu-card {
+        flex-direction: column;
+        text-align: center;
+        padding: var(--space-lg);
+      }
+
+      .option-content {
+        text-align: center;
+      }
+
+      .option-arrow {
+        display: none;
+      }
+
+      .info-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-sm);
+      }
+
+      .info-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+        text-align: left;
+        padding: var(--space-sm);
+      }
+
+      .info-number {
+        flex-shrink: 0;
+        margin-bottom: 0;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .option-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+      }
+
+      .option-content h2 {
+        font-size: 1.2rem;
+      }
+
+      .option-content p {
+        font-size: 0.85rem;
+      }
+    }
+  </style>
+</body>
 </html>

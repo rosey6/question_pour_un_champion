@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;" />
+  <title>Rejoindre une partie - Question pour un Champion</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+<body>
+  <!-- ============================================ -->
+  <!-- PAGE REJOINDRE UNE PARTIE -->
+  <!-- ============================================ -->
+  <section id="rejoindre-partie" class="ecran actif">
+    <div class="contenu">
+      <header class="header-multi">
+        <a href="multijoueur.html" class="btn-retour" aria-label="Retour">
+          <i class="fas fa-arrow-left"></i>
+        </a>
+        <div class="header-content">
+          <h1><i class="fas fa-sign-in-alt"></i> Rejoindre</h1>
+          <p class="sous-titre">Entrez le code partage par l'hote</p>
+        </div>
+      </header>
+
+      <div class="separateur"></div>
+
+      <!-- Formulaire de connexion -->
+      <form id="form-rejoindre" class="form-rejoindre">
+        <!-- Nom du joueur -->
+        <div class="form-section">
+          <div class="form-group large-input">
+            <label for="nom-joueur">
+              <i class="fas fa-user"></i> Votre nom
+            </label>
+            <input
+              type="text"
+              id="nom-joueur"
+              placeholder="Entrez votre prenom"
+              maxlength="20"
+              required
+              autocomplete="off"
+            />
+          </div>
+        </div>
+
+        <!-- Code de la partie -->
+        <div class="form-section">
+          <div class="form-group large-input">
+            <label for="code-partie">
+              <i class="fas fa-key"></i> Code de la partie
+            </label>
+            <input
+              type="text"
+              id="code-partie"
+              placeholder="XXXXXX"
+              maxlength="6"
+              required
+              autocomplete="off"
+              class="code-input"
+            />
+            <p class="input-hint">Code a 6 caracteres fourni par l'hote</p>
+          </div>
+        </div>
+
+        <!-- Bouton rejoindre -->
+        <div class="form-actions-center">
+          <button type="submit" id="btn-rejoindre" class="bouton bouton-principal bouton-large">
+            <i class="fas fa-door-open"></i> Rejoindre la partie
+          </button>
+        </div>
+      </form>
+
+      <div class="separateur"></div>
+
+      <!-- Message d'aide -->
+      <div class="help-section">
+        <div class="help-card">
+          <i class="fas fa-qrcode"></i>
+          <div>
+            <h4>Vous avez scanne un QR code ?</h4>
+            <p>Le code est deja rempli ! Il vous suffit d'entrer votre nom.</p>
+          </div>
+        </div>
+        <div class="help-card">
+          <i class="fas fa-question-circle"></i>
+          <div>
+            <h4>Pas de code ?</h4>
+            <p>Demandez a l'hote de la partie de vous donner le code a 6 caracteres.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <a href="multijoueur.html" class="bouton bouton-secondaire">
+          <i class="fas fa-arrow-left"></i> Retour au menu
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ecran d'attente -->
+  <section id="salle-attente" class="ecran">
+    <div class="contenu">
+      <header>
+        <h1><i class="fas fa-clock"></i> Salle d'attente</h1>
+        <p class="sous-titre">La partie va bientot commencer</p>
+      </header>
+
+      <div class="separateur"></div>
+
+      <!-- Info de la partie -->
+      <div class="info-partie-box">
+        <div class="info-row">
+          <span class="info-label">Partie</span>
+          <span id="info-code" class="info-value">------</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Hote</span>
+          <span id="info-hote" class="info-value">---</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Mode</span>
+          <span id="info-mode" class="info-value">---</span>
+        </div>
+      </div>
+
+      <!-- Liste des joueurs -->
+      <div class="waiting-players-section">
+        <h3><i class="fas fa-users"></i> Joueurs connectes</h3>
+        <div id="waiting-players-list" class="waiting-players-list">
+          <!-- Joueurs ici -->
+        </div>
+      </div>
+
+      <!-- Animation d'attente -->
+      <div class="waiting-animation">
+        <div class="pulse-ring"></div>
+        <div class="pulse-ring delay-1"></div>
+        <div class="pulse-ring delay-2"></div>
+        <i class="fas fa-gamepad"></i>
+      </div>
+
+      <p class="waiting-text">
+        <i class="fas fa-spinner fa-spin"></i>
+        En attente du demarrage par l'hote...
+      </p>
+
+      <!-- Bouton quitter -->
+      <div class="actions">
+        <button id="btn-quitter" class="bouton bouton-secondaire">
+          <i class="fas fa-sign-out-alt"></i> Quitter la partie
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <style>
+    /* Header */
+    .header-multi {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-lg);
+      margin-bottom: var(--space-md);
+      position: relative;
+    }
+
+    .btn-retour {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-circle);
+      color: var(--gold-muted);
+      font-size: 1.2rem;
+      text-decoration: none;
+      transition: all var(--duration-fast) var(--ease-smooth);
+      flex-shrink: 0;
+    }
+
+    .btn-retour:hover {
+      background: rgba(245, 200, 66, 0.1);
+      color: var(--gold-bright);
+      transform: translateX(-3px);
+    }
+
+    .header-content {
+      flex: 1;
+      text-align: center;
+      padding-right: 48px;
+    }
+
+    /* Form */
+    .form-rejoindre {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .form-section {
+      margin-bottom: var(--space-xl);
+    }
+
+    .large-input label {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-size: 1rem;
+      color: var(--gold-muted);
+      margin-bottom: var(--space-md);
+    }
+
+    .large-input input {
+      width: 100%;
+      padding: 1.2rem 1.5rem;
+      font-size: 1.2rem;
+      border: 2px solid var(--charcoal-light);
+      border-radius: var(--radius-lg);
+      background: rgba(0, 0, 0, 0.4);
+      color: var(--white);
+      transition: all var(--duration-fast);
+    }
+
+    .large-input input:focus {
+      border-color: var(--gold-bright);
+      box-shadow: 0 0 0 4px rgba(245, 200, 66, 0.1), var(--glow-gold);
+      outline: none;
+    }
+
+    .code-input {
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 1.8rem !important;
+      font-weight: 700;
+    }
+
+    .code-input::placeholder {
+      letter-spacing: 0.2em;
+    }
+
+    .input-hint {
+      font-size: 0.85rem;
+      color: var(--steel);
+      margin-top: var(--space-sm);
+      text-align: center;
+    }
+
+    /* Auto-filled code highlight */
+    .code-input.auto-filled {
+      background: rgba(0, 245, 255, 0.1) !important;
+      border-color: var(--cyan-glow) !important;
+    }
+
+    .form-actions-center {
+      text-align: center;
+    }
+
+    /* Help section */
+    .help-section {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+      margin-bottom: var(--space-xl);
+    }
+
+    .help-card {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-md);
+      padding: var(--space-md) var(--space-lg);
+      background: rgba(0, 30, 60, 0.3);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(0, 140, 200, 0.2);
+    }
+
+    .help-card i {
+      font-size: 1.5rem;
+      color: var(--gold-glow);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .help-card h4 {
+      font-size: 0.95rem;
+      color: var(--white);
+      margin-bottom: var(--space-xs);
+    }
+
+    .help-card p {
+      font-size: 0.85rem;
+      color: var(--steel);
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    /* ============================================ */
+    /* SALLE D'ATTENTE */
+    /* ============================================ */
+
+    .info-partie-box {
+      background: rgba(0, 20, 50, 0.5);
+      padding: var(--space-lg);
+      border-radius: var(--radius-xl);
+      border: 2px solid var(--gold-bright);
+      margin-bottom: var(--space-xl);
+      box-shadow: 0 0 30px rgba(0, 180, 255, 0.15);
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid rgba(0, 140, 200, 0.2);
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      font-size: 0.9rem;
+      color: var(--steel);
+    }
+
+    .info-value {
+      font-weight: 600;
+      color: var(--gold-glow);
+    }
+
+    /* Waiting players */
+    .waiting-players-section {
+      margin-bottom: var(--space-xl);
+    }
+
+    .waiting-players-section h3 {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      color: var(--white);
+      font-size: 1rem;
+      margin-bottom: var(--space-md);
+    }
+
+    .waiting-players-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+      justify-content: center;
+    }
+
+    .waiting-player-chip {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: var(--space-xs) var(--space-md);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--charcoal-light);
+      border-radius: var(--radius-pill);
+      font-size: 0.9rem;
+      color: var(--white);
+    }
+
+    .waiting-player-chip.me {
+      background: rgba(0, 245, 255, 0.1);
+      border-color: var(--cyan-glow);
+      color: var(--cyan-glow);
+    }
+
+    .waiting-player-chip i {
+      font-size: 0.8rem;
+    }
+
+    /* Waiting animation */
+    .waiting-animation {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      margin: var(--space-xl) auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .waiting-animation > i {
+      font-size: 2.5rem;
+      color: var(--gold-glow);
+      z-index: 1;
+      text-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+    }
+
+    .pulse-ring {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border: 3px solid var(--gold-glow);
+      border-radius: var(--radius-circle);
+      animation: pulse 2s ease-out infinite;
+    }
+
+    .pulse-ring.delay-1 {
+      animation-delay: 0.5s;
+    }
+
+    .pulse-ring.delay-2 {
+      animation-delay: 1s;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(0.5);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1.5);
+        opacity: 0;
+      }
+    }
+
+    .waiting-text {
+      text-align: center;
+      color: var(--silver);
+      font-size: 1rem;
+      margin-bottom: var(--space-xl);
+    }
+
+    .waiting-text i {
+      margin-right: var(--space-sm);
+      color: var(--gold-glow);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header-multi {
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-md);
+      }
+
+      .btn-retour {
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+
+      .header-content {
+        padding-right: 0;
+        padding-top: var(--space-lg);
+      }
+
+      .code-input {
+        font-size: 1.5rem !important;
+        letter-spacing: 0.2em;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .large-input input {
+        padding: 1rem 1.2rem;
+        font-size: 1rem;
+      }
+
+      .code-input {
+        font-size: 1.3rem !important;
+      }
+
+      .help-card {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .help-card i {
+        font-size: 2rem;
+        margin-bottom: var(--space-sm);
+      }
+    }
+  </style>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    // ============================================
+    // REJOINDRE UNE PARTIE - SCRIPT
+    // ============================================
+
+    const BACKEND_URL = "https://questionpourunchampion-backend.onrender.com";
+    let socket = null;
+    let playerName = '';
+    let gameCode = '';
+    let gameData = null;
+
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAutoJoin();
+      setupForm();
+      setupQuitButton();
+    });
+
+    // Verifier si un code est dans l'URL
+    function checkAutoJoin() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code') || urlParams.get('join');
+
+      if (code) {
+        const codeInput = document.getElementById('code-partie');
+        if (codeInput) {
+          codeInput.value = code.toUpperCase();
+          codeInput.classList.add('auto-filled');
+          codeInput.readOnly = true;
+        }
+
+        // Focus sur le nom
+        setTimeout(() => {
+          document.getElementById('nom-joueur')?.focus();
+        }, 300);
+
+        showNotification(`Code ${code.toUpperCase()} detecte !`, 'info');
+      }
+    }
+
+    function setupForm() {
+      const form = document.getElementById('form-rejoindre');
+      const codeInput = document.getElementById('code-partie');
+
+      // Formatage automatique du code
+      if (codeInput) {
+        codeInput.addEventListener('input', (e) => {
+          e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        });
+      }
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        playerName = document.getElementById('nom-joueur').value.trim();
+        gameCode = document.getElementById('code-partie').value.trim().toUpperCase();
+
+        if (!playerName) {
+          showNotification('Veuillez entrer votre nom', 'warning');
+          document.getElementById('nom-joueur').focus();
+          return;
+        }
+
+        if (!gameCode || gameCode.length !== 6) {
+          showNotification('Le code doit contenir 6 caracteres', 'warning');
+          document.getElementById('code-partie').focus();
+          return;
+        }
+
+        joinGame();
+      });
+    }
+
+    function joinGame() {
+      const btn = document.getElementById('btn-rejoindre');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion...';
+
+      socket = io(BACKEND_URL, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        timeout: 20000
+      });
+
+      socket.on('connect', () => {
+        console.log('Connecte au serveur');
+        socket.emit('join-game', {
+          gameCode: gameCode,
+          playerName: playerName
+        });
+      });
+
+      socket.on('join-success', (data) => {
+        console.log('Rejoint avec succes:', data);
+
+        gameData = {
+          gameCode: gameCode,
+          playerName: playerName,
+          hostName: data.hostName,
+          mode: data.mode || 'spectator',
+          players: data.players,
+          isHost: false
+        };
+
+        sessionStorage.setItem('multiGameData', JSON.stringify(gameData));
+
+        showWaitingRoom(data);
+      });
+
+      socket.on('join-error', (data) => {
+        console.error('Erreur:', data);
+        showNotification(data.message || 'Impossible de rejoindre', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-door-open"></i> Rejoindre la partie';
+      });
+
+      socket.on('player-joined', (data) => {
+        console.log('Joueur rejoint:', data);
+        if (gameData) {
+          gameData.players = data.players;
+          updateWaitingPlayersList(data.players);
+        }
+      });
+
+      socket.on('player-left', (data) => {
+        console.log('Joueur parti:', data);
+        if (gameData) {
+          gameData.players = data.players;
+          updateWaitingPlayersList(data.players);
+        }
+      });
+
+      socket.on('game-started', (data) => {
+        console.log('Partie demarree:', data);
+        gameData.players = data.players;
+        gameData.settings = data.settings;
+        sessionStorage.setItem('multiGameData', JSON.stringify(gameData));
+        window.location.href = 'multijoueur-jeu.html';
+      });
+
+      socket.on('host-disconnected', () => {
+        showNotification('L\'hote a quitte la partie', 'error');
+        setTimeout(() => {
+          window.location.href = 'multijoueur.html';
+        }, 2000);
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('Erreur connexion:', error);
+        showNotification('Impossible de se connecter au serveur', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-door-open"></i> Rejoindre la partie';
+      });
+    }
+
+    function showWaitingRoom(data) {
+      // Cacher le formulaire
+      document.getElementById('rejoindre-partie').classList.remove('actif');
+
+      // Afficher la salle d'attente
+      document.getElementById('salle-attente').classList.add('actif');
+
+      // Remplir les infos
+      document.getElementById('info-code').textContent = gameCode;
+      document.getElementById('info-hote').textContent = data.hostName;
+      document.getElementById('info-mode').textContent =
+        data.mode === 'spectator' ? 'Hote TV' : 'Classique';
+
+      updateWaitingPlayersList(data.players);
+    }
+
+    function updateWaitingPlayersList(players) {
+      const container = document.getElementById('waiting-players-list');
+      if (!container) return;
+
+      container.innerHTML = '';
+
+      players.forEach(player => {
+        const chip = document.createElement('div');
+        chip.className = 'waiting-player-chip' + (player.name === playerName ? ' me' : '');
+        chip.innerHTML = `<i class="fas fa-user"></i><span>${player.name}</span>`;
+        container.appendChild(chip);
+      });
+    }
+
+    function setupQuitButton() {
+      const btn = document.getElementById('btn-quitter');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          if (confirm('Voulez-vous vraiment quitter la partie ?')) {
+            if (socket) {
+              socket.emit('leave-game', { gameCode: gameCode });
+              socket.disconnect();
+            }
+            sessionStorage.removeItem('multiGameData');
+            window.location.href = 'multijoueur.html';
+          }
+        });
+      }
+    }
+
+    function showNotification(message, type = 'info') {
+      const notif = document.createElement('div');
+      notif.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 25px;
+        background: ${type === 'success' ? '#00FF88' : type === 'error' ? '#FF3366' : type === 'warning' ? '#FFD700' : '#00F5FF'};
+        color: ${type === 'warning' || type === 'success' ? '#000' : '#fff'};
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        z-index: 10001;
+        font-weight: 600;
+        animation: slideIn 0.3s ease;
+      `;
+      notif.textContent = message;
+      document.body.appendChild(notif);
+
+      setTimeout(() => {
+        notif.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notif.remove(), 300);
+      }, 3000);
+    }
+
+    // Animations
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
+</body>
+</html>

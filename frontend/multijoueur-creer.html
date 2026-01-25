@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;" />
+  <title>Creer une partie - Question pour un Champion</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+<body>
+  <!-- ============================================ -->
+  <!-- PAGE CREATION DE PARTIE -->
+  <!-- ============================================ -->
+  <section id="creer-partie" class="ecran actif">
+    <div class="contenu">
+      <!-- Etape indicator -->
+      <div class="step-indicator">
+        <div class="step active">
+          <span class="step-number">1</span>
+          <span class="step-label">Configuration</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+          <span class="step-number">2</span>
+          <span class="step-label">Invitation</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+          <span class="step-number">3</span>
+          <span class="step-label">Jouer</span>
+        </div>
+      </div>
+
+      <header>
+        <h1><i class="fas fa-cog"></i> Configurer la partie</h1>
+        <p class="sous-titre">Definissez les regles du jeu</p>
+      </header>
+
+      <div class="separateur"></div>
+
+      <!-- Formulaire -->
+      <form id="form-creer-partie" class="form-creer">
+        <!-- Nom du createur -->
+        <div class="form-section">
+          <h3><i class="fas fa-user"></i> Votre profil</h3>
+          <div class="form-group">
+            <label for="nom-createur">Votre nom / pseudo</label>
+            <input
+              type="text"
+              id="nom-createur"
+              placeholder="Ex: Julien"
+              maxlength="20"
+              required
+              autocomplete="off"
+            />
+          </div>
+        </div>
+
+        <!-- Mode de jeu -->
+        <div class="form-section">
+          <h3><i class="fas fa-gamepad"></i> Mode de jeu</h3>
+          <div class="mode-selection">
+            <label class="mode-option active" data-mode="spectator">
+              <input type="radio" name="mode" value="spectator" checked />
+              <div class="mode-card">
+                <div class="mode-icon">
+                  <i class="fas fa-tv"></i>
+                </div>
+                <div class="mode-info">
+                  <h4>Mode Hote TV</h4>
+                  <p>L'hote affiche les questions sur grand ecran, les joueurs buzzent sur telephone</p>
+                </div>
+                <div class="mode-check"><i class="fas fa-check-circle"></i></div>
+              </div>
+            </label>
+
+            <label class="mode-option" data-mode="classic">
+              <input type="radio" name="mode" value="classic" />
+              <div class="mode-card">
+                <div class="mode-icon mode-icon-alt">
+                  <i class="fas fa-mobile-alt"></i>
+                </div>
+                <div class="mode-info">
+                  <h4>Mode Classique</h4>
+                  <p>Chaque joueur voit les questions sur son propre appareil</p>
+                </div>
+                <div class="mode-check"><i class="fas fa-check-circle"></i></div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Parametres de la partie -->
+        <div class="form-section">
+          <h3><i class="fas fa-sliders-h"></i> Parametres</h3>
+
+          <div class="params-grid">
+            <div class="param-card">
+              <div class="param-icon"><i class="fas fa-question-circle"></i></div>
+              <div class="param-content">
+                <label for="nombre-questions">Nombre de questions</label>
+                <select id="nombre-questions" class="select-choix">
+                  <option value="5">5 questions</option>
+                  <option value="10" selected>10 questions</option>
+                  <option value="15">15 questions</option>
+                  <option value="20">20 questions</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="param-card">
+              <div class="param-icon"><i class="fas fa-hourglass-start"></i></div>
+              <div class="param-content">
+                <label for="temps-question">Temps pour buzzer</label>
+                <select id="temps-question" class="select-choix">
+                  <option value="10">10 secondes</option>
+                  <option value="15">15 secondes</option>
+                  <option value="20">20 secondes</option>
+                  <option value="25">25 secondes</option>
+                  <option value="30" selected>30 secondes</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="param-card">
+              <div class="param-icon"><i class="fas fa-hourglass-end"></i></div>
+              <div class="param-content">
+                <label for="temps-reponse">Temps pour repondre</label>
+                <select id="temps-reponse" class="select-choix">
+                  <option value="10">10 secondes</option>
+                  <option value="15" selected>15 secondes</option>
+                  <option value="20">20 secondes</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="separateur"></div>
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <a href="multijoueur.html" class="bouton bouton-secondaire">
+            <i class="fas fa-arrow-left"></i> Retour
+          </a>
+          <button type="submit" id="btn-creer" class="bouton bouton-principal">
+            <i class="fas fa-rocket"></i> Creer la partie
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Loading overlay -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="loading-content">
+      <div class="spinner"></div>
+      <p>Creation de la partie en cours...</p>
+    </div>
+  </div>
+
+  <style>
+    /* Step indicator */
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-xl);
+      padding: var(--space-md);
+    }
+
+    .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+
+    .step-number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background: var(--charcoal-light);
+      border: 2px solid var(--charcoal-light);
+      border-radius: var(--radius-circle);
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--steel);
+      transition: all var(--duration-base);
+    }
+
+    .step.active .step-number {
+      background: linear-gradient(135deg, var(--gold-glow), #0099CC);
+      border-color: var(--gold-glow);
+      color: var(--white);
+      box-shadow: 0 0 25px rgba(0, 212, 255, 0.5);
+    }
+
+    .step-label {
+      font-size: 0.75rem;
+      color: var(--steel);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .step.active .step-label {
+      color: var(--gold-glow);
+    }
+
+    .step-line {
+      flex: 1;
+      max-width: 60px;
+      height: 2px;
+      background: var(--charcoal-light);
+      margin: 0 var(--space-xs);
+      margin-bottom: 20px;
+    }
+
+    /* Form sections */
+    .form-creer {
+      text-align: left;
+    }
+
+    .form-section {
+      margin-bottom: var(--space-xl);
+    }
+
+    .form-section h3 {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      color: var(--gold-glow);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: var(--space-lg);
+      padding-bottom: var(--space-sm);
+      border-bottom: 1px solid rgba(0, 140, 200, 0.3);
+    }
+
+    .form-section h3 i {
+      font-size: 1rem;
+    }
+
+    /* Mode selection */
+    .mode-selection {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .mode-option {
+      cursor: pointer;
+    }
+
+    .mode-option input {
+      display: none;
+    }
+
+    .mode-card {
+      display: flex;
+      align-items: center;
+      gap: var(--space-lg);
+      padding: var(--space-lg);
+      background: rgba(255, 255, 255, 0.02);
+      border: 2px solid var(--charcoal-light);
+      border-radius: var(--radius-lg);
+      transition: all var(--duration-base) var(--ease-smooth);
+    }
+
+    .mode-option:hover .mode-card {
+      background: rgba(0, 100, 160, 0.08);
+      border-color: rgba(0, 180, 255, 0.4);
+    }
+
+    .mode-option.active .mode-card {
+      background: rgba(0, 140, 200, 0.1);
+      border-color: var(--gold-glow);
+      box-shadow: 0 0 35px rgba(0, 212, 255, 0.25);
+    }
+
+    .mode-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 50px;
+      height: 50px;
+      background: rgba(0, 140, 200, 0.2);
+      border-radius: var(--radius-md);
+      color: var(--gold-glow);
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    .mode-icon-alt {
+      background: rgba(255, 0, 170, 0.15);
+      color: var(--magenta-glow);
+    }
+
+    .mode-info {
+      flex: 1;
+    }
+
+    .mode-info h4 {
+      font-size: 1.1rem;
+      color: var(--white);
+      margin-bottom: var(--space-xs);
+    }
+
+    .mode-info p {
+      font-size: 0.85rem;
+      color: var(--steel);
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .mode-check {
+      font-size: 1.5rem;
+      color: var(--charcoal-light);
+      transition: all var(--duration-fast);
+    }
+
+    .mode-option.active .mode-check {
+      color: var(--gold-glow);
+    }
+
+    /* Params grid */
+    .params-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: var(--space-md);
+    }
+
+    .param-card {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-md);
+      padding: var(--space-lg);
+      background: rgba(0, 20, 50, 0.4);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(0, 140, 200, 0.2);
+    }
+
+    .param-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background: rgba(0, 140, 200, 0.15);
+      border-radius: var(--radius-sm);
+      color: var(--gold-glow);
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .param-content {
+      flex: 1;
+    }
+
+    .param-content label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--silver);
+      margin-bottom: var(--space-sm);
+    }
+
+    .param-content .select-choix {
+      width: 100%;
+    }
+
+    /* Form actions */
+    .form-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+    }
+
+    .form-actions .bouton {
+      flex: 1;
+      min-width: 150px;
+    }
+
+    /* Loading overlay */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+
+    .loading-overlay.hidden {
+      display: none;
+    }
+
+    .loading-content {
+      text-align: center;
+    }
+
+    .loading-content .spinner {
+      margin: 0 auto var(--space-lg);
+    }
+
+    .loading-content p {
+      color: var(--silver);
+      font-size: 1.1rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .step-indicator {
+        padding: var(--space-sm);
+      }
+
+      .step-number {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+      }
+
+      .step-label {
+        font-size: 0.65rem;
+      }
+
+      .step-line {
+        max-width: 30px;
+      }
+
+      .mode-card {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .mode-info {
+        text-align: center;
+      }
+
+      .mode-check {
+        position: absolute;
+        top: var(--space-sm);
+        right: var(--space-sm);
+      }
+
+      .mode-option {
+        position: relative;
+      }
+
+      .params-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-actions {
+        flex-direction: column-reverse;
+      }
+
+      .form-actions .bouton {
+        width: 100%;
+      }
+    }
+  </style>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    // ============================================
+    // CREATION DE PARTIE - SCRIPT
+    // ============================================
+
+    const BACKEND_URL = "https://questionpourunchampion-backend.onrender.com";
+    let socket = null;
+
+    // Gestion des modes
+    document.querySelectorAll('.mode-option').forEach(option => {
+      option.addEventListener('click', () => {
+        document.querySelectorAll('.mode-option').forEach(o => o.classList.remove('active'));
+        option.classList.add('active');
+      });
+    });
+
+    // Soumission du formulaire
+    document.getElementById('form-creer-partie').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const nom = document.getElementById('nom-createur').value.trim();
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      const nombreQuestions = parseInt(document.getElementById('nombre-questions').value);
+      const tempsQuestion = parseInt(document.getElementById('temps-question').value);
+      const tempsReponse = parseInt(document.getElementById('temps-reponse').value);
+
+      if (!nom) {
+        showNotification('Veuillez entrer votre nom', 'warning');
+        document.getElementById('nom-createur').focus();
+        return;
+      }
+
+      // Afficher le loading
+      document.getElementById('loading-overlay').classList.remove('hidden');
+
+      // Sauvegarder les donnees
+      const gameData = {
+        hostName: nom,
+        mode: mode,
+        settings: {
+          maxPlayers: 4,
+          questionsCount: nombreQuestions,
+          timePerQuestion: tempsQuestion,
+          timePerAnswer: tempsReponse
+        }
+      };
+
+      sessionStorage.setItem('multiGameData', JSON.stringify(gameData));
+
+      // Connecter au serveur
+      socket = io(BACKEND_URL, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        timeout: 20000
+      });
+
+      socket.on('connect', () => {
+        console.log('Connecte au serveur');
+        socket.emit('create-game', {
+          playerName: nom,
+          settings: gameData.settings,
+          mode: mode
+        });
+      });
+
+      socket.on('game-created', (data) => {
+        console.log('Partie creee:', data);
+
+        // Sauvegarder le code et les infos
+        gameData.gameCode = data.gameCode;
+        gameData.socketId = socket.id;
+        sessionStorage.setItem('multiGameData', JSON.stringify(gameData));
+
+        // Rediriger vers la page du code
+        window.location.href = 'multijoueur-code.html';
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('Erreur connexion:', error);
+        document.getElementById('loading-overlay').classList.add('hidden');
+        showNotification('Impossible de se connecter au serveur', 'error');
+      });
+
+      // Timeout de securite
+      setTimeout(() => {
+        if (document.getElementById('loading-overlay').classList.contains('hidden') === false) {
+          document.getElementById('loading-overlay').classList.add('hidden');
+          showNotification('La connexion prend trop de temps. Reessayez.', 'error');
+        }
+      }, 15000);
+    });
+
+    // Notification
+    function showNotification(message, type = 'info') {
+      const notif = document.createElement('div');
+      notif.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 25px;
+        background: ${type === 'success' ? '#00FF88' : type === 'error' ? '#FF3366' : type === 'warning' ? '#FFD700' : '#00F5FF'};
+        color: ${type === 'warning' || type === 'success' ? '#000' : '#fff'};
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        z-index: 10001;
+        font-weight: 600;
+        animation: slideIn 0.3s ease;
+      `;
+      notif.textContent = message;
+      document.body.appendChild(notif);
+
+      setTimeout(() => {
+        notif.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notif.remove(), 300);
+      }, 3000);
+    }
+
+    // Animations
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
+</body>
+</html>

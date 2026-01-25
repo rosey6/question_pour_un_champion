@@ -2,7 +2,10 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#0A0E1A" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;"
@@ -48,14 +51,10 @@
           <button id="btn-commencer" class="bouton bouton-principal bouton-large">
             Mode Solo / Local
           </button>
-          <a
-            href="multijoueur.html"
-            class="bouton bouton-principal bouton-large"
-            style="text-decoration: none; display: inline-block"
-          >
+          <a href="multijoueur.html" class="bouton bouton-principal bouton-large">
             Mode Multijoueur en ligne
           </a>
-          <button id="btn-historique" class="bouton bouton-principal bouton-large">
+          <button id="btn-historique" class="bouton bouton-secondaire bouton-large">
             Voir l'historique
           </button>
         </div>
@@ -97,7 +96,7 @@
 
         <div class="actions">
           <button id="btn-valider-joueurs" class="bouton bouton-principal">
-            ok
+            Valider
           </button>
           <button id="btn-retour-joueurs" class="bouton bouton-secondaire">
             Retour
@@ -116,12 +115,12 @@
         <div class="parametres-theme">
           <div class="options-source">
             <button class="option-source actif" data-source="existantes" id="btn-source-existantes">
-              <span class="icone-source">📚</span>
+              <span class="icon-source">📚</span>
               <span class="texte-source">Questions existantes</span>
-              <span class="desc-source">Utiliser la banque de questions actuelle</span>
+              <span class="desc-source">Utiliser la banque de questions actuelle (<span id="nombre-questions-locales">1000+</span> questions)</span>
             </button>
             <button class="option-source" data-source="ia" id="btn-source-ia">
-              <span class="icone-source">🤖</span>
+              <span class="icon-source">🤖</span>
               <span class="texte-source">Générer avec l'IA</span>
               <span class="desc-source">Créer de nouvelles questions sur un thème</span>
             </button>
@@ -131,44 +130,24 @@
             <h2>Choisissez un thème</h2>
 
             <div class="grille-themes" id="grille-themes">
-              <button class="bouton-theme" data-theme="Histoire">
-                <span class="icone-theme">🏛️</span>
-                <span class="nom-theme">Histoire</span>
-              </button>
-              <button class="bouton-theme" data-theme="Géographie">
-                <span class="icone-theme">🌍</span>
-                <span class="nom-theme">Géographie</span>
-              </button>
-              <button class="bouton-theme" data-theme="Sciences">
-                <span class="icone-theme">🔬</span>
-                <span class="nom-theme">Sciences</span>
-              </button>
-              <button class="bouton-theme" data-theme="Littérature">
-                <span class="icone-theme">📚</span>
-                <span class="nom-theme">Littérature</span>
-              </button>
-              <button class="bouton-theme" data-theme="Cinéma">
-                <span class="icone-theme">🎬</span>
-                <span class="nom-theme">Cinéma</span>
-              </button>
-              <button class="bouton-theme" data-theme="Sport">
-                <span class="icone-theme">⚽</span>
-                <span class="nom-theme">Sport</span>
-              </button>
-              <button class="bouton-theme" data-theme="Musique">
-                <span class="icone-theme">🎵</span>
-                <span class="nom-theme">Musique</span>
-              </button>
-              <button class="bouton-theme" data-theme="Gastronomie">
-                <span class="icone-theme">🍳</span>
-                <span class="nom-theme">Gastronomie</span>
-              </button>
+              <button class="bouton-theme" data-theme="Histoire"><span class="theme-emoji">🏛️</span> Histoire</button>
+              <button class="bouton-theme" data-theme="Géographie"><span class="theme-emoji">🌍</span> Géographie</button>
+              <button class="bouton-theme" data-theme="Sciences"><span class="theme-emoji">🔬</span> Sciences</button>
+              <button class="bouton-theme" data-theme="Littérature"><span class="theme-emoji">📖</span> Littérature</button>
+              <button class="bouton-theme" data-theme="Cinéma"><span class="theme-emoji">🎬</span> Cinéma</button>
+              <button class="bouton-theme" data-theme="Sport"><span class="theme-emoji">⚽</span> Sport</button>
+              <button class="bouton-theme" data-theme="Musique"><span class="theme-emoji">🎵</span> Musique</button>
+              <button class="bouton-theme" data-theme="Gastronomie"><span class="theme-emoji">🍽️</span> Gastronomie</button>
+              <button class="bouton-theme" data-theme="Animaux"><span class="theme-emoji">🦁</span> Animaux</button>
+              <button class="bouton-theme" data-theme="Technologie"><span class="theme-emoji">💻</span> Technologie</button>
+              <button class="bouton-theme" data-theme="Art"><span class="theme-emoji">🎨</span> Art</button>
+              <button class="bouton-theme" data-theme="Jeux vidéo"><span class="theme-emoji">🎮</span> Jeux vidéo</button>
             </div>
 
             <div class="theme-personnalise">
               <label for="input-theme-personnalise">Ou entrez un thème personnalisé :</label>
               <div class="input-theme-container">
-                <input type="text" id="input-theme-personnalise" placeholder="Ex: Animaux d'Afrique, Jeux vidéo, Astronomie...">
+                <input type="text" id="input-theme-personnalise" placeholder="Ex: Animaux d'Afrique, Astronomie...">
                 <button id="btn-theme-personnalise" class="bouton bouton-principal">Valider</button>
               </div>
             </div>
@@ -222,9 +201,7 @@
           </div>
 
           <div class="groupe-parametre">
-            <label for="duree-question-param"
-              >Temps par question (secondes)</label
-            >
+            <label for="duree-question-param">Temps par question (secondes)</label>
             <select id="duree-question-param" class="select-choix">
               <option value="10">10 secondes</option>
               <option value="15">15 secondes</option>
@@ -235,9 +212,7 @@
           </div>
 
           <div class="groupe-parametre">
-            <label for="duree-reponse-param"
-              >Temps pour répondre (secondes)</label
-            >
+            <label for="duree-reponse-param">Temps pour répondre (secondes)</label>
             <select id="duree-reponse-param" class="select-choix">
               <option value="10">10 secondes</option>
               <option value="15" selected>15 secondes</option>
@@ -251,7 +226,7 @@
             Démarrer la partie
           </button>
           <button id="btn-retour-parametres" class="bouton bouton-secondaire">
-            Retour aux joueurs
+            Retour
           </button>
         </div>
       </div>
@@ -259,16 +234,15 @@
 
     <section id="jeu" class="ecran">
       <div class="contenu">
-        <header>
-          <h1>À vous de jouer !</h1>
-        </header>
-
-        <div class="chronometre-container">
+        <header class="jeu-header">
+          <div class="jeu-info">
+            <span id="question-numero" class="question-numero">Question 1/10</span>
+          </div>
           <div class="chronometre">
             <span id="temps-restant" class="temps-restant">30</span>
             <span class="unite-temps">secondes</span>
           </div>
-        </div>
+        </header>
 
         <div class="scores" id="grille-scores"></div>
 
@@ -279,8 +253,7 @@
         <div class="buzzers-container">
           <div class="buzzers-grid" id="grille-buzzers"></div>
           <p class="indication-buzzers">
-            Utilisez les touches 1, 2, 3, 4 pour buzzer ou cliquez sur les
-            boutons !
+            Utilisez les touches 1, 2, 3, 4 pour buzzer ou cliquez sur les boutons
           </p>
         </div>
       </div>
@@ -303,12 +276,6 @@
           <h2 id="question-reponse">Quelle est la capitale de la France ?</h2>
 
           <div class="options-reponse" id="options-reponse"></div>
-        </div>
-
-        <div class="actions">
-          <button id="btn-retour-reponses" class="bouton bouton-secondaire">
-            Retour
-          </button>
         </div>
       </div>
     </section>
@@ -354,7 +321,7 @@
           <h1>Historique des parties</h1>
         </header>
 
-        <div id="liste-historique"></div>
+        <div id="liste-historique" class="liste-historique"></div>
 
         <div class="actions">
           <button id="btn-retour-historique" class="bouton bouton-secondaire">

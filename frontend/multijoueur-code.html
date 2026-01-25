@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;" />
+  <title>Inviter des joueurs - Question pour un Champion</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+<body>
+  <!-- ============================================ -->
+  <!-- PAGE CODE ET QR CODE -->
+  <!-- ============================================ -->
+  <section id="page-code" class="ecran actif">
+    <div class="contenu contenu-large">
+      <!-- Step indicator -->
+      <div class="step-indicator">
+        <div class="step completed">
+          <span class="step-number"><i class="fas fa-check"></i></span>
+          <span class="step-label">Configuration</span>
+        </div>
+        <div class="step-line completed"></div>
+        <div class="step active">
+          <span class="step-number">2</span>
+          <span class="step-label">Invitation</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step">
+          <span class="step-number">3</span>
+          <span class="step-label">Jouer</span>
+        </div>
+      </div>
+
+      <header>
+        <h1><i class="fas fa-users"></i> Invitez vos amis</h1>
+        <p class="sous-titre">Partagez le code ou scannez le QR code</p>
+      </header>
+
+      <div class="separateur"></div>
+
+      <!-- Zone principale avec code et QR -->
+      <div class="invitation-zone">
+        <!-- Code de partie -->
+        <div class="code-display-section">
+          <h3>Code de la partie</h3>
+          <div class="code-box">
+            <span id="game-code" class="game-code">------</span>
+            <button id="btn-copy-code" class="btn-copy" title="Copier le code">
+              <i class="fas fa-copy"></i>
+            </button>
+          </div>
+          <p class="code-instruction">Dictez ce code a vos amis</p>
+        </div>
+
+        <!-- Separateur ou -->
+        <div class="ou-separator">
+          <span>OU</span>
+        </div>
+
+        <!-- QR Code -->
+        <div class="qr-display-section">
+          <h3>Scanner pour rejoindre</h3>
+          <div class="qr-box">
+            <div id="qr-code" class="qr-placeholder">
+              <div class="spinner small"></div>
+            </div>
+          </div>
+          <p class="qr-instruction">Scannez avec l'appareil photo du telephone</p>
+        </div>
+      </div>
+
+      <div class="separateur"></div>
+
+      <!-- Liste des joueurs -->
+      <div class="players-section">
+        <div class="players-header">
+          <h3><i class="fas fa-user-friends"></i> Joueurs connectes</h3>
+          <span id="player-count" class="player-count">0 / 4</span>
+        </div>
+
+        <div id="players-list" class="players-list">
+          <div class="waiting-message">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>En attente des joueurs...</span>
+          </div>
+        </div>
+
+        <!-- Info mode -->
+        <div id="mode-info" class="mode-info-box">
+          <i class="fas fa-info-circle"></i>
+          <span id="mode-text">Mode Hote TV</span>
+        </div>
+      </div>
+
+      <div class="separateur"></div>
+
+      <!-- Actions -->
+      <div class="actions-bottom">
+        <button id="btn-annuler" class="bouton bouton-secondaire">
+          <i class="fas fa-times"></i> Annuler
+        </button>
+        <button id="btn-demarrer" class="bouton bouton-principal" disabled>
+          <i class="fas fa-play"></i> Demarrer la partie
+          <span id="btn-demarrer-count">(0/2 min)</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <style>
+    /* Step indicator */
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-xl);
+      padding: var(--space-md);
+    }
+
+    .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+
+    .step-number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background: var(--charcoal-light);
+      border: 2px solid var(--charcoal-light);
+      border-radius: var(--radius-circle);
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--steel);
+      transition: all var(--duration-base);
+    }
+
+    .step.active .step-number {
+      background: linear-gradient(135deg, var(--gold-glow), #0099CC);
+      border-color: var(--gold-glow);
+      color: var(--white);
+      box-shadow: 0 0 25px rgba(0, 212, 255, 0.5);
+    }
+
+    .step.completed .step-number {
+      background: var(--emerald);
+      border-color: var(--emerald);
+      color: var(--black-pure);
+    }
+
+    .step-label {
+      font-size: 0.75rem;
+      color: var(--steel);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .step.active .step-label {
+      color: var(--gold-glow);
+    }
+
+    .step.completed .step-label {
+      color: var(--emerald);
+    }
+
+    .step-line {
+      flex: 1;
+      max-width: 60px;
+      height: 2px;
+      background: var(--charcoal-light);
+      margin: 0 var(--space-xs);
+      margin-bottom: 20px;
+    }
+
+    .step-line.completed {
+      background: var(--emerald);
+    }
+
+    /* Invitation zone */
+    .invitation-zone {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: var(--space-xl);
+      align-items: center;
+      margin: var(--space-xl) 0;
+    }
+
+    .code-display-section,
+    .qr-display-section {
+      text-align: center;
+    }
+
+    .code-display-section h3,
+    .qr-display-section h3 {
+      font-size: 0.9rem;
+      color: var(--gold-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: var(--space-lg);
+    }
+
+    /* Code box */
+    .code-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-md);
+      padding: var(--space-xl);
+      background: rgba(0, 20, 50, 0.7);
+      border: 3px solid var(--gold-bright);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 0 50px rgba(0, 212, 255, 0.4), 0 0 100px rgba(0, 180, 255, 0.2);
+    }
+
+    .game-code {
+      font-family: var(--font-mono);
+      font-size: 3.5rem;
+      font-weight: 700;
+      letter-spacing: 0.3em;
+      color: var(--gold-glow);
+      text-shadow: 0 0 30px rgba(0, 212, 255, 0.8), 0 0 60px rgba(0, 180, 255, 0.5);
+    }
+
+    .btn-copy {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 50px;
+      height: 50px;
+      background: rgba(0, 140, 200, 0.15);
+      border: 2px solid var(--gold-bright);
+      border-radius: var(--radius-md);
+      color: var(--gold-glow);
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all var(--duration-fast);
+    }
+
+    .btn-copy:hover {
+      background: rgba(0, 180, 255, 0.25);
+      transform: scale(1.1);
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+    }
+
+    .btn-copy.copied {
+      background: var(--emerald);
+      border-color: var(--emerald);
+      color: var(--black-pure);
+    }
+
+    .code-instruction,
+    .qr-instruction {
+      font-size: 0.85rem;
+      color: var(--steel);
+      margin-top: var(--space-md);
+    }
+
+    /* OR separator */
+    .ou-separator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ou-separator span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 50px;
+      height: 50px;
+      background: var(--charcoal);
+      border: 2px solid var(--charcoal-light);
+      border-radius: var(--radius-circle);
+      color: var(--steel);
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* QR Box */
+    .qr-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-lg);
+      background: white;
+      border-radius: var(--radius-xl);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .qr-placeholder {
+      width: 200px;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .spinner.small {
+      width: 40px;
+      height: 40px;
+      border-width: 3px;
+    }
+
+    #qr-code img,
+    #qr-code canvas {
+      border-radius: var(--radius-sm);
+    }
+
+    /* Players section */
+    .players-section {
+      background: rgba(0, 20, 50, 0.4);
+      padding: var(--space-xl);
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(0, 140, 200, 0.2);
+    }
+
+    .players-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-lg);
+    }
+
+    .players-header h3 {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      color: var(--white);
+      font-size: 1rem;
+      margin: 0;
+    }
+
+    .player-count {
+      padding: var(--space-xs) var(--space-md);
+      background: rgba(0, 140, 200, 0.15);
+      border: 1px solid var(--gold-bright);
+      border-radius: var(--radius-pill);
+      color: var(--gold-glow);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .players-list {
+      min-height: 80px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-md);
+    }
+
+    .waiting-message {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      width: 100%;
+      justify-content: center;
+      padding: var(--space-lg);
+      color: var(--steel);
+      font-style: italic;
+    }
+
+    .player-card {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-lg);
+      background: rgba(0, 100, 160, 0.1);
+      border: 2px solid rgba(0, 140, 200, 0.3);
+      border-radius: var(--radius-pill);
+      animation: playerJoin 0.4s var(--ease-bounce);
+    }
+
+    @keyframes playerJoin {
+      from {
+        opacity: 0;
+        transform: scale(0.8) translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .player-card i {
+      color: var(--gold-glow);
+    }
+
+    .player-card span {
+      font-weight: 500;
+      color: var(--white);
+    }
+
+    .player-card.host {
+      border-color: var(--gold-glow);
+      background: rgba(0, 180, 255, 0.15);
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+    }
+
+    .player-card.host::after {
+      content: 'Hote';
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      background: linear-gradient(135deg, var(--gold-glow), #0099CC);
+      color: var(--white);
+      border-radius: var(--radius-pill);
+      margin-left: var(--space-sm);
+    }
+
+    /* Mode info */
+    .mode-info-box {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-top: var(--space-lg);
+      padding: var(--space-md);
+      background: rgba(0, 245, 255, 0.05);
+      border: 1px solid rgba(0, 245, 255, 0.2);
+      border-radius: var(--radius-md);
+      color: var(--cyan-glow);
+      font-size: 0.9rem;
+    }
+
+    /* Actions */
+    .actions-bottom {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+    }
+
+    .actions-bottom .bouton {
+      flex: 1;
+      min-width: 180px;
+    }
+
+    #btn-demarrer-count {
+      font-size: 0.8em;
+      opacity: 0.8;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .invitation-zone {
+        grid-template-columns: 1fr;
+        gap: var(--space-lg);
+      }
+
+      .ou-separator {
+        margin: var(--space-md) 0;
+      }
+
+      .ou-separator span {
+        width: 100%;
+        max-width: 200px;
+        height: 2px;
+        border-radius: 0;
+        position: relative;
+      }
+
+      .ou-separator span::before {
+        content: 'OU';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--charcoal);
+        padding: 0 var(--space-md);
+      }
+
+      .game-code {
+        font-size: 2.5rem;
+        letter-spacing: 0.2em;
+      }
+
+      .qr-placeholder {
+        width: 180px;
+        height: 180px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .step-indicator {
+        padding: var(--space-xs);
+      }
+
+      .step-number {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+      }
+
+      .step-label {
+        font-size: 0.6rem;
+      }
+
+      .step-line {
+        max-width: 20px;
+      }
+
+      .game-code {
+        font-size: 2rem;
+      }
+
+      .btn-copy {
+        width: 40px;
+        height: 40px;
+      }
+
+      .qr-placeholder {
+        width: 150px;
+        height: 150px;
+      }
+
+      .players-section {
+        padding: var(--space-md);
+      }
+
+      .player-card {
+        padding: var(--space-xs) var(--space-md);
+        font-size: 0.9rem;
+      }
+
+      .actions-bottom {
+        flex-direction: column-reverse;
+      }
+
+      .actions-bottom .bouton {
+        width: 100%;
+      }
+    }
+  </style>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    // ============================================
+    // PAGE CODE - SCRIPT
+    // ============================================
+
+    const BACKEND_URL = "https://questionpourunchampion-backend.onrender.com";
+    let socket = null;
+    let gameData = null;
+    let players = [];
+
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', () => {
+      // Recuperer les donnees de la session
+      const storedData = sessionStorage.getItem('multiGameData');
+      if (!storedData) {
+        window.location.href = 'multijoueur-creer.html';
+        return;
+      }
+
+      gameData = JSON.parse(storedData);
+      console.log('Game data:', gameData);
+
+      // Afficher le code
+      const codeEl = document.getElementById('game-code');
+      if (codeEl && gameData.gameCode) {
+        codeEl.textContent = gameData.gameCode;
+      }
+
+      // Generer le QR code
+      generateQRCode(gameData.gameCode);
+
+      // Afficher le mode
+      const modeText = document.getElementById('mode-text');
+      if (modeText) {
+        modeText.textContent = gameData.mode === 'spectator' ? 'Mode Hote TV' : 'Mode Classique';
+      }
+
+      // Reconnecter au socket
+      reconnectSocket();
+
+      // Setup des boutons
+      setupButtons();
+    });
+
+    function reconnectSocket() {
+      socket = io(BACKEND_URL, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        timeout: 20000
+      });
+
+      socket.on('connect', () => {
+        console.log('Reconnecte au serveur');
+        // Rejoindre la partie en tant qu'hote
+        socket.emit('rejoin-as-host', {
+          gameCode: gameData.gameCode,
+          playerName: gameData.hostName
+        });
+      });
+
+      socket.on('rejoin-success', (data) => {
+        console.log('Rejoint avec succes:', data);
+        players = data.players || [];
+        updatePlayersList();
+      });
+
+      socket.on('player-joined', (data) => {
+        console.log('Joueur rejoint:', data);
+        players = data.players;
+        updatePlayersList();
+        showNotification(`${data.playerName} a rejoint !`, 'success');
+      });
+
+      socket.on('player-left', (data) => {
+        console.log('Joueur parti:', data);
+        players = data.players;
+        updatePlayersList();
+        showNotification(`${data.playerName} a quitte`, 'warning');
+      });
+
+      socket.on('game-started', (data) => {
+        console.log('Partie demarree:', data);
+        // Sauvegarder les infos et rediriger
+        gameData.players = data.players;
+        gameData.isHost = true;
+        sessionStorage.setItem('multiGameData', JSON.stringify(gameData));
+        window.location.href = 'multijoueur-jeu.html';
+      });
+
+      socket.on('error', (data) => {
+        console.error('Erreur:', data);
+        showNotification(data.message || 'Une erreur est survenue', 'error');
+      });
+
+      socket.on('disconnect', () => {
+        console.log('Deconnecte');
+      });
+    }
+
+    function generateQRCode(gameCode) {
+      const qrContainer = document.getElementById('qr-code');
+      if (!qrContainer || !gameCode) return;
+
+      qrContainer.innerHTML = '';
+
+      const baseUrl = window.location.href.split('/').slice(0, -1).join('/');
+      const url = `${baseUrl}/multijoueur-rejoindre.html?code=${gameCode}`;
+
+      try {
+        new QRCode(qrContainer, {
+          text: url,
+          width: 180,
+          height: 180,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.L
+        });
+      } catch (error) {
+        console.error('Erreur QR:', error);
+        qrContainer.innerHTML = '<p style="color: #666;">QR non disponible</p>';
+      }
+    }
+
+    function updatePlayersList() {
+      const container = document.getElementById('players-list');
+      const countEl = document.getElementById('player-count');
+      const btnDemarrer = document.getElementById('btn-demarrer');
+      const btnCount = document.getElementById('btn-demarrer-count');
+
+      if (!container) return;
+
+      container.innerHTML = '';
+
+      // Ajouter l'hote d'abord (en mode spectator, l'hote ne compte pas comme joueur)
+      if (gameData.mode === 'spectator') {
+        const hostCard = document.createElement('div');
+        hostCard.className = 'player-card host';
+        hostCard.innerHTML = `<i class="fas fa-crown"></i><span>${gameData.hostName}</span>`;
+        container.appendChild(hostCard);
+      }
+
+      // Ajouter les autres joueurs
+      const otherPlayers = players.filter(p => p.name !== gameData.hostName);
+
+      if (otherPlayers.length === 0 && gameData.mode === 'spectator') {
+        const waiting = document.createElement('div');
+        waiting.className = 'waiting-message';
+        waiting.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>En attente des joueurs...</span>';
+        container.appendChild(waiting);
+      }
+
+      otherPlayers.forEach(player => {
+        const card = document.createElement('div');
+        card.className = 'player-card';
+        card.innerHTML = `<i class="fas fa-user"></i><span>${player.name}</span>`;
+        container.appendChild(card);
+      });
+
+      // Mettre a jour le compteur
+      const playerCount = gameData.mode === 'spectator' ? otherPlayers.length : players.length;
+      if (countEl) {
+        countEl.textContent = `${playerCount} / 4`;
+      }
+
+      // Activer/desactiver le bouton demarrer (minimum 2 joueurs en mode classique, 1 en mode spectator)
+      const minPlayers = gameData.mode === 'spectator' ? 1 : 2;
+      if (btnDemarrer) {
+        btnDemarrer.disabled = playerCount < minPlayers;
+        if (btnCount) {
+          btnCount.textContent = `(${playerCount}/${minPlayers} min)`;
+        }
+      }
+    }
+
+    function setupButtons() {
+      // Bouton copier
+      const btnCopy = document.getElementById('btn-copy-code');
+      if (btnCopy) {
+        btnCopy.addEventListener('click', () => {
+          navigator.clipboard.writeText(gameData.gameCode).then(() => {
+            btnCopy.classList.add('copied');
+            btnCopy.innerHTML = '<i class="fas fa-check"></i>';
+            showNotification('Code copie !', 'success');
+            setTimeout(() => {
+              btnCopy.classList.remove('copied');
+              btnCopy.innerHTML = '<i class="fas fa-copy"></i>';
+            }, 2000);
+          });
+        });
+      }
+
+      // Bouton annuler
+      const btnAnnuler = document.getElementById('btn-annuler');
+      if (btnAnnuler) {
+        btnAnnuler.addEventListener('click', () => {
+          if (confirm('Voulez-vous vraiment annuler la partie ?')) {
+            if (socket) {
+              socket.emit('cancel-game', { gameCode: gameData.gameCode });
+              socket.disconnect();
+            }
+            sessionStorage.removeItem('multiGameData');
+            window.location.href = 'multijoueur.html';
+          }
+        });
+      }
+
+      // Bouton demarrer
+      const btnDemarrer = document.getElementById('btn-demarrer');
+      if (btnDemarrer) {
+        btnDemarrer.addEventListener('click', () => {
+          if (socket) {
+            socket.emit('start-game', {
+              gameCode: gameData.gameCode,
+              settings: gameData.settings
+            });
+            btnDemarrer.disabled = true;
+            btnDemarrer.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Demarrage...';
+          }
+        });
+      }
+    }
+
+    function showNotification(message, type = 'info') {
+      const notif = document.createElement('div');
+      notif.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 25px;
+        background: ${type === 'success' ? '#00FF88' : type === 'error' ? '#FF3366' : type === 'warning' ? '#FFD700' : '#00F5FF'};
+        color: ${type === 'warning' || type === 'success' ? '#000' : '#fff'};
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        z-index: 10001;
+        font-weight: 600;
+        animation: slideIn 0.3s ease;
+      `;
+      notif.textContent = message;
+      document.body.appendChild(notif);
+
+      setTimeout(() => {
+        notif.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notif.remove(), 300);
+      }, 3000);
+    }
+
+    // Animations
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
+</body>
+</html>

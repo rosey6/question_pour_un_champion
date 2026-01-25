@@ -402,6 +402,12 @@ function initialiserEcranTheme() {
 
   const inputTheme = document.getElementById("input-theme-personnalise");
   if (inputTheme) inputTheme.value = "";
+
+  // Afficher le nombre de questions locales
+  const nombreQuestionsEl = document.getElementById("nombre-questions-locales");
+  if (nombreQuestionsEl && jeu.toutesLesQuestions.length > 0) {
+    nombreQuestionsEl.textContent = jeu.toutesLesQuestions.length;
+  }
 }
 
 function selectionnerSourceQuestions(source) {
@@ -412,15 +418,28 @@ function selectionnerSourceQuestions(source) {
     btn.classList.remove("actif");
   });
 
-  const btnSource = document.querySelector(`[data-source="${source}"]`);
+  const btnSource = document.querySelector(`.option-source[data-source="${source}"]`);
   if (btnSource) btnSource.classList.add("actif");
 
   const sectionThemes = document.getElementById("section-themes");
+  const erreurIa = document.getElementById("erreur-ia");
+
   if (source === "ia") {
     sectionThemes?.classList.remove("hidden");
+    // Scroll to themes section on mobile
+    setTimeout(() => {
+      sectionThemes?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
   } else {
     sectionThemes?.classList.add("hidden");
+    erreurIa?.classList.add("hidden");
     jeu.themeSelectionne = null;
+    // Reset theme selection
+    document.querySelectorAll(".bouton-theme").forEach((btn) => {
+      btn.classList.remove("actif");
+    });
+    const themeSelectionneDiv = document.getElementById("theme-selectionne");
+    if (themeSelectionneDiv) themeSelectionneDiv.classList.add("hidden");
   }
 }
 
@@ -590,6 +609,13 @@ async function demarrerPartie() {
   if (question) {
     const questionEl = document.getElementById("question-actuelle");
     if (questionEl) questionEl.textContent = question.question;
+
+    // Update question number
+    const questionNumeroEl = document.getElementById("question-numero");
+    if (questionNumeroEl) {
+      const total = jeu.questionsTirees.length;
+      questionNumeroEl.textContent = `Question ${jeu.questionActuelle + 1}/${total}`;
+    }
   } else {
     alert("Erreur: Aucune question disponible !");
     return;
@@ -841,7 +867,7 @@ function verifierReponse(reponseDonnee, reponseCorrecte, tempsEcoule = false) {
   arreterTousLesSons();
 
   if (tempsEcoule) {
-    jouerSon("hue"); // Son de mauvaise réponse
+    jouerSon("hue");
     if (statutReponseEl) {
       statutReponseEl.textContent = "Temps écoulé! -5 points";
       statutReponseEl.className = "statut-reponse incorrect";
@@ -849,14 +875,14 @@ function verifierReponse(reponseDonnee, reponseCorrecte, tempsEcoule = false) {
     jeu.scores[jeu.joueurActuel] -= 5;
     if (jeu.scores[jeu.joueurActuel] < 0) jeu.scores[jeu.joueurActuel] = 0;
   } else if (reponseDonnee === reponseCorrecte) {
-    jouerSon("applaudissements"); // Son de bonne réponse
+    jouerSon("applaudissements");
     if (statutReponseEl) {
       statutReponseEl.textContent = "Bonne réponse! +10 points";
       statutReponseEl.className = "statut-reponse";
     }
     jeu.scores[jeu.joueurActuel] += 10;
   } else {
-    jouerSon("hue"); // Son de mauvaise réponse
+    jouerSon("hue");
     if (statutReponseEl) {
       statutReponseEl.textContent = "Mauvaise réponse! -5 points";
       statutReponseEl.className = "statut-reponse incorrect";
@@ -881,7 +907,7 @@ function verifierReponse(reponseDonnee, reponseCorrecte, tempsEcoule = false) {
     let countdown = 5;
     btnQuestionSuivante.textContent = `Question suivante (${countdown}s)`;
     btnQuestionSuivante.disabled = true;
-    
+
     const countdownInterval = setInterval(() => {
       countdown--;
       if (countdown > 0) {
@@ -916,6 +942,13 @@ function passerQuestionSuivante() {
 
   const questionEl = document.getElementById("question-actuelle");
   if (questionEl) questionEl.textContent = question.question;
+
+  // Update question number
+  const questionNumeroEl = document.getElementById("question-numero");
+  if (questionNumeroEl) {
+    const total = jeu.questionsTirees.length;
+    questionNumeroEl.textContent = `Question ${jeu.questionActuelle + 1}/${total}`;
+  }
 
   genererGrilleScores("grille-scores");
   demarrerChronometreQuestion();
@@ -1064,19 +1097,15 @@ function initialiserEvenements() {
   }
 
   // ========== ÉCRAN SÉLECTION THÈME ==========
-  const btnSourceExistantes = document.getElementById("btn-source-existantes");
-  if (btnSourceExistantes) {
-    btnSourceExistantes.addEventListener("click", () =>
-      selectionnerSourceQuestions("existantes")
-    );
-  }
-
-  const btnSourceIa = document.getElementById("btn-source-ia");
-  if (btnSourceIa) {
-    btnSourceIa.addEventListener("click", () =>
-      selectionnerSourceQuestions("ia")
-    );
-  }
+  // Source selection buttons
+  document.querySelectorAll(".option-source").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const source = btn.dataset.source;
+      if (source) {
+        selectionnerSourceQuestions(source);
+      }
+    });
+  });
 
   // Boutons de thème prédéfinis
   document.querySelectorAll(".bouton-theme").forEach((btn) => {
@@ -1094,7 +1123,10 @@ function initialiserEvenements() {
   const inputThemePerso = document.getElementById("input-theme-personnalise");
   if (inputThemePerso) {
     inputThemePerso.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") validerThemePersonnalise();
+      if (e.key === "Enter") {
+        e.preventDefault();
+        validerThemePersonnalise();
+      }
     });
   }
 
