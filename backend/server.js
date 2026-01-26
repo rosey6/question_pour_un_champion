@@ -620,6 +620,10 @@ io.on("connection", (socket) => {
     // Annuler le timer de suppression si l'hôte se reconnecte
     delete game.hostDisconnectedAt;
 
+    // En mode classique, le créateur est un joueur comme les autres (pas d'hôte)
+    // En mode spectateur, le créateur est l'hôte (ne joue pas)
+    const isHostPlayer = game.mode === "spectator";
+
     // Transférer ou recréer le joueur hôte
     if (oldHostId && game.players[oldHostId]) {
       // Copier les données de l'ancien socket vers le nouveau
@@ -629,7 +633,7 @@ io.on("connection", (socket) => {
         gameCode: gameCode,
         name: playerName || oldPlayerData.name,
         score: oldPlayerData.score || 0,
-        isHost: true,
+        isHost: isHostPlayer,
         hasAnswered: oldPlayerData.hasAnswered || false,
       };
       game.players[socket.id] = players[socket.id];
@@ -646,7 +650,7 @@ io.on("connection", (socket) => {
         gameCode: gameCode,
         name: playerName,
         score: 0,
-        isHost: true,
+        isHost: isHostPlayer,
         hasAnswered: false,
       };
       game.players[socket.id] = players[socket.id];
@@ -683,7 +687,7 @@ io.on("connection", (socket) => {
       });
     }
 
-    console.log(`Hôte ${playerName} reconnecté à la partie ${gameCode}`);
+    console.log(`${isHostPlayer ? 'Hôte' : 'Créateur-joueur'} ${playerName} reconnecté à la partie ${gameCode}`);
   });
 
   // Rejoindre une partie

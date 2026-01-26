@@ -104,13 +104,17 @@ function setupUI() {
   const vueJoueur = document.getElementById('vue-joueur');
   const playerQuestionZone = document.getElementById('player-question-zone');
 
-  if (gameState.isHost) {
-    // Vue hote
+  // En mode classique, tout le monde est joueur (pas d'hôte)
+  // En mode spectateur, seul l'hôte a la vue hôte
+  const shouldShowHostView = gameState.isHost && gameState.mode === 'spectator';
+
+  if (shouldShowHostView) {
+    // Vue hote (uniquement en mode spectateur)
     if (vueHote) vueHote.classList.remove('hidden');
     if (vueJoueur) vueJoueur.classList.add('hidden');
     setupHostUI();
   } else {
-    // Vue joueur
+    // Vue joueur (mode classique pour tous, ou joueurs en mode spectateur)
     if (vueHote) vueHote.classList.add('hidden');
     if (vueJoueur) vueJoueur.classList.remove('hidden');
 
@@ -482,7 +486,11 @@ function displayResult(data) {
   }
   updateScoresDisplay();
 
-  if (gameState.isHost) {
+  // En mode classique, tout le monde a la vue joueur
+  // En mode spectateur, seul l'hôte a la vue hôte
+  const shouldShowHostView = gameState.isHost && gameState.mode === 'spectator';
+
+  if (shouldShowHostView) {
     displayHostResult(data);
   } else {
     displayPlayerResult(data);
@@ -596,7 +604,11 @@ function displayTimeoutResult(data) {
   }
   updateScoresDisplay();
 
-  if (gameState.isHost) {
+  // En mode classique, tout le monde a la vue joueur
+  // En mode spectateur, seul l'hôte a la vue hôte
+  const shouldShowHostView = gameState.isHost && gameState.mode === 'spectator';
+
+  if (shouldShowHostView) {
     displayHostTimeoutResult(data);
   } else {
     displayPlayerTimeoutResult(data);
