@@ -140,6 +140,54 @@
           </div>
         </div>
 
+        <!-- Source des questions -->
+        <div class="form-section">
+          <h3><i class="fas fa-database"></i> Source des questions</h3>
+          <div class="source-selection">
+            <label class="source-option active" data-source="local">
+              <input type="radio" name="question-source" value="local" checked />
+              <div class="source-card">
+                <div class="source-icon">
+                  <i class="fas fa-folder"></i>
+                </div>
+                <div class="source-info">
+                  <h4>Questions locales</h4>
+                  <p>Utiliser la banque de questions existante (rapide)</p>
+                </div>
+                <div class="source-check"><i class="fas fa-check-circle"></i></div>
+              </div>
+            </label>
+
+            <label class="source-option" data-source="ai">
+              <input type="radio" name="question-source" value="ai" />
+              <div class="source-card">
+                <div class="source-icon source-icon-ai">
+                  <i class="fas fa-robot"></i>
+                </div>
+                <div class="source-info">
+                  <h4>Questions IA</h4>
+                  <p>Generer des questions uniques avec l'intelligence artificielle</p>
+                </div>
+                <div class="source-check"><i class="fas fa-check-circle"></i></div>
+              </div>
+            </label>
+          </div>
+
+          <!-- Theme pour IA (visible seulement si IA selectionnee) -->
+          <div id="ai-theme-section" class="ai-theme-section hidden">
+            <div class="form-group">
+              <label for="theme-ia">Theme des questions</label>
+              <input
+                type="text"
+                id="theme-ia"
+                placeholder="Ex: Histoire de France, Cinema, Sport..."
+                maxlength="50"
+                autocomplete="off"
+              />
+            </div>
+          </div>
+        </div>
+
         <div class="separateur"></div>
 
         <!-- Actions -->
@@ -377,6 +425,105 @@
       width: 100%;
     }
 
+    /* Source selection (similar to mode) */
+    .source-selection {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .source-option {
+      cursor: pointer;
+    }
+
+    .source-option input {
+      display: none;
+    }
+
+    .source-card {
+      display: flex;
+      align-items: center;
+      gap: var(--space-lg);
+      padding: var(--space-lg);
+      background: rgba(0, 20, 50, 0.4);
+      border-radius: var(--radius-lg);
+      border: 2px solid rgba(0, 140, 200, 0.2);
+      transition: all var(--duration-base);
+    }
+
+    .source-option:hover .source-card {
+      border-color: rgba(0, 212, 255, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .source-option.active .source-card {
+      border-color: var(--gold-glow);
+      background: rgba(0, 212, 255, 0.1);
+    }
+
+    .source-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, rgba(0, 140, 200, 0.3), rgba(0, 212, 255, 0.2));
+      border-radius: var(--radius-md);
+      font-size: 1.3rem;
+      color: var(--gold-glow);
+      flex-shrink: 0;
+    }
+
+    .source-icon-ai {
+      background: linear-gradient(135deg, rgba(138, 43, 226, 0.3), rgba(186, 85, 211, 0.2));
+      color: #ba55d3;
+    }
+
+    .source-info {
+      flex: 1;
+    }
+
+    .source-info h4 {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      color: var(--white);
+      margin-bottom: var(--space-xs);
+    }
+
+    .source-info p {
+      font-size: 0.8rem;
+      color: var(--steel);
+    }
+
+    .source-check {
+      color: var(--steel);
+      font-size: 1.2rem;
+      opacity: 0;
+      transition: opacity var(--duration-base);
+    }
+
+    .source-option.active .source-check {
+      opacity: 1;
+      color: var(--gold-glow);
+    }
+
+    /* AI Theme section */
+    .ai-theme-section {
+      margin-top: var(--space-md);
+      padding: var(--space-lg);
+      background: rgba(138, 43, 226, 0.1);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(138, 43, 226, 0.3);
+    }
+
+    .ai-theme-section.hidden {
+      display: none;
+    }
+
+    .ai-theme-section .form-group label {
+      color: #ba55d3;
+    }
+
     /* Form actions */
     .form-actions {
       display: flex;
@@ -468,6 +615,25 @@
       .form-actions .bouton {
         width: 100%;
       }
+
+      .source-card {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .source-info {
+        text-align: center;
+      }
+
+      .source-check {
+        position: absolute;
+        top: var(--space-sm);
+        right: var(--space-sm);
+      }
+
+      .source-option {
+        position: relative;
+      }
     }
   </style>
 
@@ -488,12 +654,33 @@
       });
     });
 
+    // Gestion des sources de questions
+    document.querySelectorAll('.source-option').forEach(option => {
+      option.addEventListener('click', () => {
+        document.querySelectorAll('.source-option').forEach(o => o.classList.remove('active'));
+        option.classList.add('active');
+
+        // Afficher/masquer le champ theme
+        const aiThemeSection = document.getElementById('ai-theme-section');
+        const source = option.dataset.source;
+        if (source === 'ai') {
+          aiThemeSection.classList.remove('hidden');
+        } else {
+          aiThemeSection.classList.add('hidden');
+        }
+      });
+    });
+
+    // Variable pour stocker les questions generees
+    let generatedQuestions = null;
+
     // Soumission du formulaire
     document.getElementById('form-creer-partie').addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const nom = document.getElementById('nom-createur').value.trim();
       const mode = document.querySelector('input[name="mode"]:checked').value;
+      const questionSource = document.querySelector('input[name="question-source"]:checked').value;
       const nombreQuestions = parseInt(document.getElementById('nombre-questions').value);
       const tempsQuestion = parseInt(document.getElementById('temps-question').value);
       const tempsReponse = parseInt(document.getElementById('temps-reponse').value);
@@ -505,12 +692,46 @@
       }
 
       // Afficher le loading
-      document.getElementById('loading-overlay').classList.remove('hidden');
+      const loadingOverlay = document.getElementById('loading-overlay');
+      const loadingText = loadingOverlay.querySelector('p');
+      loadingOverlay.classList.remove('hidden');
+
+      // Si IA selectionnee, generer les questions d'abord
+      if (questionSource === 'ai') {
+        const theme = document.getElementById('theme-ia').value.trim() || 'Culture generale';
+        loadingText.textContent = `Generation de ${nombreQuestions} questions sur "${theme}"...`;
+
+        try {
+          const response = await fetch(`${BACKEND_URL}/api/generate-questions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ theme: theme, count: nombreQuestions })
+          });
+
+          if (!response.ok) {
+            throw new Error('Erreur de generation');
+          }
+
+          const data = await response.json();
+          generatedQuestions = data.questions;
+          console.log('Questions generees:', generatedQuestions);
+          loadingText.textContent = 'Questions generees! Creation de la partie...';
+        } catch (error) {
+          console.error('Erreur generation IA:', error);
+          loadingOverlay.classList.add('hidden');
+          showNotification('Erreur lors de la generation des questions. Essayez les questions locales.', 'error');
+          return;
+        }
+      } else {
+        loadingText.textContent = 'Creation de la partie en cours...';
+        generatedQuestions = null;
+      }
 
       // Sauvegarder les donnees
       const gameData = {
         hostName: nom,
         mode: mode,
+        questionSource: questionSource,
         settings: {
           maxPlayers: 4,
           questionsCount: nombreQuestions,
@@ -533,7 +754,8 @@
         socket.emit('create-game', {
           playerName: nom,
           settings: gameData.settings,
-          mode: mode
+          mode: mode,
+          questions: generatedQuestions // Envoyer les questions IA si generees
         });
       });
 

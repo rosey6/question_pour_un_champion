@@ -510,8 +510,14 @@ io.on("connection", (socket) => {
     const normalizedSettings = normalizeSettings(rawSettings || game.settings || {});
     game.settings = normalizedSettings;
 
-    // Sélection questions côté serveur (évite la dépendance à GameLogic côté client)
-    game.questions = getRandomQuestions(normalizedSettings.questionsCount);
+    // Utiliser les questions IA si fournies, sinon questions locales
+    if (game.providedQuestions && game.providedQuestions.length > 0) {
+      game.questions = game.providedQuestions.slice(0, normalizedSettings.questionsCount);
+      console.log(`Partie ${gameCode}: utilisation de ${game.questions.length} questions IA`);
+    } else {
+      game.questions = getRandomQuestions(normalizedSettings.questionsCount);
+      console.log(`Partie ${gameCode}: utilisation de ${game.questions.length} questions locales`);
+    }
     game.currentQuestionIndex = 0;
     game.state = "playing";
     game.buzzerActive = true;
@@ -540,11 +546,14 @@ io.on("connection", (socket) => {
   }
 
   // Créer une partie
-  socket.on("create-game", ({ playerName, settings, mode }) => {
+  socket.on("create-game", ({ playerName, settings, mode, questions }) => {
     const gameCode = generateGameCode();
 
     const normalizedSettings = normalizeSettings(settings || {});
     const gameMode = mode || "spectator"; // "spectator" ou "classic"
+
+    // Si des questions IA sont fournies, les stocker
+    const providedQuestions = Array.isArray(questions) ? questions : null;
 
     games[gameCode] = {
       code: gameCode,
@@ -556,12 +565,17 @@ io.on("connection", (socket) => {
       state: "waiting",
       settings: normalizedSettings,
       currentQuestionIndex: 0,
-      questions: [],
+      questions: [], // Sera rempli au démarrage
+      providedQuestions: providedQuestions, // Questions IA fournies par le client
       scores: {},
       buzzerActive: false,
       buzzerWinner: null,
       createdAt: Date.now(),
     };
+
+    if (providedQuestions) {
+      console.log(`Partie ${gameCode}: ${providedQuestions.length} questions IA fournies`);
+    }
 
     // Le créateur est un joueur comme les autres (surtout en mode classic)
     players[socket.id] = {
@@ -735,6 +749,77 @@ io.on("connection", (socket) => {
     if (Object.keys(game.players).length >= maxPlayers) {
       startGameInternal(gameCode);
     }
+  });
+
+  // Rejoindre une partie en cours (reconnexion après navigation)
+  socket.on("rejoin-game", ({ gameCode, playerName }) => {
+    const game = games[gameCode];
+
+    if (!game) {
+      socket.emit("rejoin-error", { message: "Partie introuvable" });
+      return;
+    }
+
+    // Chercher le joueur existant par son nom
+    const existingPlayerEntry = Object.entries(game.players).find(
+      ([id, p]) => p.name.toLowerCase() === playerName.toLowerCase()
+    );
+
+    if (existingPlayerEntry) {
+      const [oldPlayerId, oldPlayerData] = existingPlayerEntry;
+
+      // Transférer les données vers le nouveau socket
+      players[socket.id] = {
+        id: socket.id,
+        gameCode: gameCode,
+        name: playerName,
+        score: oldPlayerData.score || 0,
+        isHost: false,
+        hasAnswered: oldPlayerData.hasAnswered || false,
+      };
+
+      game.players[socket.id] = players[socket.id];
+      game.scores[socket.id] = oldPlayerData.score || 0;
+
+      // Supprimer l'ancien socket
+      if (oldPlayerId !== socket.id) {
+        delete game.players[oldPlayerId];
+        delete game.scores[oldPlayerId];
+        delete players[oldPlayerId];
+      }
+    } else {
+      // Nouveau joueur qui rejoint en cours de partie (s'il y a de la place)
+      players[socket.id] = {
+        id: socket.id,
+        gameCode: gameCode,
+        name: playerName,
+        score: 0,
+        isHost: false,
+        hasAnswered: false,
+      };
+
+      game.players[socket.id] = players[socket.id];
+      game.scores[socket.id] = 0;
+    }
+
+    socket.join(gameCode);
+
+    socket.emit("rejoin-success", {
+      gameCode: gameCode,
+      hostName: game.hostName,
+      mode: game.mode || "spectator",
+      players: Object.values(game.players).map((p) => ({
+        id: p.id,
+        name: p.name,
+        score: game.scores[p.id] || p.score || 0,
+        isHost: p.isHost || false,
+      })),
+      settings: game.settings,
+      gameState: game.state,
+      currentQuestionIndex: game.currentQuestionIndex,
+    });
+
+    console.log(`${playerName} reconnecté à la partie ${gameCode}`);
   });
 
   // Démarrer la partie
