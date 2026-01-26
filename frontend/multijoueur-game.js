@@ -251,6 +251,15 @@ function connectToGame() {
     showNotification('Temps ecoule!', 'warning');
   });
 
+  // Timeout buzzer avec résultats (quand personne ne buzz)
+  socket.on('buzzer-timeout-result', (data) => {
+    console.log('Timeout buzzer avec résultats:', data);
+    gameState.buzzerEnabled = false;
+    stopAllSounds();
+    playSound('incorrect');
+    displayTimeoutResult(data);
+  });
+
   // Partie terminee
   socket.on('game-finished', (data) => {
     console.log('Partie terminee:', data);
@@ -531,6 +540,133 @@ function displayPlayerResult(data) {
   const resultAnswer = document.getElementById('player-result-answer');
   if (resultAnswer) {
     resultAnswer.textContent = `Reponse: ${data.correctAnswer}`;
+  }
+
+  // Illustration (mode classique)
+  const illustrationContainer = document.getElementById('player-result-illustration');
+  const illustrationImage = document.getElementById('player-result-image');
+  const illustrationDesc = document.getElementById('player-result-description');
+
+  const imageUrl = data.imageUrl || currentQuestionData?.imageUrl;
+  const description = data.illustrationTexte || currentQuestionData?.illustrationTexte;
+
+  if (illustrationContainer && illustrationImage && imageUrl) {
+    illustrationImage.src = imageUrl;
+    illustrationImage.alt = description || 'Illustration';
+    if (illustrationDesc) illustrationDesc.textContent = description || '';
+    illustrationContainer.classList.remove('hidden');
+  } else if (illustrationContainer) {
+    illustrationContainer.classList.add('hidden');
+  }
+
+  // Afficher les scores
+  const scoresList = document.getElementById('player-scores-list');
+  if (scoresList && data.rankings) {
+    scoresList.innerHTML = '';
+    data.rankings.slice(0, 4).forEach((player, idx) => {
+      const row = document.createElement('div');
+      row.className = 'score-row' + (idx === 0 ? ' first' : '');
+      row.innerHTML = `
+        <span class="score-row-name">${idx === 0 ? '🥇' : ''} ${player.name}</span>
+        <span class="score-row-points">${player.score} pts</span>
+      `;
+      scoresList.appendChild(row);
+    });
+  }
+
+  // Compte a rebours
+  let countdown = 5;
+  const countdownEl = document.getElementById('countdown');
+  const interval = setInterval(() => {
+    countdown--;
+    if (countdownEl) countdownEl.textContent = countdown;
+    if (countdown <= 0) clearInterval(interval);
+  }, 1000);
+}
+
+// Afficher les résultats quand personne n'a buzzé (timeout)
+function displayTimeoutResult(data) {
+  // Mettre a jour les scores
+  if (data.rankings) {
+    gameState.players = data.rankings.map((r, i) => ({
+      id: `player-${i}`,
+      name: r.name,
+      score: r.score
+    }));
+  }
+  updateScoresDisplay();
+
+  if (gameState.isHost) {
+    displayHostTimeoutResult(data);
+  } else {
+    displayPlayerTimeoutResult(data);
+  }
+}
+
+function displayHostTimeoutResult(data) {
+  hideElement('answer-zone');
+  showElement('result-zone');
+
+  const resultStatus = document.getElementById('result-status');
+  if (resultStatus) {
+    resultStatus.className = 'result-status incorrect';
+    resultStatus.innerHTML = '<i class="fas fa-clock"></i><span>Temps ecoule! Personne n\'a buzze</span>';
+  }
+
+  const correctAnswer = document.getElementById('correct-answer');
+  if (correctAnswer) {
+    correctAnswer.textContent = data.correctAnswer;
+  }
+
+  // Illustration
+  const illustrationContainer = document.getElementById('result-illustration');
+  const illustrationImage = document.getElementById('result-image');
+  const illustrationDesc = document.getElementById('result-description');
+
+  const imageUrl = data.imageUrl || currentQuestionData?.imageUrl;
+  const description = data.illustrationTexte || currentQuestionData?.illustrationTexte;
+
+  if (illustrationContainer && illustrationImage && imageUrl) {
+    illustrationImage.src = imageUrl;
+    illustrationImage.alt = description || 'Illustration';
+    if (illustrationDesc) illustrationDesc.textContent = description || '';
+    illustrationContainer.classList.remove('hidden');
+  } else if (illustrationContainer) {
+    illustrationContainer.classList.add('hidden');
+  }
+}
+
+function displayPlayerTimeoutResult(data) {
+  hideElement('buzzer-zone');
+  hideElement('player-options');
+  showElement('player-result');
+
+  const resultStatus = document.getElementById('player-result-status');
+  if (resultStatus) {
+    resultStatus.className = 'result-status incorrect';
+    resultStatus.innerHTML = '<i class="fas fa-clock"></i><span>Temps ecoule!</span>';
+  }
+
+  const resultAnswer = document.getElementById('player-result-answer');
+  if (resultAnswer) {
+    resultAnswer.textContent = `Reponse: ${data.correctAnswer}`;
+  }
+
+  // Illustration (mode classique)
+  const illustrationContainer = document.getElementById('player-result-illustration');
+  const illustrationImage = document.getElementById('player-result-image');
+  const illustrationDesc = document.getElementById('player-result-description');
+
+  const imageUrl = data.imageUrl || currentQuestionData?.imageUrl;
+  const description = data.illustrationTexte || currentQuestionData?.illustrationTexte;
+
+  if (illustrationContainer && illustrationImage && imageUrl) {
+    illustrationImage.src = imageUrl;
+    illustrationImage.alt = description || 'Illustration';
+    if (illustrationDesc) illustrationDesc.textContent = description || '';
+    illustrationContainer.classList.remove('hidden');
+  } else if (illustrationContainer) {
+    illustrationContainer.classList.add('hidden');
   }
 
   // Afficher les scores

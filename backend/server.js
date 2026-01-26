@@ -668,6 +668,21 @@ io.on("connection", (socket) => {
       settings: game.settings,
     });
 
+    // Si le jeu est en cours et qu'il y a une question active, l'envoyer à l'hôte qui rejoint
+    if (game.state === "playing" && game.currentQuestion) {
+      const shuffledOptions = shuffleArray([...game.currentQuestion.options]);
+      socket.emit("new-question", {
+        question: game.currentQuestion.question,
+        options: shuffledOptions,
+        correctAnswer: game.currentQuestion.correctAnswer,
+        timeLimit: game.settings.timePerQuestion * 1000,
+        questionNumber: game.currentQuestionIndex + 1,
+        totalQuestions: game.questions.length,
+        imageUrl: game.currentQuestion.imageUrl || null,
+        illustrationTexte: game.currentQuestion.illustrationTexte || null,
+      });
+    }
+
     console.log(`Hôte ${playerName} reconnecté à la partie ${gameCode}`);
   });
 
@@ -818,6 +833,21 @@ io.on("connection", (socket) => {
       gameState: game.state,
       currentQuestionIndex: game.currentQuestionIndex,
     });
+
+    // Si le jeu est en cours et qu'il y a une question active, l'envoyer au joueur qui rejoint
+    if (game.state === "playing" && game.currentQuestion) {
+      const shuffledOptions = shuffleArray([...game.currentQuestion.options]);
+      socket.emit("new-question", {
+        question: game.currentQuestion.question,
+        options: shuffledOptions,
+        correctAnswer: game.currentQuestion.correctAnswer,
+        timeLimit: game.settings.timePerQuestion * 1000,
+        questionNumber: game.currentQuestionIndex + 1,
+        totalQuestions: game.questions.length,
+        imageUrl: game.currentQuestion.imageUrl || null,
+        illustrationTexte: game.currentQuestion.illustrationTexte || null,
+      });
+    }
 
     console.log(`${playerName} reconnecté à la partie ${gameCode}`);
   });
@@ -1169,14 +1199,36 @@ function sendQuestionToAll(gameCode) {
   game._buzzerTimer = setTimeout(() => {
     if (games[gameCode] && game.buzzerActive) {
       game.buzzerActive = false;
-      io.to(gameCode).emit("buzzer-timeout");
+      
+      // Afficher les résultats même si personne n'a buzzé
+      const correctAnswer = game.currentQuestion?.correctAnswer;
+      const rankings = Object.values(game.players)
+        .sort((a, b) => (b.score || 0) - (a.score || 0))
+        .map((pl, idx) => ({ 
+          position: idx + 1, 
+          name: pl.name, 
+          score: pl.score || 0, 
+          isHost: pl.isHost || false 
+        }));
+      
+      // Informer tous les joueurs qu'il y a un timeout et montrer la réponse
+      io.to(gameCode).emit("buzzer-timeout-result", {
+        correctAnswer: correctAnswer || null,
+        question: game.currentQuestion?.question || null,
+        imageUrl: game.currentQuestion?.imageUrl || null,
+        illustrationTexte: game.currentQuestion?.illustrationTexte || null,
+        rankings,
+      });
 
-      // Si personne n'a buzzé, passer à la question suivante après 2 secondes
+      // Passer à la question suivante après 5 secondes (temps pour voir les résultats)
       setTimeout(() => {
         if (games[gameCode]) {
-          nextQuestion(gameCode);
+          if (game.mode === "classic") {
+            nextQuestion(gameCode);
+          }
+          // En mode spectateur, attendre que l'hôte clique sur "Question suivante"
         }
-      }, 2000);
+      }, 5000);
     }
   }, game.settings.timePerQuestion * 1000);
 }
