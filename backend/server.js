@@ -588,6 +588,72 @@ io.on("connection", (socket) => {
     console.log(`Partie créée: ${gameCode} par ${playerName} (mode: ${gameMode})`);
   });
 
+  // Rejoindre en tant qu'hôte (reconnexion après navigation)
+  socket.on("rejoin-as-host", ({ gameCode, playerName }) => {
+    const game = games[gameCode];
+
+    if (!game) {
+      socket.emit("rejoin-error", { message: "Partie introuvable" });
+      return;
+    }
+
+    // Trouver l'ancien socket de l'hôte et le remplacer
+    const oldHostId = game.hostId;
+
+    // Mettre à jour l'hôte avec le nouveau socket
+    game.hostId = socket.id;
+
+    // Transférer ou recréer le joueur hôte
+    if (oldHostId && game.players[oldHostId]) {
+      // Copier les données de l'ancien socket vers le nouveau
+      const oldPlayerData = game.players[oldHostId];
+      players[socket.id] = {
+        id: socket.id,
+        gameCode: gameCode,
+        name: playerName || oldPlayerData.name,
+        score: oldPlayerData.score || 0,
+        isHost: true,
+        hasAnswered: oldPlayerData.hasAnswered || false,
+      };
+      game.players[socket.id] = players[socket.id];
+      game.scores[socket.id] = oldPlayerData.score || 0;
+
+      // Supprimer l'ancien
+      delete game.players[oldHostId];
+      delete game.scores[oldHostId];
+      delete players[oldHostId];
+    } else {
+      // Créer le joueur hôte s'il n'existait pas
+      players[socket.id] = {
+        id: socket.id,
+        gameCode: gameCode,
+        name: playerName,
+        score: 0,
+        isHost: true,
+        hasAnswered: false,
+      };
+      game.players[socket.id] = players[socket.id];
+      game.scores[socket.id] = 0;
+    }
+
+    socket.join(gameCode);
+
+    socket.emit("rejoin-success", {
+      gameCode: gameCode,
+      hostName: game.hostName,
+      mode: game.mode || "spectator",
+      players: Object.values(game.players).map((p) => ({
+        id: p.id,
+        name: p.name,
+        score: p.score || 0,
+        isHost: p.isHost || false,
+      })),
+      settings: game.settings,
+    });
+
+    console.log(`Hôte ${playerName} reconnecté à la partie ${gameCode}`);
+  });
+
   // Rejoindre une partie
   socket.on("join-game", ({ gameCode, playerName }) => {
     const game = games[gameCode];
