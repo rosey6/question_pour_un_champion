@@ -603,6 +603,9 @@ io.on("connection", (socket) => {
     // Mettre à jour l'hôte avec le nouveau socket
     game.hostId = socket.id;
 
+    // Annuler le timer de suppression si l'hôte se reconnecte
+    delete game.hostDisconnectedAt;
+
     // Transférer ou recréer le joueur hôte
     if (oldHostId && game.players[oldHostId]) {
       // Copier les données de l'ancien socket vers le nouveau
@@ -984,8 +987,22 @@ io.on("connection", (socket) => {
         delete game.scores[socket.id];
 
         if (player.isHost) {
-          io.to(gameCode).emit("host-disconnected");
-          delete games[gameCode];
+          // Grace period: attendre 10 secondes avant de supprimer la partie
+          // Cela permet à l'hôte de se reconnecter après navigation
+          console.log(`Hôte déconnecté de ${gameCode}, attente de reconnexion...`);
+
+          const disconnectedHostId = socket.id;
+          game.hostDisconnectedAt = Date.now();
+
+          setTimeout(() => {
+            // Vérifier si la partie existe toujours et si l'hôte ne s'est pas reconnecté
+            if (games[gameCode] && games[gameCode].hostDisconnectedAt) {
+              // L'hôte ne s'est pas reconnecté dans le délai
+              console.log(`Hôte non reconnecté, suppression de ${gameCode}`);
+              io.to(gameCode).emit("host-disconnected");
+              delete games[gameCode];
+            }
+          }, 10000); // 10 secondes de grace period
         } else {
           io.to(gameCode).emit("player-left", {
             playerId: socket.id,
