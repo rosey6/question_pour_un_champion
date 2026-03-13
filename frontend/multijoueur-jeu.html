@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#000000" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org https://cdnjs.cloudflare.com;" />
   <title>Partie en cours - Question pour un Champion</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -98,14 +98,10 @@
           </div>
         </div>
 
-        <!-- Zone buzzer -->
-        <div id="buzzer-zone" class="buzzer-zone">
-          <button id="btn-buzzer" class="mega-buzzer">
-            <span class="buzzer-text">BUZZ</span>
-            <span class="buzzer-icon"><i class="fas fa-bell"></i></span>
-          </button>
+        <!-- Zone statut (caché en phase de jeu — remplacé par les options directes) -->
+        <div id="buzzer-zone" class="buzzer-zone hidden">
           <p id="buzzer-status" class="buzzer-status">
-            Appuyez pour buzzer !
+            Choisissez votre réponse !
           </p>
         </div>
 
@@ -146,22 +142,77 @@
   </section>
 
   <!-- ============================================ -->
-  <!-- ECRAN RESULTATS FINAUX -->
+  <!-- ECRAN RESULTATS FINAUX (Phase 4) -->
   <!-- ============================================ -->
   <section id="resultats-finaux" class="ecran">
-    <div class="contenu">
+    <div class="contenu contenu-large final-container">
+
       <header class="final-header">
-        <div class="trophy-animation">
-          <i class="fas fa-trophy"></i>
-        </div>
-        <h1>Partie terminee !</h1>
+        <div class="trophy-animation"><i class="fas fa-trophy"></i></div>
+        <h1>Partie terminée !</h1>
         <p class="sous-titre">Classement final</p>
       </header>
 
-      <div class="separateur"></div>
+      <!-- PODIUM TOP 3 -->
+      <div id="podium" class="podium">
+        <div class="podium-slot" id="podium-2">
+          <div class="podium-avatar"><i class="fas fa-user-circle"></i></div>
+          <div class="podium-name" id="podium-name-2">---</div>
+          <div class="podium-score" id="podium-score-2">0</div>
+          <div class="podium-bar podium-bar-2">
+            <span class="podium-medal">🥈</span>
+          </div>
+        </div>
+        <div class="podium-slot podium-winner" id="podium-1">
+          <div class="podium-crown"><i class="fas fa-crown"></i></div>
+          <div class="podium-avatar podium-avatar-winner"><i class="fas fa-user-circle"></i></div>
+          <div class="podium-name podium-name-winner" id="podium-name-1">---</div>
+          <div class="podium-score podium-score-winner" id="podium-score-1">0</div>
+          <div class="podium-bar podium-bar-1">
+            <span class="podium-medal">🥇</span>
+          </div>
+        </div>
+        <div class="podium-slot" id="podium-3">
+          <div class="podium-avatar"><i class="fas fa-user-circle"></i></div>
+          <div class="podium-name" id="podium-name-3">---</div>
+          <div class="podium-score" id="podium-score-3">0</div>
+          <div class="podium-bar podium-bar-3">
+            <span class="podium-medal">🥉</span>
+          </div>
+        </div>
+      </div>
 
-      <div id="final-rankings" class="final-rankings">
-        <!-- Classement ici -->
+      <!-- AUTRES JOUEURS (rang 4+) -->
+      <div id="other-rankings" class="other-rankings"></div>
+
+      <!-- GRAPHE ÉVOLUTION DES SCORES -->
+      <div class="stats-section">
+        <h3 class="stats-title"><i class="fas fa-chart-line"></i> Évolution des scores</h3>
+        <div class="chart-scroll-container">
+          <div class="chart-wrapper">
+            <canvas id="scores-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARTES STATS -->
+      <div class="stat-cards">
+        <div class="stat-card stat-streak" id="card-streak">
+          <div class="stat-card-icon">🔥</div>
+          <div class="stat-card-body">
+            <div class="stat-card-label">Meilleure série</div>
+            <div class="stat-card-player" id="streak-player">---</div>
+            <div class="stat-card-value" id="streak-value">0 consécutives</div>
+          </div>
+        </div>
+        <div class="stat-card stat-speed" id="card-speed">
+          <div class="stat-card-icon">⚡</div>
+          <div class="stat-card-body">
+            <div class="stat-card-label">Le plus rapide</div>
+            <div class="stat-card-player" id="speed-player">---</div>
+            <div class="stat-card-value" id="speed-value">0 ms en moyenne</div>
+          </div>
+        </div>
       </div>
 
       <div class="separateur"></div>
@@ -174,6 +225,7 @@
           <i class="fas fa-home"></i> Accueil
         </a>
       </div>
+
     </div>
   </section>
 
@@ -855,6 +907,251 @@
       }
     }
 
+    /* ============================================ */
+    /* RESULTATS FINAUX — Phase 4 */
+    /* ============================================ */
+
+    .final-container {
+      padding: var(--space-md) !important;
+      max-width: 900px;
+    }
+
+    /* Podium */
+    .podium {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: var(--space-lg);
+      margin: var(--space-xl) 0;
+      padding: 0 var(--space-md);
+    }
+
+    .podium-slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      max-width: 180px;
+      animation: podiumRise 0.8s var(--ease-bounce) both;
+    }
+
+    .podium-slot:nth-child(1) { animation-delay: 0.3s; }
+    .podium-winner           { animation-delay: 0.1s; }
+    .podium-slot:nth-child(3) { animation-delay: 0.5s; }
+
+    @keyframes podiumRise {
+      from { transform: translateY(60px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    .podium-crown {
+      font-size: 1.8rem;
+      color: var(--gold-glow);
+      animation: crownFloat 2s ease-in-out infinite;
+      margin-bottom: var(--space-xs);
+      text-shadow: 0 0 20px rgba(0,212,255,0.8);
+    }
+
+    @keyframes crownFloat {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-6px); }
+    }
+
+    .podium-avatar {
+      font-size: 2rem;
+      color: var(--steel);
+      margin-bottom: var(--space-xs);
+    }
+
+    .podium-avatar-winner {
+      font-size: 2.8rem;
+      color: var(--gold-glow);
+      text-shadow: 0 0 20px rgba(0,212,255,0.5);
+    }
+
+    .podium-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--white);
+      text-align: center;
+      margin-bottom: var(--space-xs);
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .podium-name-winner {
+      font-size: 1.15rem;
+      color: var(--gold-glow);
+      text-shadow: 0 0 15px rgba(0,212,255,0.5);
+      max-width: 160px;
+    }
+
+    .podium-score {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--gold-bright);
+      margin-bottom: var(--space-sm);
+    }
+
+    .podium-score-winner {
+      font-size: 1.4rem;
+      color: var(--gold-glow);
+      text-shadow: 0 0 20px rgba(0,212,255,0.6);
+    }
+
+    .podium-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
+      font-size: 1.6rem;
+    }
+
+    .podium-bar-1 {
+      height: 100px;
+      background: linear-gradient(180deg, rgba(0,212,255,0.3), rgba(0,140,200,0.1));
+      border: 2px solid var(--gold-glow);
+      border-bottom: none;
+      box-shadow: 0 0 40px rgba(0,212,255,0.3);
+    }
+
+    .podium-bar-2 {
+      height: 70px;
+      background: linear-gradient(180deg, rgba(180,180,210,0.2), rgba(140,140,170,0.05));
+      border: 2px solid var(--silver);
+      border-bottom: none;
+    }
+
+    .podium-bar-3 {
+      height: 50px;
+      background: linear-gradient(180deg, rgba(205,127,50,0.2), rgba(160,100,40,0.05));
+      border: 2px solid #cd7f32;
+      border-bottom: none;
+    }
+
+    /* Autres joueurs */
+    .other-rankings {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      max-width: 400px;
+      margin: 0 auto var(--space-xl);
+    }
+
+    .other-rank-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-sm) var(--space-lg);
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--charcoal-light);
+      border-radius: var(--radius-lg);
+    }
+
+    .other-rank-pos { color: var(--steel); font-size: 0.9rem; width: 24px; text-align: center; }
+    .other-rank-name { flex: 1; color: var(--white); font-size: 0.95rem; }
+    .other-rank-score { font-family: var(--font-display); color: var(--gold-bright); font-weight: 700; }
+
+    /* Graphe */
+    .stats-section {
+      margin-bottom: var(--space-xl);
+    }
+
+    .stats-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-size: 0.9rem;
+      color: var(--gold-glow);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: var(--space-lg);
+    }
+
+    .chart-scroll-container {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: var(--radius-lg);
+      background: rgba(0,10,30,0.6);
+      border: 1px solid rgba(0,140,200,0.2);
+      padding: var(--space-md);
+    }
+
+    .chart-wrapper {
+      min-width: 480px;
+      position: relative;
+    }
+
+    #scores-chart {
+      max-height: 300px !important;
+      width: 100% !important;
+    }
+
+    /* Stat cards */
+    .stat-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: var(--space-md);
+      margin-bottom: var(--space-xl);
+    }
+
+    .stat-card {
+      display: flex;
+      align-items: center;
+      gap: var(--space-lg);
+      padding: var(--space-lg);
+      border-radius: var(--radius-xl);
+      border: 2px solid;
+      animation: statCardIn 0.6s var(--ease-bounce) both;
+    }
+
+    .stat-streak {
+      background: rgba(255,100,0,0.07);
+      border-color: rgba(255,140,0,0.4);
+      animation-delay: 0.8s;
+    }
+
+    .stat-speed {
+      background: rgba(0,212,255,0.07);
+      border-color: rgba(0,212,255,0.4);
+      animation-delay: 1s;
+    }
+
+    @keyframes statCardIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    .stat-card-icon {
+      font-size: 2.5rem;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .stat-card-label {
+      font-size: 0.75rem;
+      color: var(--steel);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: var(--space-xs);
+    }
+
+    .stat-card-player {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 2px;
+    }
+
+    .stat-card-value {
+      font-size: 0.9rem;
+      color: var(--gold-glow);
+    }
+
     /* Hidden utility */
     .hidden {
       display: none !important;
@@ -862,6 +1159,7 @@
   </style>
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
   <script src="multijoueur-game.js"></script>
 </body>
 </html>

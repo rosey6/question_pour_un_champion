@@ -1,6 +1,6 @@
 // ============================================
 // MULTIJOUEUR-GAME.JS
-// Gestion du jeu multijoueur (nouvelle version multi-pages)
+// Système de points par rapidité (Phase 1)
 // ============================================
 
 const BACKEND_URL = "https://questionpourunchampion-backend.onrender.com";
@@ -14,15 +14,13 @@ let gameState = {
   scores: {},
   currentQuestionIndex: 0,
   totalQuestions: 10,
-  buzzerEnabled: false,
-  answeringPlayer: null,
   isHost: false,
-  mode: 'spectator'
+  mode: 'spectator',
+  hasAnsweredCurrentQuestion: false,
 };
 
 // Timers
 let questionTimer = null;
-let answerTimer = null;
 
 // Sons
 const sounds = {
@@ -74,7 +72,6 @@ function stopAllSounds() {
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Initialisation du jeu multijoueur');
 
-  // Recuperer les donnees de session
   const storedData = sessionStorage.getItem('multiGameData');
   if (!storedData) {
     console.error('Pas de donnees de jeu');
@@ -102,35 +99,22 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupUI() {
   const vueHote = document.getElementById('vue-hote');
   const vueJoueur = document.getElementById('vue-joueur');
-  const playerQuestionZone = document.getElementById('player-question-zone');
 
-  // En mode classique, tout le monde est joueur (pas d'hôte)
-  // En mode spectateur, seul l'hôte a la vue hôte
   const shouldShowHostView = gameState.isHost && gameState.mode === 'spectator';
 
   if (shouldShowHostView) {
-    // Vue hote (uniquement en mode spectateur)
     if (vueHote) vueHote.classList.remove('hidden');
     if (vueJoueur) vueJoueur.classList.add('hidden');
     setupHostUI();
   } else {
-    // Vue joueur (mode classique pour tous, ou joueurs en mode spectateur)
     if (vueHote) vueHote.classList.add('hidden');
     if (vueJoueur) vueJoueur.classList.remove('hidden');
-
-    // En mode classique, afficher la question
-    if (gameState.mode === 'classic' && playerQuestionZone) {
-      playerQuestionZone.classList.remove('hidden');
-    }
-
-    setupPlayerUI();
   }
 
   updateScoresDisplay();
 }
 
 function setupHostUI() {
-  // Bouton question suivante
   const btnNext = document.getElementById('btn-next');
   if (btnNext) {
     btnNext.addEventListener('click', () => {
@@ -138,29 +122,6 @@ function setupHostUI() {
         socket.emit('next-question', { gameCode: gameData.gameCode });
         hideElement('result-zone');
       }
-    });
-  }
-}
-
-function setupPlayerUI() {
-  // Bouton buzzer
-  const btnBuzzer = document.getElementById('btn-buzzer');
-  if (btnBuzzer) {
-    btnBuzzer.addEventListener('click', () => {
-      if (!gameState.buzzerEnabled) return;
-
-      socket.emit('buzz', { gameCode: gameData.gameCode });
-      btnBuzzer.disabled = true;
-      btnBuzzer.classList.add('buzzed');
-      btnBuzzer.querySelector('.buzzer-text').textContent = 'BUZZE!';
-
-      const status = document.getElementById('buzzer-status');
-      if (status) {
-        status.textContent = 'Vous avez buzze!';
-        status.classList.add('success');
-      }
-
-      playSound('buzzer');
     });
   }
 }
@@ -181,7 +142,6 @@ function connectToGame() {
     console.log('Connecte au serveur');
     showNotification('Connecte!', 'success');
 
-    // Rejoindre la partie
     if (gameState.isHost) {
       socket.emit('rejoin-as-host', {
         gameCode: gameData.gameCode,
@@ -206,62 +166,41 @@ function connectToGame() {
     updateScoresDisplay();
   });
 
-  // Nouvelle question
+  // Nouvelle question — tout le monde peut répondre
   socket.on('new-question', (data) => {
     console.log('Nouvelle question:', data);
     currentQuestionData = data;
     gameState.currentQuestionIndex = data.questionNumber - 1;
-    gameState.buzzerEnabled = true;
-    gameState.answeringPlayer = null;
+    gameState.hasAnsweredCurrentQuestion = false;
 
     displayQuestion(data);
     startQuestionTimer(data.timeLimit);
   });
 
-  // Joueur a buzze
-  socket.on('player-buzzed', (data) => {
-    console.log('Joueur buzze:', data);
-    gameState.buzzerEnabled = false;
-    gameState.answeringPlayer = data.playerId;
-
-    playSound('buzzer');
-    handlePlayerBuzzed(data);
-  });
-
-  // Ecran de reponse
-  socket.on('show-answer-screen', (data) => {
-    console.log('Ecran reponse:', data);
-    showAnswerScreen(data);
-  });
-
-  // Options de reponse (pour le joueur qui a buzze)
-  socket.on('answer-options', (data) => {
-    console.log('Options recues:', data);
-    displayAnswerOptions(data.options);
-  });
-
-  // Resultat
-  socket.on('answer-result', (data) => {
-    console.log('Resultat:', data);
+  // Résultats de la question
+  socket.on('question-results', (data) => {
+    console.log('Resultats question:', data);
     stopAllSounds();
-    playSound(data.isCorrect ? 'correct' : 'incorrect');
-    displayResult(data);
-  });
 
-  // Timeout buzzer
-  socket.on('buzzer-timeout', () => {
-    console.log('Timeout buzzer');
-    gameState.buzzerEnabled = false;
-    showNotification('Temps ecoule!', 'warning');
-  });
+    if (data.rankings) {
+      gameState.players = data.rankings.map(r => ({
+        id: r.name,
+        name: r.name,
+        score: r.score,
+        isHost: r.isHost
+      }));
+    }
+    updateScoresDisplay();
 
-  // Timeout buzzer avec résultats (quand personne ne buzz)
-  socket.on('buzzer-timeout-result', (data) => {
-    console.log('Timeout buzzer avec résultats:', data);
-    gameState.buzzerEnabled = false;
-    stopAllSounds();
-    playSound('incorrect');
-    displayTimeoutResult(data);
+    const myResult = data.answers.find(a => a.playerId === socket.id);
+    const shouldShowHostView = gameState.isHost && gameState.mode === 'spectator';
+
+    if (shouldShowHostView) {
+      displayHostResults(data);
+    } else {
+      playSound(myResult?.isCorrect ? 'correct' : 'incorrect');
+      displayPlayerResults(data, myResult);
+    }
   });
 
   // Partie terminee
@@ -290,55 +229,79 @@ function connectToGame() {
 // ============================================
 
 function displayQuestion(data) {
-  // Reset UI
-  hideElement('answer-zone');
   hideElement('result-zone');
   hideElement('player-result');
-  showElement('buzzer-zone');
-  hideElement('player-options');
+  hideElement('answer-zone');
 
-  // Mettre a jour le numero de question
   const infoQuestion = document.getElementById('info-question');
   if (infoQuestion) {
     infoQuestion.textContent = `Question ${data.questionNumber}/${data.totalQuestions}`;
   }
 
-  // Afficher la question (vue hote)
-  const questionText = document.getElementById('question-text');
-  if (questionText) {
-    questionText.textContent = data.question;
-  }
+  const shouldShowHostView = gameState.isHost && gameState.mode === 'spectator';
 
-  // Afficher la question (vue joueur en mode classique)
-  const playerQuestionText = document.getElementById('player-question-text');
-  if (playerQuestionText && gameState.mode === 'classic') {
-    playerQuestionText.textContent = data.question;
-  }
+  if (shouldShowHostView) {
+    // Hote : affichage lecture seule
+    const questionText = document.getElementById('question-text');
+    if (questionText) questionText.textContent = data.question;
 
-  // Afficher les options (vue hote)
-  const optionsDisplay = document.getElementById('options-display');
-  if (optionsDisplay && data.options) {
-    optionsDisplay.innerHTML = '';
-    data.options.forEach(opt => {
-      const div = document.createElement('div');
-      div.className = 'option-card';
-      div.textContent = opt;
-      optionsDisplay.appendChild(div);
-    });
-  }
+    const optionsDisplay = document.getElementById('options-display');
+    if (optionsDisplay && data.options) {
+      optionsDisplay.innerHTML = '';
+      data.options.forEach(opt => {
+        const div = document.createElement('div');
+        div.className = 'option-card';
+        div.textContent = opt;
+        optionsDisplay.appendChild(div);
+      });
+    }
+  } else {
+    // Joueur : question + options cliquables
+    showElement('player-question-zone');
+    hideElement('buzzer-zone');
+    showElement('player-options');
 
-  // Reset buzzer joueur
-  const btnBuzzer = document.getElementById('btn-buzzer');
-  if (btnBuzzer) {
-    btnBuzzer.disabled = false;
-    btnBuzzer.classList.remove('buzzed');
-    btnBuzzer.querySelector('.buzzer-text').textContent = 'BUZZ';
-  }
+    const playerQuestionText = document.getElementById('player-question-text');
+    if (playerQuestionText) playerQuestionText.textContent = data.question;
 
-  const buzzerStatus = document.getElementById('buzzer-status');
-  if (buzzerStatus) {
-    buzzerStatus.textContent = 'Appuyez pour buzzer!';
-    buzzerStatus.classList.remove('success');
+    const container = document.getElementById('player-options');
+    if (container) {
+      container.innerHTML = '';
+      data.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'player-option';
+        btn.textContent = opt;
+        btn.addEventListener('click', () => {
+          if (gameState.hasAnsweredCurrentQuestion) return;
+          gameState.hasAnsweredCurrentQuestion = true;
+
+          socket.emit('submit-answer', {
+            gameCode: gameData.gameCode,
+            answer: opt
+          });
+
+          // Feedback visuel immédiat
+          container.querySelectorAll('.player-option').forEach(b => {
+            b.disabled = true;
+          });
+          btn.classList.add('selected');
+
+          const status = document.getElementById('buzzer-status');
+          if (status) {
+            status.textContent = 'Réponse envoyée ! En attente des autres...';
+            status.classList.add('success');
+          }
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    // Reset du statut buzzer
+    const buzzerStatus = document.getElementById('buzzer-status');
+    if (buzzerStatus) {
+      buzzerStatus.textContent = 'Choisissez votre réponse !';
+      buzzerStatus.classList.remove('success');
+    }
   }
 
   updateScoresDisplay();
@@ -372,338 +335,117 @@ function startQuestionTimer(timeLimit) {
   }, 1000);
 }
 
-function startAnswerTimer(duration) {
-  if (answerTimer) clearInterval(answerTimer);
-
-  let remaining = duration;
-  const timerValue = document.getElementById('answer-timer-value');
-
-  if (timerValue) timerValue.textContent = remaining;
-
-  answerTimer = setInterval(() => {
-    remaining--;
-    if (timerValue) timerValue.textContent = remaining;
-
-    if (remaining <= 0) {
-      clearInterval(answerTimer);
-    }
-  }, 1000);
-}
-
 // ============================================
-// GESTION BUZZER
+// AFFICHAGE RÉSULTATS QUESTION
 // ============================================
 
-function handlePlayerBuzzed(data) {
-  // Desactiver tous les buzzers
-  const btnBuzzer = document.getElementById('btn-buzzer');
-  if (btnBuzzer) {
-    btnBuzzer.disabled = true;
-  }
-
-  const buzzerStatus = document.getElementById('buzzer-status');
-  if (buzzerStatus) {
-    buzzerStatus.textContent = `${data.playerName} a buzze!`;
-  }
-
-  // Mettre en surbrillance le joueur
-  highlightAnsweringPlayer(data.playerName);
-
-  // Vue hote: afficher la zone de reponse
-  if (gameState.isHost) {
-    showElement('answer-zone');
-    const answeringName = document.getElementById('answering-name');
-    if (answeringName) {
-      answeringName.textContent = data.playerName;
-    }
-    startAnswerTimer(gameData.settings?.timePerAnswer || 15);
-  }
-
-  showNotification(`${data.playerName} a buzze!`, 'info');
-}
-
-function highlightAnsweringPlayer(playerName) {
-  document.querySelectorAll('.score-chip').forEach(chip => {
-    chip.classList.remove('answering');
-    if (chip.querySelector('.score-name')?.textContent === playerName) {
-      chip.classList.add('answering');
-    }
-  });
-}
-
-// ============================================
-// ECRAN REPONSE
-// ============================================
-
-function showAnswerScreen(data) {
-  // Si c'est le joueur qui a buzze, demander les options
-  if (socket && gameState.answeringPlayer === socket.id) {
-    socket.emit('request-answer-options', { gameCode: gameData.gameCode });
-  }
-}
-
-function displayAnswerOptions(options) {
-  const container = document.getElementById('player-options');
-  if (!container) return;
-
-  hideElement('buzzer-zone');
-  showElement('player-options');
-
-  container.innerHTML = '';
-  options.forEach(opt => {
-    const btn = document.createElement('button');
-    btn.className = 'player-option';
-    btn.textContent = opt;
-    btn.addEventListener('click', () => {
-      // Envoyer la reponse
-      socket.emit('submit-answer', {
-        gameCode: gameData.gameCode,
-        answer: opt
-      });
-
-      // Desactiver les boutons
-      container.querySelectorAll('.player-option').forEach(b => {
-        b.disabled = true;
-      });
-      btn.classList.add('selected');
-    });
-    container.appendChild(btn);
-  });
-}
-
-// ============================================
-// AFFICHAGE RESULTAT
-// ============================================
-
-function displayResult(data) {
-  // Mettre a jour les scores
-  if (data.rankings) {
-    gameState.players = data.rankings.map((r, i) => ({
-      id: `player-${i}`,
-      name: r.name,
-      score: r.score
-    }));
-  }
-  updateScoresDisplay();
-
-  // En mode classique, tout le monde a la vue joueur
-  // En mode spectateur, seul l'hôte a la vue hôte
-  const shouldShowHostView = gameState.isHost && gameState.mode === 'spectator';
-
-  if (shouldShowHostView) {
-    displayHostResult(data);
-  } else {
-    displayPlayerResult(data);
-  }
-}
-
-function displayHostResult(data) {
+function displayHostResults(data) {
   hideElement('answer-zone');
   showElement('result-zone');
 
   const resultStatus = document.getElementById('result-status');
   if (resultStatus) {
-    resultStatus.className = 'result-status ' + (data.isCorrect ? 'correct' : 'incorrect');
-    resultStatus.innerHTML = data.isCorrect
-      ? '<i class="fas fa-check-circle"></i><span>Bonne reponse!</span>'
-      : '<i class="fas fa-times-circle"></i><span>Mauvaise reponse</span>';
+    resultStatus.className = 'result-status correct';
+    resultStatus.innerHTML = `<i class="fas fa-check-circle"></i><span>Bonne réponse : <strong>${data.correctAnswer}</strong></span>`;
   }
 
   const correctAnswer = document.getElementById('correct-answer');
-  if (correctAnswer) {
-    correctAnswer.textContent = data.correctAnswer;
-  }
+  if (correctAnswer) correctAnswer.textContent = data.correctAnswer;
 
   // Illustration
   const illustrationContainer = document.getElementById('result-illustration');
   const illustrationImage = document.getElementById('result-image');
   const illustrationDesc = document.getElementById('result-description');
 
-  const imageUrl = data.imageUrl || currentQuestionData?.imageUrl;
-  const description = data.illustrationTexte || currentQuestionData?.illustrationTexte;
-
-  if (illustrationContainer && illustrationImage && imageUrl) {
-    illustrationImage.src = imageUrl;
-    illustrationImage.alt = description || 'Illustration';
-    if (illustrationDesc) illustrationDesc.textContent = description || '';
+  if (illustrationContainer && illustrationImage && data.imageUrl) {
+    illustrationImage.src = data.imageUrl;
+    illustrationImage.alt = data.illustrationTexte || 'Illustration';
+    if (illustrationDesc) illustrationDesc.textContent = data.illustrationTexte || '';
     illustrationContainer.classList.remove('hidden');
   } else if (illustrationContainer) {
     illustrationContainer.classList.add('hidden');
   }
+
+  // Résumé des réponses sous l'illustration
+  const resultAnswer = document.getElementById('result-answer');
+  if (resultAnswer && data.answers) {
+    const correctCount = data.answers.filter(a => a.isCorrect).length;
+    const total = data.answers.filter(a => a.answer !== null).length;
+    resultAnswer.innerHTML = `<strong>${correctCount}/${total}</strong> bonnes réponses`;
+  }
 }
 
-function displayPlayerResult(data) {
-  hideElement('buzzer-zone');
+function displayPlayerResults(data, myResult) {
   hideElement('player-options');
+  hideElement('buzzer-zone');
   showElement('player-result');
 
   const resultStatus = document.getElementById('player-result-status');
   if (resultStatus) {
-    resultStatus.className = 'result-status ' + (data.isCorrect ? 'correct' : 'incorrect');
-    resultStatus.innerHTML = data.isCorrect
-      ? '<i class="fas fa-check-circle"></i><span>Bonne reponse!</span>'
-      : '<i class="fas fa-times-circle"></i><span>Mauvaise reponse</span>';
+    if (myResult?.isCorrect) {
+      const pts = myResult.pointsEarned;
+      const streakMsg = pts > (myResult.rank <= 8 ? [10,8,6,5,4,3,2,1][myResult.rank-1] : 1) ? ' 🔥 Série !' : '';
+      resultStatus.className = 'result-status correct';
+      resultStatus.innerHTML = `<i class="fas fa-check-circle"></i><span>Bonne réponse ! +${pts} pts${streakMsg}</span>`;
+    } else if (myResult && myResult.answer !== null) {
+      resultStatus.className = 'result-status incorrect';
+      resultStatus.innerHTML = `<i class="fas fa-times-circle"></i><span>Mauvaise réponse (${myResult.pointsEarned} pts)</span>`;
+    } else {
+      resultStatus.className = 'result-status incorrect';
+      resultStatus.innerHTML = `<i class="fas fa-clock"></i><span>Temps écoulé ! (0 pts)</span>`;
+    }
   }
 
   const resultAnswer = document.getElementById('player-result-answer');
   if (resultAnswer) {
-    resultAnswer.textContent = `Reponse: ${data.correctAnswer}`;
-  }
-
-  // Illustration (mode classique)
-  const illustrationContainer = document.getElementById('player-result-illustration');
-  const illustrationImage = document.getElementById('player-result-image');
-  const illustrationDesc = document.getElementById('player-result-description');
-
-  const imageUrl = data.imageUrl || currentQuestionData?.imageUrl;
-  const description = data.illustrationTexte || currentQuestionData?.illustrationTexte;
-
-  if (illustrationContainer && illustrationImage && imageUrl) {
-    illustrationImage.src = imageUrl;
-    illustrationImage.alt = description || 'Illustration';
-    if (illustrationDesc) illustrationDesc.textContent = description || '';
-    illustrationContainer.classList.remove('hidden');
-  } else if (illustrationContainer) {
-    illustrationContainer.classList.add('hidden');
-  }
-
-  // Afficher les scores
-  const scoresList = document.getElementById('player-scores-list');
-  if (scoresList && data.rankings) {
-    scoresList.innerHTML = '';
-    data.rankings.slice(0, 4).forEach((player, idx) => {
-      const row = document.createElement('div');
-      row.className = 'score-row' + (idx === 0 ? ' first' : '');
-      row.innerHTML = `
-        <span class="score-row-name">${idx === 0 ? '🥇' : ''} ${player.name}</span>
-        <span class="score-row-points">${player.score} pts</span>
-      `;
-      scoresList.appendChild(row);
-    });
-  }
-
-  // Compte a rebours
-  let countdown = 5;
-  const countdownEl = document.getElementById('countdown');
-  const interval = setInterval(() => {
-    countdown--;
-    if (countdownEl) countdownEl.textContent = countdown;
-    if (countdown <= 0) clearInterval(interval);
-  }, 1000);
-}
-
-// Afficher les résultats quand personne n'a buzzé (timeout)
-function displayTimeoutResult(data) {
-  // Mettre a jour les scores
-  if (data.rankings) {
-    gameState.players = data.rankings.map((r, i) => ({
-      id: `player-${i}`,
-      name: r.name,
-      score: r.score
-    }));
-  }
-  updateScoresDisplay();
-
-  // En mode classique, tout le monde a la vue joueur
-  // En mode spectateur, seul l'hôte a la vue hôte
-  const shouldShowHostView = gameState.isHost && gameState.mode === 'spectator';
-
-  if (shouldShowHostView) {
-    displayHostTimeoutResult(data);
-  } else {
-    displayPlayerTimeoutResult(data);
-  }
-}
-
-function displayHostTimeoutResult(data) {
-  hideElement('answer-zone');
-  showElement('result-zone');
-
-  const resultStatus = document.getElementById('result-status');
-  if (resultStatus) {
-    resultStatus.className = 'result-status incorrect';
-    resultStatus.innerHTML = '<i class="fas fa-clock"></i><span>Temps ecoule! Personne n\'a buzze</span>';
-  }
-
-  const correctAnswer = document.getElementById('correct-answer');
-  if (correctAnswer) {
-    correctAnswer.textContent = data.correctAnswer;
+    resultAnswer.textContent = `Réponse : ${data.correctAnswer}`;
   }
 
   // Illustration
-  const illustrationContainer = document.getElementById('result-illustration');
-  const illustrationImage = document.getElementById('result-image');
-  const illustrationDesc = document.getElementById('result-description');
-
-  const imageUrl = data.imageUrl || currentQuestionData?.imageUrl;
-  const description = data.illustrationTexte || currentQuestionData?.illustrationTexte;
-
-  if (illustrationContainer && illustrationImage && imageUrl) {
-    illustrationImage.src = imageUrl;
-    illustrationImage.alt = description || 'Illustration';
-    if (illustrationDesc) illustrationDesc.textContent = description || '';
-    illustrationContainer.classList.remove('hidden');
-  } else if (illustrationContainer) {
-    illustrationContainer.classList.add('hidden');
-  }
-}
-
-function displayPlayerTimeoutResult(data) {
-  hideElement('buzzer-zone');
-  hideElement('player-options');
-  showElement('player-result');
-
-  const resultStatus = document.getElementById('player-result-status');
-  if (resultStatus) {
-    resultStatus.className = 'result-status incorrect';
-    resultStatus.innerHTML = '<i class="fas fa-clock"></i><span>Temps ecoule!</span>';
-  }
-
-  const resultAnswer = document.getElementById('player-result-answer');
-  if (resultAnswer) {
-    resultAnswer.textContent = `Reponse: ${data.correctAnswer}`;
-  }
-
-  // Illustration (mode classique)
   const illustrationContainer = document.getElementById('player-result-illustration');
   const illustrationImage = document.getElementById('player-result-image');
   const illustrationDesc = document.getElementById('player-result-description');
 
-  const imageUrl = data.imageUrl || currentQuestionData?.imageUrl;
-  const description = data.illustrationTexte || currentQuestionData?.illustrationTexte;
-
-  if (illustrationContainer && illustrationImage && imageUrl) {
-    illustrationImage.src = imageUrl;
-    illustrationImage.alt = description || 'Illustration';
-    if (illustrationDesc) illustrationDesc.textContent = description || '';
+  if (illustrationContainer && illustrationImage && data.imageUrl) {
+    illustrationImage.src = data.imageUrl;
+    illustrationImage.alt = data.illustrationTexte || 'Illustration';
+    if (illustrationDesc) illustrationDesc.textContent = data.illustrationTexte || '';
     illustrationContainer.classList.remove('hidden');
   } else if (illustrationContainer) {
     illustrationContainer.classList.add('hidden');
   }
 
-  // Afficher les scores
+  // Classement
   const scoresList = document.getElementById('player-scores-list');
   if (scoresList && data.rankings) {
     scoresList.innerHTML = '';
-    data.rankings.slice(0, 4).forEach((player, idx) => {
+    data.rankings.slice(0, 5).forEach((player, idx) => {
+      const medals = ['🥇', '🥈', '🥉'];
       const row = document.createElement('div');
       row.className = 'score-row' + (idx === 0 ? ' first' : '');
       row.innerHTML = `
-        <span class="score-row-name">${idx === 0 ? '🥇' : ''} ${player.name}</span>
+        <span class="score-row-name">${medals[idx] || `#${idx+1}`} ${player.name}${player.streak >= 3 ? ' 🔥' : ''}</span>
         <span class="score-row-points">${player.score} pts</span>
       `;
       scoresList.appendChild(row);
     });
   }
 
-  // Compte a rebours
-  let countdown = 5;
-  const countdownEl = document.getElementById('countdown');
-  const interval = setInterval(() => {
-    countdown--;
+  // Compte à rebours (mode classique uniquement)
+  if (gameState.mode === 'classic') {
+    let countdown = 5;
+    const countdownEl = document.getElementById('countdown');
     if (countdownEl) countdownEl.textContent = countdown;
-    if (countdown <= 0) clearInterval(interval);
-  }, 1000);
+    const interval = setInterval(() => {
+      countdown--;
+      if (countdownEl) countdownEl.textContent = countdown;
+      if (countdown <= 0) clearInterval(interval);
+    }, 1000);
+  } else {
+    // Mode spectateur : masquer le texte de compte à rebours
+    const waitingText = document.getElementById('player-waiting-text');
+    if (waitingText) waitingText.style.display = 'none';
+  }
 }
 
 // ============================================
@@ -716,13 +458,11 @@ function updateScoresDisplay() {
 
   if (!container) return;
 
-  // Filtrer l'hote en mode spectator
   let playersToShow = gameState.players;
   if (gameState.mode === 'spectator') {
     playersToShow = playersToShow.filter(p => !p.isHost);
   }
 
-  // Trier par score
   playersToShow.sort((a, b) => (b.score || 0) - (a.score || 0));
 
   container.innerHTML = '';
@@ -742,40 +482,228 @@ function updateScoresDisplay() {
 }
 
 // ============================================
-// RESULTATS FINAUX
+// RESULTATS FINAUX — Phase 4
 // ============================================
 
+let scoresChart = null; // référence Chart.js pour éviter les doublons
+
 function showFinalResults(data) {
-  // Changer d'ecran
   document.getElementById('jeu-multijoueur')?.classList.remove('actif');
   document.getElementById('resultats-finaux')?.classList.add('actif');
 
-  const container = document.getElementById('final-rankings');
-  if (!container) return;
-
-  container.innerHTML = '';
-
-  // Filtrer l'hote en mode spectator
   let rankings = data.rankings || [];
+  const history = data.history || [];
+
+  // Filtrer l'hôte en mode spectateur
   if (gameState.mode === 'spectator') {
     rankings = rankings.filter(p => !p.isHost);
   }
 
-  const medals = ['🥇', '🥈', '🥉'];
-  const classes = ['first', 'second', 'third'];
+  renderPodium(rankings);
+  renderOtherRankings(rankings);
+  renderScoresChart(rankings, history);
+  renderStatCards(rankings, history);
+}
 
-  rankings.forEach((player, idx) => {
-    const card = document.createElement('div');
-    card.className = 'ranking-card ' + (classes[idx] || '');
-    card.innerHTML = `
-      <div class="ranking-position">${medals[idx] || `#${idx + 1}`}</div>
-      <div class="ranking-info">
-        <div class="ranking-name">${player.name}</div>
-      </div>
-      <div class="ranking-score">${player.score} pts</div>
-    `;
-    container.appendChild(card);
+// --- Podium top 3 ---
+function renderPodium(rankings) {
+  // Ordre d'affichage : 2e à gauche, 1er au centre, 3e à droite
+  const slots = [2, 1, 3];
+  slots.forEach(pos => {
+    const player = rankings[pos - 1];
+    const nameEl = document.getElementById(`podium-name-${pos}`);
+    const scoreEl = document.getElementById(`podium-score-${pos}`);
+    const slotEl = document.getElementById(`podium-${pos}`);
+
+    if (!player) {
+      if (slotEl) slotEl.style.visibility = 'hidden';
+      return;
+    }
+    if (nameEl) nameEl.textContent = player.name;
+    if (scoreEl) scoreEl.textContent = `${player.score} pts`;
   });
+}
+
+// --- Rang 4+ ---
+function renderOtherRankings(rankings) {
+  const container = document.getElementById('other-rankings');
+  if (!container) return;
+  container.innerHTML = '';
+
+  rankings.slice(3).forEach((player, idx) => {
+    const row = document.createElement('div');
+    row.className = 'other-rank-row';
+    row.innerHTML = `
+      <span class="other-rank-pos">#${idx + 4}</span>
+      <span class="other-rank-name">${player.name}</span>
+      <span class="other-rank-score">${player.score} pts</span>
+    `;
+    container.appendChild(row);
+  });
+}
+
+// --- Graphe Chart.js ---
+function renderScoresChart(rankings, history) {
+  const canvas = document.getElementById('scores-chart');
+  if (!canvas || !history.length) return;
+
+  // Détruire l'instance précédente si elle existe
+  if (scoresChart) {
+    scoresChart.destroy();
+    scoresChart = null;
+  }
+
+  const COLORS = ['#00D4FF', '#FF3366', '#00FF88', '#FFD700'];
+  const playerNames = rankings.slice(0, 4).map(r => r.name);
+
+  // Calculer les scores cumulés question par question
+  const runningTotals = {};
+  playerNames.forEach(name => runningTotals[name] = 0);
+
+  const datasets = playerNames.map((name, idx) => ({
+    label: name,
+    data: [],
+    borderColor: COLORS[idx],
+    backgroundColor: COLORS[idx] + '22',
+    borderWidth: 2.5,
+    pointRadius: 4,
+    pointHoverRadius: 6,
+    tension: 0.35,
+    fill: false,
+  }));
+
+  history.forEach((q, qIdx) => {
+    // Appliquer les points de cette question
+    q.answers.forEach(a => {
+      if (runningTotals[a.playerName] !== undefined) {
+        runningTotals[a.playerName] = Math.max(0,
+          runningTotals[a.playerName] + (a.pointsEarned || 0)
+        );
+      }
+    });
+    // Snapshot après cette question
+    playerNames.forEach((name, idx) => {
+      datasets[idx].data.push(runningTotals[name]);
+    });
+  });
+
+  const labels = history.map((_, i) => `Q${i + 1}`);
+
+  scoresChart = new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      aspectRatio: history.length > 8 ? 2.5 : 2,
+      animation: { duration: 800 },
+      plugins: {
+        legend: {
+          labels: {
+            color: '#b0b8c8',
+            font: { size: 12 },
+            boxWidth: 16,
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y} pts`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#6a7a8a', font: { size: 11 } },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: '#6a7a8a', font: { size: 11 } },
+          grid: { color: 'rgba(255,255,255,0.07)' }
+        }
+      }
+    }
+  });
+}
+
+// --- Cartes stats ---
+function renderStatCards(rankings, history) {
+  if (!history.length) return;
+
+  const playerNames = rankings.map(r => r.name);
+
+  // --- Meilleure série (calcul depuis l'historique) ---
+  const currentStreaks = {};
+  const maxStreaks = {};
+  playerNames.forEach(name => { currentStreaks[name] = 0; maxStreaks[name] = 0; });
+
+  history.forEach(q => {
+    q.answers.forEach(a => {
+      if (!(a.playerName in currentStreaks)) return;
+      if (a.isCorrect) {
+        currentStreaks[a.playerName]++;
+        if (currentStreaks[a.playerName] > maxStreaks[a.playerName]) {
+          maxStreaks[a.playerName] = currentStreaks[a.playerName];
+        }
+      } else {
+        currentStreaks[a.playerName] = 0;
+      }
+    });
+  });
+
+  let bestStreakPlayer = playerNames[0] || '---';
+  let bestStreak = 0;
+  playerNames.forEach(name => {
+    if (maxStreaks[name] > bestStreak) {
+      bestStreak = maxStreaks[name];
+      bestStreakPlayer = name;
+    }
+  });
+
+  const streakPlayerEl = document.getElementById('streak-player');
+  const streakValueEl = document.getElementById('streak-value');
+  if (streakPlayerEl) streakPlayerEl.textContent = bestStreakPlayer;
+  if (streakValueEl) streakValueEl.textContent =
+    bestStreak > 0 ? `${bestStreak} bonne${bestStreak > 1 ? 's' : ''} d'affilée` : 'Aucune série';
+
+  // --- Le plus rapide (moyenne des temps sur les bonnes réponses) ---
+  const responseTimes = {};
+  playerNames.forEach(name => responseTimes[name] = []);
+
+  history.forEach(q => {
+    q.answers.forEach(a => {
+      if (a.isCorrect && a.responseTimeMs !== null && a.responseTimeMs !== undefined) {
+        if (a.playerName in responseTimes) {
+          responseTimes[a.playerName].push(a.responseTimeMs);
+        }
+      }
+    });
+  });
+
+  let fastestPlayer = null;
+  let fastestAvg = Infinity;
+  playerNames.forEach(name => {
+    const times = responseTimes[name];
+    if (times.length > 0) {
+      const avg = times.reduce((s, t) => s + t, 0) / times.length;
+      if (avg < fastestAvg) {
+        fastestAvg = avg;
+        fastestPlayer = name;
+      }
+    }
+  });
+
+  const speedPlayerEl = document.getElementById('speed-player');
+  const speedValueEl = document.getElementById('speed-value');
+  if (speedPlayerEl) speedPlayerEl.textContent = fastestPlayer || '---';
+  if (speedValueEl) {
+    if (fastestPlayer) {
+      const sec = (fastestAvg / 1000).toFixed(2);
+      speedValueEl.textContent = `${sec}s en moyenne`;
+    } else {
+      speedValueEl.textContent = 'Données insuffisantes';
+    }
+  }
 }
 
 // ============================================
@@ -838,4 +766,4 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-console.log('multijoueur-game.js charge');
+console.log('multijoueur-game.js charge (Phase 1 — points par rapidite)');

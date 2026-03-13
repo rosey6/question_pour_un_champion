@@ -385,6 +385,100 @@ app.get("/api/themes", (req, res) => {
 });
 
 // ============================================
+// GÉNÉRATION VIA GROQ (helper réutilisable pour le vote de thème)
+// ============================================
+
+async function generateQuestionsViaGroq(theme, count) {
+  const questionCount = Math.min(Math.max(1, parseInt(count) || 10), 30);
+
+  console.log(`[generateQuestionsViaGroq] Génération de ${questionCount} questions sur "${theme}"...`);
+
+  const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${GROQ_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "user",
+          content: generateQuestionsPrompt(theme, questionCount)
+        }
+      ],
+      max_tokens: 4096,
+      temperature: 0.7
+    })
+  });
+
+  if (!groqResponse.ok) {
+    const errorData = await groqResponse.json().catch(() => ({}));
+    throw new Error(errorData.error?.message || `Erreur Groq: ${groqResponse.status}`);
+  }
+
+  const groqData = await groqResponse.json();
+  let responseText = groqData.choices?.[0]?.message?.content?.trim() || "";
+
+  if (!responseText) {
+    throw new Error("Réponse vide de Groq");
+  }
+
+  // Nettoyer les backticks markdown si présents
+  if (responseText.startsWith("```")) {
+    const lines = responseText.split("\n");
+    const jsonLines = [];
+    let inJson = false;
+    for (const line of lines) {
+      if (line.startsWith("```") && !inJson) {
+        inJson = true;
+        continue;
+      } else if (line.startsWith("```") && inJson) {
+        break;
+      } else if (inJson) {
+        jsonLines.push(line);
+      }
+    }
+    responseText = jsonLines.join("\n");
+  }
+
+  const questions = JSON.parse(responseText);
+
+  if (!Array.isArray(questions)) {
+    throw new Error("La réponse n'est pas un tableau JSON");
+  }
+
+  // Valider et corriger les questions
+  for (const q of questions) {
+    if (!q.question || !q.options || !q.reponseCorrecte) {
+      throw new Error("Question mal formatée");
+    }
+    if (q.options.length !== 4) {
+      throw new Error("Chaque question doit avoir 4 options");
+    }
+    if (!q.options.includes(q.reponseCorrecte)) {
+      q.reponseCorrecte = q.options[0];
+    }
+  }
+
+  console.log(`[generateQuestionsViaGroq] ${questions.length} questions générées, enrichissement...`);
+
+  // Enrichir en batch (max 3 à la fois)
+  const enrichedQuestions = [];
+  for (let i = 0; i < questions.length; i += 3) {
+    const batch = questions.slice(i, i + 3);
+    const enrichedBatch = await Promise.all(batch.map(enrichQuestion));
+    enrichedQuestions.push(...enrichedBatch);
+    if (i + 3 < questions.length) {
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+
+  console.log(`[generateQuestionsViaGroq] Enrichissement terminé (${enrichedQuestions.length} questions)`);
+  return enrichedQuestions;
+}
+
+// ============================================
 // CHARGEMENT DES QUESTIONS (Optionnel - backup)
 // ============================================
 
@@ -520,13 +614,16 @@ io.on("connection", (socket) => {
     }
     game.currentQuestionIndex = 0;
     game.state = "playing";
-    game.buzzerActive = true;
-    game.buzzerWinner = null;
+    game.questionOpen = false;
+    game.answers = [];
+    game.questionHistory = [];
+    game.streaks = {};
 
     // Reset réponses/score structure
     Object.keys(game.players).forEach((pid) => {
       game.players[pid].hasAnswered = false;
       if (typeof game.scores[pid] !== "number") game.scores[pid] = 0;
+      game.streaks[pid] = 0;
     });
 
     io.to(gameCode).emit("game-started", {
@@ -568,8 +665,10 @@ io.on("connection", (socket) => {
       questions: [], // Sera rempli au démarrage
       providedQuestions: providedQuestions, // Questions IA fournies par le client
       scores: {},
-      buzzerActive: false,
-      buzzerWinner: null,
+      questionOpen: false,
+      answers: [],
+      questionHistory: [],
+      streaks: {},
       createdAt: Date.now(),
     };
 
@@ -678,7 +777,6 @@ io.on("connection", (socket) => {
       socket.emit("new-question", {
         question: game.currentQuestion.question,
         options: shuffledOptions,
-        correctAnswer: game.currentQuestion.correctAnswer,
         timeLimit: game.settings.timePerQuestion * 1000,
         questionNumber: game.currentQuestionIndex + 1,
         totalQuestions: game.questions.length,
@@ -844,7 +942,6 @@ io.on("connection", (socket) => {
       socket.emit("new-question", {
         question: game.currentQuestion.question,
         options: shuffledOptions,
-        correctAnswer: game.currentQuestion.correctAnswer,
         timeLimit: game.settings.timePerQuestion * 1000,
         questionNumber: game.currentQuestionIndex + 1,
         totalQuestions: game.questions.length,
@@ -884,195 +981,30 @@ io.on("connection", (socket) => {
     startGameInternal(gameCode);
   });
 
-  // Envoyer une question (pour l'hôte qui contrôle manuellement)
-  socket.on(
-    "send-question",
-    ({
-      gameCode,
-      question,
-      options,
-      correctAnswer,
-      questionNumber,
-      totalQuestions,
-      timeLimit,
-    }) => {
-      const game = games[gameCode];
-
-      if (!game || socket.id !== game.hostId) return;
-
-      // Activer le buzzer
-      game.buzzerActive = true;
-      game.buzzerWinner = null;
-      game.buzzerWinnerAnswered = false;
-      game.currentQuestion = {
-        question,
-        options,
-        correctAnswer,
-      };
-
-      clearGameTimers(game);
-
-      // Réinitialiser les réponses
-      Object.keys(game.players).forEach((playerId) => {
-        if (players[playerId]) {
-          players[playerId].hasAnswered = false;
-        }
-      });
-
-      io.to(gameCode).emit("new-question", {
-        question: question,
-        options: shuffleArray([...options]),
-        correctAnswer: correctAnswer,
-        timeLimit: timeLimit || game.settings.timePerQuestion * 1000,
-        questionNumber: questionNumber || game.currentQuestionIndex + 1,
-        totalQuestions: totalQuestions || game.totalQuestions,
-      });
-
-      console.log(`Question envoyée par l'hôte dans ${gameCode}`);
-
-      // Désactiver le buzzer après le temps
-      game._buzzerTimer = setTimeout(() => {
-        if (games[gameCode] && game.buzzerActive) {
-          game.buzzerActive = false;
-          io.to(gameCode).emit("buzzer-timeout");
-        }
-      }, timeLimit || game.settings.timePerQuestion * 1000);
-    }
-  );
-
-  // Buzzer
-  socket.on("buzz", ({ gameCode }) => {
-    const game = games[gameCode];
-    const player = players[socket.id];
-
-    if (!game || !player || !game.buzzerActive || game.buzzerWinner) return;
-
-    game.buzzerWinner = socket.id;
-    game.buzzerActive = false;
-    game.buzzerWinnerAnswered = false;
-
-    // Timer de réponse: si le joueur ne répond pas, on considère la réponse comme incorrecte et on passe à la suite.
-    clearGameTimers(game);
-    game._answerTimer = setTimeout(() => {
-      const g = games[gameCode];
-      if (!g) return;
-      if (g.buzzerWinner === socket.id && !g.buzzerWinnerAnswered) {
-        const p = players[socket.id];
-        if (!p) return;
-        // Pas de réponse -> incorrect (0 point minimum)
-        p.score = Math.max(0, (p.score || 0) - 5);
-        g.scores[socket.id] = p.score;
-        g.buzzerWinnerAnswered = true;
-
-        const rankings = Object.values(g.players)
-          .sort((a, b) => (b.score || 0) - (a.score || 0))
-          .map((pl, idx) => ({ position: idx + 1, name: pl.name, score: pl.score || 0, isHost: pl.isHost || false }));
-
-        io.to(gameCode).emit("answer-result", {
-          playerId: socket.id,
-          playerName: p.name,
-          answer: null,
-          isCorrect: false,
-          score: p.score,
-          correctAnswer: g.currentQuestion?.correctAnswer || null,
-          question: g.currentQuestion?.question || null,
-          rankings,
-          reason: "timeout",
-        });
-
-        setTimeout(() => nextQuestion(gameCode), 2500);
-      }
-    }, (game.settings.timePerAnswer || 15) * 1000);
-
-    console.log(`${player.name} a buzzé dans ${gameCode}`);
-
-    io.to(gameCode).emit("player-buzzed", {
-      playerId: socket.id,
-      playerName: player.name,
-    });
-
-    // Donner du temps pour répondre (2 secondes avant d'afficher l'écran de réponse)
-    setTimeout(() => {
-      if (games[gameCode] && game.buzzerWinner === socket.id) {
-        // Options envoyées au moment de l'écran de réponse pour éviter tout état "undefined" côté client.
-        const safeOptions = Array.isArray(game.currentQuestion?.options)
-          ? shuffleArray([...game.currentQuestion.options])
-          : [];
-
-        io.to(gameCode).emit("show-answer-screen", {
-          answeringPlayer: player.name,
-          options: safeOptions,
-        });
-
-        // Event redondant (si le client préfère écouter un canal dédié)
-        io.to(socket.id).emit("answer-options", { options: safeOptions });
-      }
-    }, 2000);
-  });
-
-  // Demande explicite des options de réponse (uniquement le gagnant du buzzer)
-  socket.on("request-answer-options", ({ gameCode }) => {
-    const game = games[gameCode];
-    if (!game) return;
-    if (!game.buzzerWinner || game.buzzerWinner !== socket.id) return;
-
-    const safeOptions = Array.isArray(game.currentQuestion?.options)
-      ? shuffleArray([...game.currentQuestion.options])
-      : [];
-
-    io.to(socket.id).emit("answer-options", { options: safeOptions });
-  });
-
-  // Soumettre une réponse
+  // Soumettre une réponse (nouveau système : tous les joueurs répondent)
   socket.on("submit-answer", ({ gameCode, answer }) => {
     const game = games[gameCode];
     const player = players[socket.id];
 
-    if (!game || !player) return;
+    if (!game || !player || !game.questionOpen) return;
+    if (player.hasAnswered) return;
 
-    // Seul le vainqueur du buzzer est autorisé à répondre.
-    if (!game.buzzerWinner || game.buzzerWinner !== socket.id) return;
-    if (game.buzzerWinnerAnswered) return;
-
-    game.buzzerWinnerAnswered = true;
-    clearGameTimers(game);
-
-    const correctAnswer = game.currentQuestion?.correctAnswer;
-    const isCorrect = typeof correctAnswer === "string" && String(answer) === correctAnswer;
-
-    if (isCorrect) {
-      player.score = (player.score || 0) + 10;
-    } else {
-      player.score = Math.max(0, (player.score || 0) - 5);
-    }
-    game.scores[socket.id] = player.score;
-
-    const rankings = Object.values(game.players)
-      .sort((a, b) => (b.score || 0) - (a.score || 0))
-      .map((pl, idx) => ({ position: idx + 1, name: pl.name, score: pl.score || 0, isHost: pl.isHost || false }));
-
-    // Informer tous les joueurs
-    io.to(gameCode).emit("answer-result", {
+    player.hasAnswered = true;
+    game.answers.push({
       playerId: socket.id,
       playerName: player.name,
-      answer: answer,
-      isCorrect: isCorrect,
-      score: player.score,
-      correctAnswer: correctAnswer || null,
-      question: game.currentQuestion?.question || null,
-      imageUrl: game.currentQuestion?.imageUrl || null,
-      illustrationTexte: game.currentQuestion?.illustrationTexte || null,
-      rankings,
+      answer,
+      timestamp: Date.now(),
     });
 
-    // En mode classique, passer automatiquement à la question suivante après 5 secondes
-    // En mode spectateur, l'hôte décide quand passer à la suite
-    if (game.mode === "classic") {
-      setTimeout(() => {
-        if (games[gameCode]) {
-          nextQuestion(gameCode);
-        }
-      }, 5000);
+    // Vérifier si tous les joueurs actifs ont répondu
+    const activePlayers = Object.values(game.players).filter(
+      (p) => game.mode !== "spectator" || !p.isHost
+    );
+    const allAnswered = activePlayers.every((p) => p.hasAnswered);
+    if (allAnswered) {
+      clearGameTimers(game);
+      finalizeQuestion(gameCode);
     }
   });
 
@@ -1084,12 +1016,123 @@ io.on("connection", (socket) => {
     nextQuestion(gameCode);
   });
 
+  // Rejoindre en tant que spectateur TV (lecture seule — ne modifie JAMAIS game.players)
+  socket.on("spectate-join", ({ gameCode }) => {
+    const game = games[gameCode];
+    if (!game) {
+      socket.emit("error", { message: "Partie introuvable" });
+      return;
+    }
+
+    // Rejoindre la room SANS être ajouté à game.players ni game.scores
+    socket.join(gameCode);
+
+    socket.emit("spectate-joined", {
+      gameCode,
+      hostName: game.hostName,
+      mode: game.mode,
+      state: game.state,
+      settings: game.settings,
+      players: Object.values(game.players)
+        .filter((p) => game.mode !== "spectator" || !p.isHost)
+        .sort((a, b) => (b.score || 0) - (a.score || 0))
+        .map((p) => ({
+          name: p.name,
+          score: game.scores[p.id] || 0,
+        })),
+    });
+
+    // Renvoyer la question en cours si une partie est active
+    if (game.state === "playing" && game.currentQuestion) {
+      const shuffledOptions = shuffleArray([...game.currentQuestion.options]);
+      socket.emit("new-question", {
+        question: game.currentQuestion.question,
+        options: shuffledOptions,
+        timeLimit: game.settings.timePerQuestion * 1000,
+        questionNumber: game.currentQuestionIndex + 1,
+        totalQuestions: game.questions.length,
+        imageUrl: game.currentQuestion.imageUrl || null,
+        illustrationTexte: game.currentQuestion.illustrationTexte || null,
+      });
+    }
+
+    console.log(`Spectateur connecté à la partie ${gameCode}`);
+  });
+
   // Terminer la partie
   socket.on("end-game", ({ gameCode }) => {
     const game = games[gameCode];
     if (!game || socket.id !== game.hostId) return;
 
     endGame(gameCode);
+  });
+
+  // Lancer le vote du thème (hôte seulement, mode IA)
+  socket.on("start-theme-vote", async ({ gameCode }) => {
+    const game = games[gameCode];
+
+    if (!game) return;
+    if (game.state !== "waiting") return;
+    if (socket.id !== game.hostId) return;
+
+    // Tirer 3 thèmes aléatoires
+    const themes = shuffleArray([...THEMES_PREDEFINIS]).slice(0, 3);
+
+    game.themeVoteActive = true;
+    game.themeVotes = {};
+    themes.forEach(t => { game.themeVotes[t] = 0; });
+    game.themeVoteOptions = themes;
+    game.themeVotedBy = {};
+
+    io.to(gameCode).emit("theme-vote-started", { themes, duration: 20 });
+
+    console.log(`Vote de thème lancé pour ${gameCode}: ${themes.join(", ")}`);
+
+    // Timer de 20 secondes
+    game._themeVoteTimer = setTimeout(async () => {
+      game.themeVoteActive = false;
+
+      // Calculer le gagnant
+      const votes = game.themeVotes;
+      const maxVotes = Math.max(...Object.values(votes));
+      const candidates = Object.keys(votes).filter(t => votes[t] === maxVotes);
+      const winner = candidates[Math.floor(Math.random() * candidates.length)];
+
+      io.to(gameCode).emit("theme-vote-result", { winner, votes });
+
+      console.log(`Vote terminé pour ${gameCode}, thème gagnant: ${winner}`);
+
+      // Générer les questions
+      try {
+        const questions = await generateQuestionsViaGroq(winner, game.settings.questionsCount || 10);
+        game.providedQuestions = questions;
+        io.to(gameCode).emit("questions-ready", { count: questions.length, theme: winner });
+        console.log(`Questions prêtes pour ${gameCode}: ${questions.length} questions sur "${winner}"`);
+      } catch (err) {
+        console.error(`Erreur génération questions pour ${gameCode}:`, err.message);
+        io.to(gameCode).emit("questions-error", { message: "Erreur lors de la génération des questions" });
+      }
+    }, 20000);
+  });
+
+  // Voter pour un thème
+  socket.on("vote-theme", ({ gameCode, theme }) => {
+    const game = games[gameCode];
+
+    if (!game) return;
+    if (!game.themeVoteActive) return;
+    if (!game.themeVoteOptions || !game.themeVoteOptions.includes(theme)) return;
+
+    // Un joueur = un vote
+    if (game.themeVotedBy[socket.id]) return;
+
+    game.themeVotedBy[socket.id] = theme;
+    game.themeVotes[theme]++;
+
+    io.to(gameCode).emit("theme-vote-update", {
+      votes: game.themeVotes,
+      total: Object.keys(game.themeVotedBy).length
+    });
   });
 
   // Déconnexion
@@ -1165,12 +1208,12 @@ function sendQuestionToAll(gameCode) {
     imageUrl: questionData.imageUrl || null,
     illustrationTexte: questionData.illustrationTexte || null,
   };
-  game.buzzerWinnerAnswered = false;
   clearGameTimers(game);
 
-  // Activer le buzzer
-  game.buzzerActive = true;
-  game.buzzerWinner = null;
+  // Ouvrir la question — tous les joueurs peuvent répondre
+  game.questionOpen = true;
+  game.answers = [];
+  game.questionStartedAt = Date.now();
 
   // Réinitialiser les réponses
   Object.keys(game.players).forEach((playerId) => {
@@ -1182,15 +1225,13 @@ function sendQuestionToAll(gameCode) {
   // Mélanger les options
   const shuffledOptions = shuffleArray([...questionData.options]);
 
-  // Envoyer à tous les joueurs
+  // Envoyer à tous les joueurs (sans correctAnswer)
   io.to(gameCode).emit("new-question", {
     question: questionData.question,
     options: shuffledOptions,
-    correctAnswer: questionData.reponseCorrecte,
     timeLimit: game.settings.timePerQuestion * 1000,
     questionNumber: game.currentQuestionIndex + 1,
     totalQuestions: game.questions.length,
-    // Illustration pour l'écran de résultat
     imageUrl: questionData.imageUrl || null,
     illustrationTexte: questionData.illustrationTexte || null,
   });
@@ -1199,42 +1240,129 @@ function sendQuestionToAll(gameCode) {
     `Question ${game.currentQuestionIndex + 1}/${game.questions.length} envoyée`
   );
 
-  // Désactiver le buzzer après le temps
+  // Clore la question après le temps imparti
   game._buzzerTimer = setTimeout(() => {
-    if (games[gameCode] && game.buzzerActive) {
-      game.buzzerActive = false;
-      
-      // Afficher les résultats même si personne n'a buzzé
-      const correctAnswer = game.currentQuestion?.correctAnswer;
-      const rankings = Object.values(game.players)
-        .sort((a, b) => (b.score || 0) - (a.score || 0))
-        .map((pl, idx) => ({ 
-          position: idx + 1, 
-          name: pl.name, 
-          score: pl.score || 0, 
-          isHost: pl.isHost || false 
-        }));
-      
-      // Informer tous les joueurs qu'il y a un timeout et montrer la réponse
-      io.to(gameCode).emit("buzzer-timeout-result", {
-        correctAnswer: correctAnswer || null,
-        question: game.currentQuestion?.question || null,
-        imageUrl: game.currentQuestion?.imageUrl || null,
-        illustrationTexte: game.currentQuestion?.illustrationTexte || null,
-        rankings,
-      });
-
-      // Passer à la question suivante après 5 secondes (temps pour voir les résultats)
-      setTimeout(() => {
-        if (games[gameCode]) {
-          if (game.mode === "classic") {
-            nextQuestion(gameCode);
-          }
-          // En mode spectateur, attendre que l'hôte clique sur "Question suivante"
-        }
-      }, 5000);
+    if (games[gameCode] && game.questionOpen) {
+      finalizeQuestion(gameCode);
     }
   }, game.settings.timePerQuestion * 1000);
+}
+
+function finalizeQuestion(gameCode) {
+  const game = games[gameCode];
+  if (!game || !game.questionOpen) return;
+
+  game.questionOpen = false;
+  clearGameTimers(game);
+
+  const correctAnswer = game.currentQuestion.correctAnswer;
+  const POINTS_BY_RANK = [10, 8, 6, 5, 4, 3, 2, 1];
+
+  // Trier les bonnes réponses par timestamp (ordre d'arrivée)
+  const correctAnswers = game.answers
+    .filter((a) => String(a.answer) === String(correctAnswer))
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  const wrongAnswers = game.answers.filter(
+    (a) => String(a.answer) !== String(correctAnswer)
+  );
+
+  const answeredIds = new Set(game.answers.map((a) => a.playerId));
+  const answerResults = [];
+
+  // Points pour les bonnes réponses (par rang de rapidité)
+  correctAnswers.forEach((ans, rank) => {
+    const player = players[ans.playerId];
+    if (!player) return;
+
+    const basePoints = POINTS_BY_RANK[rank] ?? 1;
+    game.streaks[ans.playerId] = (game.streaks[ans.playerId] || 0) + 1;
+    const streakBonus = game.streaks[ans.playerId] >= 3 ? 2 : 0;
+    const totalPoints = basePoints + streakBonus;
+
+    player.score = (player.score || 0) + totalPoints;
+    game.scores[ans.playerId] = player.score;
+
+    answerResults.push({
+      playerId: ans.playerId,
+      playerName: ans.playerName,
+      answer: ans.answer,
+      isCorrect: true,
+      pointsEarned: totalPoints,
+      rank: rank + 1,
+      responseTimeMs: ans.timestamp - game.questionStartedAt,
+    });
+  });
+
+  // Malus pour les mauvaises réponses
+  wrongAnswers.forEach((ans) => {
+    const player = players[ans.playerId];
+    if (!player) return;
+
+    game.streaks[ans.playerId] = 0;
+    player.score = Math.max(0, (player.score || 0) - 3);
+    game.scores[ans.playerId] = player.score;
+
+    answerResults.push({
+      playerId: ans.playerId,
+      playerName: ans.playerName,
+      answer: ans.answer,
+      isCorrect: false,
+      pointsEarned: -3,
+      rank: null,
+      responseTimeMs: ans.timestamp - game.questionStartedAt,
+    });
+  });
+
+  // Pas de réponse
+  Object.values(game.players).forEach((p) => {
+    if (!answeredIds.has(p.id)) {
+      game.streaks[p.id] = 0;
+      answerResults.push({
+        playerId: p.id,
+        playerName: p.name,
+        answer: null,
+        isCorrect: false,
+        pointsEarned: 0,
+        rank: null,
+        responseTimeMs: null,
+      });
+    }
+  });
+
+  const rankings = Object.values(game.players)
+    .sort((a, b) => (b.score || 0) - (a.score || 0))
+    .map((p, idx) => ({
+      position: idx + 1,
+      name: p.name,
+      score: game.scores[p.id] || 0,
+      streak: game.streaks[p.id] || 0,
+      isHost: p.isHost || false,
+    }));
+
+  // Historique
+  game.questionHistory.push({
+    question: game.currentQuestion.question,
+    correctAnswer,
+    answers: answerResults,
+  });
+
+  io.to(gameCode).emit("question-results", {
+    correctAnswer,
+    question: game.currentQuestion.question,
+    imageUrl: game.currentQuestion.imageUrl || null,
+    illustrationTexte: game.currentQuestion.illustrationTexte || null,
+    answers: answerResults,
+    rankings,
+  });
+
+  // Mode classique : avancer automatiquement après 5s
+  // Mode spectateur : attendre que l'hôte clique "Question suivante"
+  if (game.mode === "classic") {
+    setTimeout(() => {
+      if (games[gameCode]) nextQuestion(gameCode);
+    }, 5000);
+  }
 }
 
 function nextQuestion(gameCode) {
@@ -1269,7 +1397,8 @@ function endGame(gameCode) {
     }));
 
   io.to(gameCode).emit("game-finished", {
-    rankings: rankings,
+    rankings,
+    history: game.questionHistory || [],
   });
 
   console.log(
