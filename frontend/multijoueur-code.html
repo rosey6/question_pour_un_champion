@@ -804,11 +804,15 @@
 
       socket.on('game-started', (data) => {
         console.log('Partie demarree:', data);
-        // Sauvegarder les infos et rediriger
         gameData.players = data.players;
         gameData.isHost = true;
         sessionStorage.setItem('multiGameData', JSON.stringify(gameData));
-        window.location.href = 'multijoueur-jeu.html';
+        if (gameData.mode === 'spectator') {
+          const base = window.location.href.split('/').slice(0, -1).join('/');
+          window.location.href = `${base}/spectate.html?code=${gameData.gameCode}&host=true`;
+        } else {
+          window.location.href = 'multijoueur-jeu.html';
+        }
       });
 
       socket.on('error', (data) => {

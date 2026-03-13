@@ -111,6 +111,12 @@ function setupUI() {
     if (vueJoueur) vueJoueur.classList.remove('hidden');
   }
 
+  // En mode spectateur, les joueurs n'ont pas besoin du timer (l'hôte le voit sur spectate.html)
+  if (gameState.mode === 'spectator' && !gameState.isHost) {
+    const timerContainer = document.getElementById('timer-container');
+    if (timerContainer) timerContainer.style.display = 'none';
+  }
+
   updateScoresDisplay();
 }
 
@@ -312,6 +318,9 @@ function displayQuestion(data) {
 // ============================================
 
 function startQuestionTimer(timeLimit) {
+  // En mode spectateur, les joueurs ne voient pas le timer
+  if (gameState.mode === 'spectator' && !gameState.isHost) return;
+
   if (questionTimer) clearInterval(questionTimer);
 
   let remaining = Math.floor(timeLimit / 1000);

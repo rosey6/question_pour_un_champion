@@ -82,10 +82,27 @@
     <div class="final-content">
       <div class="final-trophy"><i class="fas fa-trophy"></i></div>
       <h1 class="final-title">Partie terminée !</h1>
+      <div class="final-podium-visual" id="final-podium-visual">
+        <!-- Podium visuel injecté dynamiquement -->
+      </div>
       <ol class="final-podium" id="final-podium-list">
       </ol>
-      <p class="final-replay"><i class="fas fa-redo"></i> Rafraîchissez la page pour une nouvelle partie</p>
+      <div class="final-actions">
+        <button id="btn-new-game" class="final-btn-new-game">
+          🔄 Nouvelle partie
+        </button>
+      </div>
     </div>
+  </div>
+
+  <!-- BOUTONS HÔTE FLOTTANTS (host=true uniquement) -->
+  <div id="host-controls" class="host-controls hidden">
+    <button id="btn-end-game" class="host-btn host-btn-end">
+      ⏹ Terminer
+    </button>
+    <button id="btn-next-question" class="host-btn host-btn-next hidden">
+      ➡️ Question suivante
+    </button>
   </div>
 
   <style>
@@ -473,9 +490,10 @@
       align-items: center;
       justify-content: center;
       background: radial-gradient(ellipse at 50% 30%, #001028, #000);
+      overflow-y: auto;
     }
 
-    .final-content { text-align: center; max-width: 700px; padding: 2rem; }
+    .final-content { text-align: center; max-width: 800px; padding: 2rem; width: 100%; }
 
     .final-trophy {
       font-size: 6rem;
@@ -494,7 +512,83 @@
       font-size: 3rem;
       font-weight: 800;
       color: var(--white);
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Podium visuel */
+    .final-podium-visual {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      height: 200px;
+    }
+
+    .podium-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .podium-player-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 0.4rem;
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .podium-player-score {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--gold2);
+      margin-bottom: 0.4rem;
+    }
+
+    .podium-block {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 110px;
+      border-radius: 8px 8px 0 0;
+      font-size: 2rem;
+    }
+
+    .podium-col:nth-child(1) .podium-block {
+      height: 100px;
+      background: linear-gradient(180deg, rgba(180,180,210,0.3), rgba(140,140,170,0.1));
+      border: 2px solid rgba(180,180,210,0.6);
+      border-bottom: none;
+    }
+
+    .podium-col.winner .podium-block {
+      height: 140px;
+      background: linear-gradient(180deg, rgba(0,212,255,0.3), rgba(0,140,200,0.1));
+      border: 2px solid var(--gold);
+      border-bottom: none;
+      box-shadow: 0 0 40px rgba(0,212,255,0.3);
+    }
+
+    .podium-col:nth-child(3) .podium-block {
+      height: 70px;
+      background: linear-gradient(180deg, rgba(205,127,50,0.3), rgba(160,100,40,0.1));
+      border: 2px solid rgba(205,127,50,0.6);
+      border-bottom: none;
+    }
+
+    .podium-col.winner .podium-player-name {
+      font-size: 1.2rem;
+      color: var(--gold);
+      text-shadow: 0 0 15px rgba(0,212,255,0.5);
+    }
+
+    .podium-col.winner .podium-player-score {
+      font-size: 1.1rem;
     }
 
     .final-podium {
@@ -509,7 +603,7 @@
       display: flex;
       align-items: center;
       gap: 1.2rem;
-      padding: 1rem 1.5rem;
+      padding: 0.75rem 1.5rem;
       border-radius: var(--radius);
       animation: podiumReveal 0.6s ease both;
     }
@@ -547,9 +641,104 @@
     .final-name  { flex: 1; font-size: 1.5rem; font-weight: 700; color: var(--white); text-align: left; }
     .final-score { font-size: 1.5rem; font-weight: 800; color: var(--gold2); }
 
-    .final-replay {
-      font-size: 1rem;
-      color: var(--steel);
+    .final-actions {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .final-btn-new-game {
+      padding: 1rem 2.5rem;
+      background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(0,140,200,0.1));
+      border: 2px solid var(--gold);
+      border-radius: 12px;
+      color: var(--gold);
+      font-size: 1.2rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 0 30px rgba(0,212,255,0.2);
+    }
+
+    .final-btn-new-game:hover {
+      background: rgba(0,212,255,0.25);
+      box-shadow: 0 0 50px rgba(0,212,255,0.4);
+      transform: translateY(-2px);
+    }
+
+    /* ===========================
+       BOUTONS HÔTE FLOTTANTS
+    =========================== */
+    .host-controls {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.75rem;
+      z-index: 200;
+    }
+
+    .host-controls.hidden { display: none; }
+
+    .host-btn {
+      padding: 0.9rem 1.6rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      white-space: nowrap;
+    }
+
+    .host-btn-next {
+      background: #00FF88;
+      color: #000;
+    }
+
+    .host-btn-next:hover {
+      background: #00ffaa;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 30px rgba(0,255,136,0.5);
+    }
+
+    .host-btn-next:active {
+      transform: translateY(0) scale(0.97);
+    }
+
+    .host-btn-end {
+      background: rgba(255,51,102,0.85);
+      color: #fff;
+      font-size: 0.95rem;
+      padding: 0.6rem 1.2rem;
+    }
+
+    .host-btn-end:hover {
+      background: #FF3366;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 30px rgba(255,51,102,0.4);
+    }
+
+    .host-btn.hidden { display: none !important; }
+
+    /* Badge hôte dans le header */
+    .host-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.75rem;
+      background: rgba(0,255,136,0.1);
+      border: 1px solid rgba(0,255,136,0.4);
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
     }
 
     /* ===========================
@@ -590,19 +779,32 @@
       .final-trophy { font-size: 4rem; }
       .final-name   { font-size: 1.1rem; }
       .final-score  { font-size: 1.1rem; }
+
+      .host-controls {
+        bottom: 1rem;
+        right: 1rem;
+      }
+
+      .host-btn { font-size: 0.95rem; padding: 0.75rem 1.2rem; }
     }
 
     @media (max-width: 480px) {
       .tv-options-grid { grid-template-columns: 1fr; }
       .tv-question-counter { font-size: 1rem; }
       .tv-question-counter span:first-child { font-size: 1.4rem; }
+
+      .final-podium-visual { height: 150px; }
+      .podium-block { width: 80px; }
+      .podium-col.winner .podium-block { height: 110px; }
+      .podium-col:nth-child(1) .podium-block { height: 80px; }
+      .podium-col:nth-child(3) .podium-block { height: 55px; }
     }
   </style>
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
     // ============================================
-    // SPECTATE.HTML — Vue spectateur TV
+    // SPECTATE.HTML — Vue spectateur / Hôte TV
     // ============================================
 
     const BACKEND_URL = 'https://questionpourunchampion-backend.onrender.com';
@@ -610,8 +812,11 @@
 
     let socket = null;
     let gameCode = null;
+    let isHostMode = false;
+    let hostName = null;
     let currentTimerInterval = null;
     let currentOptions = []; // mémoriser les options pour révéler la bonne réponse
+    let questionActive = false; // vrai pendant le timer
 
     // Utilitaires d'écrans
     function showScreen(id) {
@@ -633,6 +838,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams(window.location.search);
       gameCode = params.get('code');
+      isHostMode = params.get('host') === 'true';
 
       if (!gameCode) {
         document.getElementById('waiting-status').textContent =
@@ -643,14 +849,36 @@
       document.getElementById('waiting-code').textContent = gameCode.toUpperCase();
       document.getElementById('tv-game-code').textContent = gameCode.toUpperCase();
 
-      connectSpectator();
+      // En mode hôte, récupérer le nom depuis sessionStorage
+      if (isHostMode) {
+        const storedData = sessionStorage.getItem('multiGameData');
+        if (storedData) {
+          try {
+            const gameData = JSON.parse(storedData);
+            hostName = gameData.hostName || 'Hôte';
+          } catch (e) {
+            hostName = 'Hôte';
+          }
+        }
+        // Afficher le badge hôte dans le header
+        const tvTitle = document.querySelector('.tv-title');
+        if (tvTitle) {
+          const badge = document.createElement('span');
+          badge.className = 'host-badge';
+          badge.innerHTML = '<i class="fas fa-crown"></i> Hôte';
+          tvTitle.appendChild(badge);
+        }
+        setupHostButtons();
+      }
+
+      connectSocket();
     });
 
     // ============================================
     // CONNEXION SOCKET
     // ============================================
 
-    function connectSpectator() {
+    function connectSocket() {
       socket = io(BACKEND_URL, {
         transports: ['websocket', 'polling'],
         reconnection: true,
@@ -659,79 +887,164 @@
       });
 
       socket.on('connect', () => {
-        document.getElementById('waiting-status').textContent = 'Connecté — rejoindre la partie...';
-        socket.emit('spectate-join', { gameCode });
+        if (isHostMode) {
+          document.getElementById('waiting-status').textContent = 'Reconnexion en tant qu\'hôte...';
+          socket.emit('rejoin-as-host', {
+            gameCode,
+            playerName: hostName || 'Hôte'
+          });
+        } else {
+          document.getElementById('waiting-status').textContent = 'Connecté — rejoindre la partie...';
+          socket.emit('spectate-join', { gameCode });
+        }
       });
 
       socket.on('disconnect', () => {
         document.getElementById('waiting-status').textContent = 'Connexion perdue, reconnexion...';
       });
 
+      // Réponse rejoin-as-host (mode hôte)
+      socket.on('rejoin-success', (data) => {
+        document.getElementById('waiting-status').textContent = `Hôte reconnecté !`;
+        if (data.players && data.players.length) {
+          updateLeaderboard(data.players.filter(p => !p.isHost), null);
+        }
+        showScreen('screen-game');
+        showHostControls(false); // pas de "Question suivante" tant qu'on n'a pas de résultats
+      });
+
+      // Réponse spectate-join (mode spectateur)
       socket.on('spectate-joined', (data) => {
         document.getElementById('waiting-status').textContent = `Partie "${data.gameCode}" trouvée !`;
 
-        // Mettre à jour le leaderboard initial
         if (data.players && data.players.length) {
-          updateLeaderboard(data.players, null);
+          updateLeaderboard(data.players.filter(p => !p.isHost), null);
         }
 
-        // Si la partie est déjà en cours, on passera sur screen-game via new-question
         if (data.state === 'playing') {
           showScreen('screen-game');
         }
-        // Sinon rester sur l'écran d'attente jusqu'à game-started
       });
 
       // Partie démarrée (si on est encore en attente)
       socket.on('game-started', () => {
         showScreen('screen-game');
+        if (isHostMode) showHostControls(false);
       });
 
       // Nouvelle question
       socket.on('new-question', (data) => {
         showScreen('screen-game');
         currentOptions = data.options || [];
+        questionActive = true;
 
-        // Mettre à jour le compteur
+        // Compteur
         document.getElementById('tv-q-current').textContent = data.questionNumber;
         document.getElementById('tv-q-total').textContent   = data.totalQuestions;
 
-        // Afficher la question
+        // Question
         document.getElementById('tv-question-text').textContent = data.question;
 
-        // Afficher les options (mode neutre)
+        // Options (mode neutre)
         renderOptions(data.options, null);
 
-        // Démarrer le timer
+        // Timer
         const seconds = Math.round((data.timeLimit || 30000) / 1000);
         startCircularTimer(seconds);
+
+        // En mode hôte : masquer "Question suivante" pendant la question
+        if (isHostMode) {
+          hideNextBtn();
+        }
       });
 
       // Résultats de la question
       socket.on('question-results', (data) => {
-        // Stopper le timer
         stopTimer();
+        questionActive = false;
 
         // Révéler la bonne réponse
         renderOptions(currentOptions, data.correctAnswer);
 
-        // Mettre à jour le leaderboard avec les deltas
+        // Leaderboard avec deltas
         if (data.rankings) {
-          updateLeaderboard(data.rankings, data.answers);
+          updateLeaderboard(
+            data.rankings.filter(p => !p.isHost),
+            data.answers
+          );
+        }
+
+        // En mode hôte : afficher "Question suivante"
+        if (isHostMode) {
+          showNextBtn();
         }
       });
 
       // Fin de partie
       socket.on('game-finished', (data) => {
         stopTimer();
+        questionActive = false;
         renderFinalScreen(data.rankings || []);
-        setTimeout(() => showScreen('screen-final'), 400);
+        setTimeout(() => {
+          showScreen('screen-final');
+          // Cacher les boutons hôte
+          const hostControls = document.getElementById('host-controls');
+          if (hostControls) hostControls.classList.add('hidden');
+        }, 400);
       });
 
       socket.on('error', (data) => {
         document.getElementById('waiting-status').textContent =
           data.message || 'Erreur de connexion';
       });
+    }
+
+    // ============================================
+    // BOUTONS HÔTE
+    // ============================================
+
+    function setupHostButtons() {
+      const hostControls = document.getElementById('host-controls');
+      if (hostControls) hostControls.classList.remove('hidden');
+
+      document.getElementById('btn-next-question').addEventListener('click', () => {
+        if (socket) {
+          socket.emit('next-question', { gameCode });
+          hideNextBtn();
+        }
+      });
+
+      document.getElementById('btn-end-game').addEventListener('click', () => {
+        if (confirm('Terminer la partie maintenant ?')) {
+          if (socket) socket.emit('end-game', { gameCode });
+        }
+      });
+    }
+
+    function showNextBtn() {
+      const btn = document.getElementById('btn-next-question');
+      if (btn) {
+        btn.classList.remove('hidden');
+        // Petite animation d'entrée
+        btn.style.animation = 'none';
+        void btn.offsetHeight;
+        btn.style.animation = 'btnAppear 0.3s cubic-bezier(0.34,1.56,0.64,1)';
+      }
+    }
+
+    function hideNextBtn() {
+      const btn = document.getElementById('btn-next-question');
+      if (btn) btn.classList.add('hidden');
+    }
+
+    function showHostControls(showNext) {
+      const hostControls = document.getElementById('host-controls');
+      if (hostControls) hostControls.classList.remove('hidden');
+      if (showNext) {
+        showNextBtn();
+      } else {
+        hideNextBtn();
+      }
     }
 
     // ============================================
@@ -743,19 +1056,16 @@
       const numberEl = document.getElementById('timer-number');
       const timerEl = document.querySelector('.tv-timer');
 
-      stopTimer(); // nettoyer l'ancien timer
+      stopTimer();
 
-      // Reset immédiat : couper l'animation CSS, revenir à 0
       circle.style.transition = 'none';
       circle.style.strokeDashoffset = '0';
       circle.style.stroke = 'var(--gold)';
-      void circle.offsetHeight; // force reflow — indispensable pour le reset
+      void circle.offsetHeight;
 
       timerEl.classList.remove('timer-urgent');
       numberEl.textContent = totalSeconds;
 
-      // Démarrer la décharge progressive (via transition CSS)
-      // On délègue à JS pour un contrôle précis
       let remaining = totalSeconds;
       const stepMs = 50;
       const totalMs = totalSeconds * 1000;
@@ -765,7 +1075,6 @@
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / totalMs, 1);
 
-        // Stroke-dashoffset : 0 → CIRCUMFERENCE (de plein à vide)
         circle.style.strokeDashoffset = (TIMER_CIRCUMFERENCE * progress).toFixed(2);
 
         const newRemaining = Math.ceil(totalSeconds - (elapsed / 1000));
@@ -773,7 +1082,6 @@
           remaining = newRemaining;
           numberEl.textContent = Math.max(0, remaining);
 
-          // Mode urgent sous 6 secondes
           if (remaining <= 5) {
             timerEl.classList.add('timer-urgent');
           }
@@ -819,22 +1127,17 @@
     // LEADERBOARD
     // ============================================
 
-    // Stocker les scores précédents pour calculer les deltas
     let previousScores = {};
 
-    function updateLeaderboard(rankings, answers) {
+    function updateLeaderboard(players, answers) {
       const list = document.getElementById('tv-leaderboard-list');
       if (!list) return;
 
-      // Filtrer les hôtes (en mode spectateur)
-      const players = rankings.filter(p => !p.isHost);
       const top8 = players.slice(0, 8);
 
-      // Calculer les points gagnés par joueur cette question
       const gained = {};
       if (answers) {
         answers.forEach(a => {
-          if (!a.isCorrect && a.answer === null) return; // sans réponse → 0
           gained[a.playerName] = a.pointsEarned || 0;
         });
       }
@@ -863,7 +1166,6 @@
         list.appendChild(li);
       });
 
-      // Mémoriser pour la prochaine question
       top8.forEach(p => { previousScores[p.name] = p.score; });
     }
 
@@ -872,24 +1174,72 @@
     // ============================================
 
     function renderFinalScreen(rankings) {
-      const list = document.getElementById('final-podium-list');
-      if (!list) return;
-
       const players = rankings.filter(p => !p.isHost);
       const medals = ['🥇', '🥈', '🥉'];
 
-      list.innerHTML = '';
-      players.forEach((player, idx) => {
-        const li = document.createElement('li');
-        li.className = 'final-podium-item';
-        li.innerHTML = `
-          <span class="final-medal">${medals[idx] || `#${idx + 1}`}</span>
-          <span class="final-name">${player.name}</span>
-          <span class="final-score">${player.score} pts</span>
-        `;
-        list.appendChild(li);
-      });
+      // Podium visuel (top 3)
+      const podiumVisual = document.getElementById('final-podium-visual');
+      if (podiumVisual) {
+        const top3 = players.slice(0, 3);
+        // Ordre d'affichage : 2e, 1er, 3e
+        const displayOrder = [top3[1], top3[0], top3[2]];
+        podiumVisual.innerHTML = '';
+        displayOrder.forEach((player, visualIdx) => {
+          if (!player) {
+            const empty = document.createElement('div');
+            empty.className = 'podium-col';
+            empty.style.opacity = '0';
+            podiumVisual.appendChild(empty);
+            return;
+          }
+          const isWinner = visualIdx === 1;
+          const col = document.createElement('div');
+          col.className = 'podium-col' + (isWinner ? ' winner' : '');
+          const rankEmoji = medals[isWinner ? 0 : (visualIdx === 0 ? 1 : 2)];
+          col.innerHTML = `
+            <div class="podium-player-name">${player.name}</div>
+            <div class="podium-player-score">${player.score} pts</div>
+            <div class="podium-block">${rankEmoji}</div>
+          `;
+          podiumVisual.appendChild(col);
+        });
+      }
+
+      // Liste complète
+      const list = document.getElementById('final-podium-list');
+      if (list) {
+        list.innerHTML = '';
+        players.forEach((player, idx) => {
+          const li = document.createElement('li');
+          li.className = 'final-podium-item';
+          li.innerHTML = `
+            <span class="final-medal">${medals[idx] || `#${idx + 1}`}</span>
+            <span class="final-name">${player.name}</span>
+            <span class="final-score">${player.score} pts</span>
+          `;
+          list.appendChild(li);
+        });
+      }
+
+      // Bouton "Nouvelle partie"
+      const btnNewGame = document.getElementById('btn-new-game');
+      if (btnNewGame) {
+        btnNewGame.addEventListener('click', () => {
+          sessionStorage.removeItem('multiGameData');
+          window.location.href = 'multijoueur.html';
+        });
+      }
     }
+
+    // Animation bouton apparition
+    const animStyle = document.createElement('style');
+    animStyle.textContent = `
+      @keyframes btnAppear {
+        from { transform: scale(0.5) translateY(20px); opacity: 0; }
+        to   { transform: scale(1)   translateY(0);    opacity: 1; }
+      }
+    `;
+    document.head.appendChild(animStyle);
   </script>
 
 </body>
