@@ -2,1245 +2,1691 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#000000" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;" />
-  <title>Vue spectateur — Question pour un Champion</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1A1A2E" />
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
+    font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com;
+    connect-src 'self'
+      ws://questionpourunchampion-backend.onrender.com
+      wss://questionpourunchampion-backend.onrender.com
+      https://questionpourunchampion-backend.onrender.com
+      https://cdn.socket.io;
+    img-src 'self' data: https://cdnjs.cloudflare.com;
+  " />
+  <title>Vue Spectateur - Question pour un Champion</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-</head>
-<body>
-
-  <!-- ============================================ -->
-  <!-- VUE SPECTATEUR TV -->
-  <!-- ============================================ -->
-
-  <!-- ÉCRAN D'ATTENTE DE CONNEXION -->
-  <div id="screen-waiting" class="screen screen-active">
-    <div class="waiting-content">
-      <div class="waiting-logo"><i class="fas fa-tv"></i></div>
-      <h1>Vue Spectateur</h1>
-      <p id="waiting-status">Connexion en cours...</p>
-      <div id="waiting-code" class="waiting-code"></div>
-      <div class="waiting-spinner">
-        <div class="spinner-ring"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ÉCRAN DE JEU PRINCIPAL -->
-  <div id="screen-game" class="screen">
-
-    <!-- HEADER : code + timer -->
-    <header class="tv-header">
-      <div class="tv-title">
-        <i class="fas fa-tv"></i>
-        <span id="tv-game-code">------</span>
-      </div>
-
-      <div class="tv-question-counter">
-        <span id="tv-q-current">1</span>/<span id="tv-q-total">10</span>
-      </div>
-
-      <!-- Timer circulaire SVG -->
-      <div class="tv-timer">
-        <svg class="timer-svg" viewBox="0 0 100 100" aria-hidden="true">
-          <circle class="timer-track" cx="50" cy="50" r="42"/>
-          <circle class="timer-fill"  cx="50" cy="50" r="42" id="timer-circle"/>
-        </svg>
-        <div class="timer-number" id="timer-number">30</div>
-      </div>
-    </header>
-
-    <!-- MAIN : question + leaderboard -->
-    <main class="tv-main">
-
-      <!-- Zone question + options (gauche / haut sur mobile) -->
-      <section class="tv-question-zone">
-        <div class="tv-question-text" id="tv-question-text">
-          En attente de la première question...
-        </div>
-        <div class="tv-options-grid" id="tv-options-grid">
-          <!-- 4 options injectées dynamiquement -->
-        </div>
-      </section>
-
-      <!-- Zone leaderboard (droite / bas sur mobile) -->
-      <aside class="tv-leaderboard">
-        <div class="tv-leaderboard-title">
-          <i class="fas fa-list-ol"></i> Classement
-        </div>
-        <ol class="tv-leaderboard-list" id="tv-leaderboard-list">
-          <li class="tv-lb-waiting">En attente des joueurs...</li>
-        </ol>
-      </aside>
-
-    </main>
-  </div>
-
-  <!-- ÉCRAN FIN DE PARTIE -->
-  <div id="screen-final" class="screen">
-    <div class="final-content">
-      <div class="final-trophy"><i class="fas fa-trophy"></i></div>
-      <h1 class="final-title">Partie terminée !</h1>
-      <div class="final-podium-visual" id="final-podium-visual">
-        <!-- Podium visuel injecté dynamiquement -->
-      </div>
-      <ol class="final-podium" id="final-podium-list">
-      </ol>
-      <div class="final-actions">
-        <button id="btn-new-game" class="final-btn-new-game">
-          🔄 Nouvelle partie
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- BOUTONS HÔTE FLOTTANTS (host=true uniquement) -->
-  <div id="host-controls" class="host-controls hidden">
-    <button id="btn-end-game" class="host-btn host-btn-end">
-      ⏹ Terminer
-    </button>
-    <button id="btn-next-question" class="host-btn host-btn-next hidden">
-      ➡️ Question suivante
-    </button>
-  </div>
-
   <style>
-    /* ===========================
+    /* ===================================================
        RESET & BASE
-    =========================== */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --gold:    #00D4FF;
-      --gold2:   #FFD700;
-      --white:   #FFFFFF;
-      --silver:  #B0B8C8;
-      --steel:   #6A7A8A;
-      --bg:      #000000;
-      --surface: #0A0F1A;
-      --border:  rgba(0,212,255,0.18);
-      --green:   #00FF88;
-      --red:     #FF3366;
-      --radius:  16px;
+       =================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
     html, body {
-      width: 100%; height: 100%;
-      background: var(--bg);
-      color: var(--white);
-      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
+      background: #1A1A2E;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #fff;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* ===========================
-       SCREENS
-    =========================== */
+    /* On mobile allow scroll */
+    @media (max-width: 767px) {
+      html, body {
+        overflow: auto;
+      }
+    }
+
+    /* ===================================================
+       SCREEN STATES
+       =================================================== */
     .screen {
-      position: fixed;
-      inset: 0;
       display: none;
-      flex-direction: column;
+      width: 100%;
+      height: 100%;
     }
-    .screen-active { display: flex; }
+    .screen.active {
+      display: flex;
+    }
 
-    /* ===========================
-       ÉCRAN ATTENTE
-    =========================== */
+    /* ===================================================
+       WAITING SCREEN
+       =================================================== */
     #screen-waiting {
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: radial-gradient(ellipse at 50% 40%, #001028, #000);
+      background: #1A1A2E;
+      gap: 1.5rem;
+      text-align: center;
+      padding: 2rem;
     }
 
-    .waiting-content { text-align: center; }
-
-    .waiting-logo {
+    .waiting-tv-icon {
       font-size: 5rem;
-      color: var(--gold);
-      text-shadow: 0 0 40px rgba(0,212,255,0.6);
-      margin-bottom: 1.5rem;
-      animation: pulse 2s ease-in-out infinite;
+      color: #00D4FF;
+      animation: tvPulse 2s ease-in-out infinite;
+      text-shadow: 0 0 30px rgba(0, 212, 255, 0.7), 0 0 60px rgba(0, 212, 255, 0.3);
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50%       { opacity: 0.7; transform: scale(1.05); }
+    @keyframes tvPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.06); opacity: 0.85; }
     }
 
-    .waiting-content h1 {
-      font-size: 2.5rem;
+    .waiting-title {
+      font-size: 1.6rem;
       font-weight: 700;
-      color: var(--white);
-      margin-bottom: 0.75rem;
+      color: #fff;
+      letter-spacing: 0.05em;
     }
 
-    #waiting-status {
-      font-size: 1.1rem;
-      color: var(--silver);
-      margin-bottom: 1rem;
+    .waiting-subtitle {
+      font-size: 0.95rem;
+      color: #6B8CAA;
+    }
+
+    .waiting-code-label {
+      font-size: 0.85rem;
+      color: #6B8CAA;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
     }
 
     .waiting-code {
-      font-size: 3rem;
+      font-family: 'Courier New', monospace;
+      font-size: 3.5rem;
       font-weight: 800;
-      letter-spacing: 0.4em;
-      color: var(--gold);
-      text-shadow: 0 0 30px rgba(0,212,255,0.7);
-      min-height: 1.2em;
-      margin-bottom: 2rem;
+      letter-spacing: 0.3em;
+      color: #00D4FF;
+      text-shadow: 0 0 30px rgba(0, 212, 255, 0.8), 0 0 60px rgba(0, 212, 255, 0.4);
     }
 
     .waiting-spinner {
       display: flex;
-      justify-content: center;
+      align-items: center;
+      gap: 0.75rem;
+      color: #6B8CAA;
+      font-size: 0.9rem;
     }
 
     .spinner-ring {
-      width: 48px; height: 48px;
-      border: 4px solid rgba(0,212,255,0.2);
-      border-top-color: var(--gold);
+      width: 22px;
+      height: 22px;
+      border: 3px solid rgba(0, 212, 255, 0.2);
+      border-top-color: #00D4FF;
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ===========================
-       ÉCRAN JEU — HEADER
-    =========================== */
-    #screen-game {
-      background: #020810;
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
-    .tv-header {
+    /* ===================================================
+       GAME SCREEN — FULL VIEWPORT LAYOUT
+       =================================================== */
+    #screen-game {
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      background: #1A1A2E;
+    }
+
+    @media (max-width: 767px) {
+      #screen-game {
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+      }
+    }
+
+    /* ===================================================
+       HEADER (70px)
+       =================================================== */
+    #game-header {
+      flex-shrink: 0;
+      height: 70px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0.6rem 2rem;
-      background: rgba(0,10,25,0.9);
-      border-bottom: 2px solid var(--border);
+      padding: 0 1.25rem;
+      background: rgba(0, 0, 0, 0.5);
+      border-bottom: 2px solid rgba(0, 212, 255, 0.25);
+      backdrop-filter: blur(8px);
       gap: 1rem;
-      flex-shrink: 0;
-      height: 80px;
+      z-index: 10;
     }
 
-    .tv-title {
+    .header-logo {
       display: flex;
       align-items: center;
       gap: 0.6rem;
-      font-size: 1.1rem;
-      color: var(--silver);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #00D4FF;
+      text-shadow: 0 0 12px rgba(0, 212, 255, 0.6);
+      white-space: nowrap;
+      flex: 1;
     }
 
-    .tv-title i {
-      color: var(--gold);
+    .header-logo i {
       font-size: 1.3rem;
     }
 
-    .tv-question-counter {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: var(--silver);
-      letter-spacing: 0.05em;
-    }
-
-    .tv-question-counter span:first-child {
-      color: var(--gold);
-      font-size: 2rem;
-    }
-
-    /* Timer SVG */
-    .tv-timer {
-      position: relative;
-      width: 64px;
-      height: 64px;
+    .header-center {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
       flex-shrink: 0;
     }
 
-    .timer-svg {
-      width: 100%;
-      height: 100%;
+    #question-counter {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #A8C8E8;
+      white-space: nowrap;
+      background: rgba(0, 212, 255, 0.1);
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 100px;
+      padding: 0.3rem 0.9rem;
+    }
+
+    /* Timer SVG */
+    .timer-svg-wrap {
+      position: relative;
+      width: 52px;
+      height: 52px;
+      flex-shrink: 0;
+    }
+
+    #timer-svg {
+      width: 52px;
+      height: 52px;
       transform: rotate(-90deg);
     }
 
-    .timer-track {
+    #timer-track {
       fill: none;
-      stroke: rgba(255,255,255,0.08);
-      stroke-width: 6;
+      stroke: rgba(255, 255, 255, 0.08);
+      stroke-width: 4;
     }
 
-    .timer-fill {
+    #timer-arc {
       fill: none;
-      stroke: var(--gold);
-      stroke-width: 6;
+      stroke: #00D4FF;
+      stroke-width: 4;
       stroke-linecap: round;
-      /* circumference = 2π×42 ≈ 263.9 */
       stroke-dasharray: 263.9;
       stroke-dashoffset: 0;
-      transition: stroke 0.3s;
+      transition: stroke 0.4s;
     }
 
-    .timer-number {
+    #timer-text {
       position: absolute;
       inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.3rem;
+      font-size: 1rem;
       font-weight: 800;
-      color: var(--gold);
+      color: #00D4FF;
+      font-family: 'Courier New', monospace;
     }
 
-    .timer-urgent .timer-fill   { stroke: var(--red); }
-    .timer-urgent .timer-number { color: var(--red); }
-
-    /* ===========================
-       ÉCRAN JEU — MAIN
-    =========================== */
-    .tv-main {
+    .header-spacer {
       flex: 1;
-      display: grid;
-      grid-template-columns: 1fr 320px;
+    }
+
+    /* ===================================================
+       QUESTION ZONE
+       =================================================== */
+    #question-zone {
+      flex-shrink: 0;
+      padding: 0.65rem 1.25rem 0.45rem;
+      background: rgba(0, 10, 30, 0.6);
+      border-bottom: 1px solid rgba(0, 212, 255, 0.12);
+    }
+
+    #question-text {
+      font-size: clamp(1rem, 2.4vw, 1.4rem);
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+      line-height: 1.4;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+    }
+
+    #correct-banner {
+      display: none;
+      margin-top: 0.5rem;
+      padding: 0.45rem 1rem;
+      background: rgba(0, 255, 136, 0.12);
+      border: 1.5px solid #00FF88;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #00FF88;
+      text-align: center;
+      text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    }
+
+    /* ===================================================
+       OPTIONS COLUMNS
+       =================================================== */
+    #options-area {
+      flex: 1;
+      display: flex;
       gap: 0;
+      min-height: 0;
       overflow: hidden;
     }
 
-    /* Zone question */
-    .tv-question-zone {
+    @media (max-width: 767px) {
+      #options-area {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        flex: none;
+        min-height: 320px;
+        overflow: visible;
+      }
+    }
+
+    .option-col {
+      flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      padding: 2rem 2.5rem;
-      overflow: hidden;
-      border-right: 2px solid var(--border);
+      align-items: stretch;
+      padding: 0.5rem;
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      position: relative;
+      transition: opacity 0.45s, box-shadow 0.45s;
     }
 
-    .tv-question-text {
-      font-size: clamp(1.4rem, 3vw, 2.6rem);
-      font-weight: 600;
-      line-height: 1.4;
-      color: var(--white);
-      margin-bottom: 2rem;
-      padding-left: 1rem;
-      border-left: 5px solid var(--gold);
-      text-shadow: 0 0 30px rgba(0,212,255,0.15);
+    .option-col:last-child {
+      border-right: none;
     }
 
-    .tv-options-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
+    /* Background tints per index */
+    .option-col[data-idx="0"] { background: rgba(226, 27, 60, 0.16); }
+    .option-col[data-idx="1"] { background: rgba(19, 104, 206, 0.16); }
+    .option-col[data-idx="2"] { background: rgba(38, 137, 12, 0.16); }
+    .option-col[data-idx="3"] { background: rgba(255, 166, 2, 0.16); }
+
+    .option-col.correct-col {
+      box-shadow: inset 0 0 0 3px #00FF88, 0 0 28px rgba(0, 255, 136, 0.35);
+      background: rgba(0, 255, 136, 0.1) !important;
     }
 
-    .tv-option {
-      padding: 1rem 1.4rem;
-      background: rgba(0,50,100,0.15);
-      border: 2px solid rgba(0,140,200,0.25);
-      border-radius: var(--radius);
-      font-size: clamp(0.95rem, 1.6vw, 1.3rem);
-      color: var(--silver);
-      transition: all 0.4s ease;
+    .option-col.wrong-col {
+      opacity: 0.3;
+    }
+
+    .option-col.wrong-col .avatar-circle {
+      filter: grayscale(100%);
+    }
+
+    /* Column header strip */
+    .col-header {
       display: flex;
       align-items: center;
-      gap: 0.8rem;
-    }
-
-    .tv-option-letter {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      background: rgba(0,140,200,0.2);
+      gap: 0.5rem;
+      padding: 0.45rem 0.55rem;
       border-radius: 8px;
-      font-weight: 700;
-      color: var(--gold);
-      font-size: 0.9rem;
+      margin-bottom: 0.4rem;
       flex-shrink: 0;
     }
 
-    .tv-option.correct {
-      background: rgba(0,255,136,0.12);
-      border-color: var(--green);
-      color: var(--green);
-      box-shadow: 0 0 30px rgba(0,255,136,0.25);
+    .option-col[data-idx="0"] .col-header { background: #E21B3C; }
+    .option-col[data-idx="1"] .col-header { background: #1368CE; }
+    .option-col[data-idx="2"] .col-header { background: #26890C; }
+    .option-col[data-idx="3"] .col-header { background: #FFA602; }
+
+    .col-icon {
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: #fff;
+      flex-shrink: 0;
+      width: 20px;
+      text-align: center;
     }
 
-    .tv-option.correct .tv-option-letter {
-      background: rgba(0,255,136,0.2);
-      color: var(--green);
+    .col-letter {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.8);
+      flex-shrink: 0;
     }
 
-    .tv-option.wrong {
-      background: rgba(255,51,102,0.07);
-      border-color: rgba(255,51,102,0.3);
-      color: rgba(255,255,255,0.4);
+    .col-text {
+      font-size: clamp(0.68rem, 1.15vw, 0.88rem);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.25;
+      flex: 1;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
     }
 
-    /* Zone leaderboard */
-    .tv-leaderboard {
-      background: rgba(0,5,15,0.8);
-      padding: 1.5rem 1.2rem;
-      overflow-y: auto;
+    /* Correct checkmark overlay */
+    .correct-check {
+      display: none;
+      font-size: 1.4rem;
+      text-align: center;
+      padding: 0.15rem 0;
+      color: #00FF88;
+      text-shadow: 0 0 14px rgba(0, 255, 136, 0.8);
+    }
+
+    .option-col.correct-col .correct-check {
+      display: block;
+    }
+
+    /* Avatar container */
+    .avatars-container {
+      flex: 1;
       display: flex;
-      flex-direction: column;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      gap: 0.35rem;
+      padding: 0.25rem;
+      overflow: hidden;
     }
 
-    .tv-leaderboard-title {
+    .avatar-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      font-size: 0.8rem;
-      color: var(--gold);
-      text-transform: uppercase;
-      letter-spacing: 0.15em;
-      margin-bottom: 1.2rem;
-      padding-bottom: 0.6rem;
-      border-bottom: 1px solid var(--border);
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      flex-shrink: 0;
+      animation: avatarIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     }
 
-    .tv-leaderboard-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      flex: 1;
+    @keyframes avatarIn {
+      from { transform: scale(0) translateY(10px); opacity: 0; }
+      to   { transform: scale(1) translateY(0);    opacity: 1; }
     }
 
-    .tv-lb-waiting {
-      font-size: 0.9rem;
-      color: var(--steel);
-      text-align: center;
-      margin-top: 2rem;
+    /* Proportional bar */
+    .col-bar-wrap {
+      flex-shrink: 0;
+      padding: 0.3rem 0.5rem;
     }
 
-    .tv-lb-item {
+    .col-bar-track {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+
+    .col-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    .option-col[data-idx="0"] .col-bar-fill { background: #E21B3C; }
+    .option-col[data-idx="1"] .col-bar-fill { background: #1368CE; }
+    .option-col[data-idx="2"] .col-bar-fill { background: #26890C; }
+    .option-col[data-idx="3"] .col-bar-fill { background: #FFA602; }
+
+    .col-count-label {
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.5);
+      text-align: right;
+      margin-top: 2px;
+    }
+
+    /* ===================================================
+       PROGRESS BAR
+       =================================================== */
+    #progress-zone {
+      flex-shrink: 0;
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      padding: 0.6rem 0.8rem;
-      border-radius: 10px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid transparent;
-      transition: all 0.4s ease;
-      animation: lbItemIn 0.35s ease both;
+      padding: 0.45rem 1.25rem;
+      background: rgba(0, 0, 0, 0.35);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    @keyframes lbItemIn {
-      from { transform: translateX(20px); opacity: 0; }
-      to   { transform: translateX(0);    opacity: 1; }
-    }
-
-    .tv-lb-item:nth-child(1) { border-color: rgba(0,212,255,0.35); background: rgba(0,212,255,0.08); }
-    .tv-lb-item:nth-child(2) { border-color: rgba(180,180,210,0.25); }
-    .tv-lb-item:nth-child(3) { border-color: rgba(205,127,50,0.25); }
-
-    .tv-lb-rank {
-      font-size: 1rem;
-      font-weight: 800;
-      color: var(--steel);
-      width: 24px;
-      text-align: center;
-      flex-shrink: 0;
-    }
-
-    .tv-lb-item:nth-child(1) .tv-lb-rank { color: var(--gold); }
-    .tv-lb-item:nth-child(2) .tv-lb-rank { color: var(--silver); }
-    .tv-lb-item:nth-child(3) .tv-lb-rank { color: #cd7f32; }
-
-    .tv-lb-name {
+    #answers-track {
       flex: 1;
-      font-size: 1rem;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    #answers-fill {
+      height: 100%;
+      border-radius: 4px;
+      width: 0%;
+      background: linear-gradient(90deg, #00D4FF, #00FF88);
+      transition: width 0.4s ease;
+    }
+
+    #answers-label {
+      font-size: 0.82rem;
+      color: #A8C8E8;
+      white-space: nowrap;
       font-weight: 600;
-      color: var(--white);
+    }
+
+    /* ===================================================
+       LEADERBOARD BAR (bottom)
+       =================================================== */
+    #leaderboard-bar {
+      flex-shrink: 0;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0 1rem;
+      background: rgba(0, 0, 0, 0.55);
+      border-top: 2px solid rgba(0, 212, 255, 0.2);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    #leaderboard-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .lb-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.7rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 100px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    .lb-item.lb-first {
+      background: rgba(0, 212, 255, 0.12);
+      border-color: #00D4FF;
+      box-shadow: 0 0 14px rgba(0, 212, 255, 0.25);
+    }
+
+    .lb-medal {
+      font-size: 0.95rem;
+      line-height: 1;
+    }
+
+    .lb-name {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #fff;
+      max-width: 80px;
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;
     }
 
-    .tv-lb-score {
-      font-size: 1rem;
+    .lb-score {
+      font-size: 0.82rem;
       font-weight: 800;
-      color: var(--gold2);
-      flex-shrink: 0;
+      color: #00D4FF;
+      font-family: 'Courier New', monospace;
     }
 
-    /* delta score animé */
-    .tv-lb-delta {
-      font-size: 0.75rem;
+    .lb-delta {
+      font-size: 0.72rem;
       font-weight: 700;
-      color: var(--green);
-      animation: deltaFade 2s ease forwards;
-      flex-shrink: 0;
+      padding: 1px 5px;
+      border-radius: 100px;
+      animation: deltaFade 2.2s ease forwards;
     }
 
-    .tv-lb-delta.negative { color: var(--red); }
+    .lb-delta.positive {
+      color: #00FF88;
+      background: rgba(0, 255, 136, 0.15);
+    }
+
+    .lb-delta.negative {
+      color: #FF3366;
+      background: rgba(255, 51, 102, 0.15);
+    }
 
     @keyframes deltaFade {
-      0%   { opacity: 1; transform: translateY(0); }
-      70%  { opacity: 1; transform: translateY(-6px); }
-      100% { opacity: 0; transform: translateY(-10px); }
+      0%, 65% { opacity: 1; }
+      100%     { opacity: 0; }
     }
 
-    /* ===========================
-       ÉCRAN FIN DE PARTIE
-    =========================== */
-    #screen-final {
-      align-items: center;
-      justify-content: center;
-      background: radial-gradient(ellipse at 50% 30%, #001028, #000);
-      overflow-y: auto;
-    }
-
-    .final-content { text-align: center; max-width: 800px; padding: 2rem; width: 100%; }
-
-    .final-trophy {
-      font-size: 6rem;
-      color: var(--gold2);
-      text-shadow: 0 0 60px rgba(255,215,0,0.5);
-      animation: trophyBounce 1.2s ease-in-out infinite;
-      margin-bottom: 1rem;
-    }
-
-    @keyframes trophyBounce {
-      0%, 100% { transform: translateY(0); }
-      50%       { transform: translateY(-12px); }
-    }
-
-    .final-title {
-      font-size: 3rem;
-      font-weight: 800;
-      color: var(--white);
-      margin-bottom: 1.5rem;
-    }
-
-    /* Podium visuel */
-    .final-podium-visual {
-      display: flex;
-      justify-content: center;
-      align-items: flex-end;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-      height: 200px;
-    }
-
-    .podium-col {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-end;
-    }
-
-    .podium-player-name {
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--white);
-      margin-bottom: 0.4rem;
-      max-width: 120px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .podium-player-score {
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: var(--gold2);
-      margin-bottom: 0.4rem;
-    }
-
-    .podium-block {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 110px;
-      border-radius: 8px 8px 0 0;
-      font-size: 2rem;
-    }
-
-    .podium-col:nth-child(1) .podium-block {
-      height: 100px;
-      background: linear-gradient(180deg, rgba(180,180,210,0.3), rgba(140,140,170,0.1));
-      border: 2px solid rgba(180,180,210,0.6);
-      border-bottom: none;
-    }
-
-    .podium-col.winner .podium-block {
-      height: 140px;
-      background: linear-gradient(180deg, rgba(0,212,255,0.3), rgba(0,140,200,0.1));
-      border: 2px solid var(--gold);
-      border-bottom: none;
-      box-shadow: 0 0 40px rgba(0,212,255,0.3);
-    }
-
-    .podium-col:nth-child(3) .podium-block {
-      height: 70px;
-      background: linear-gradient(180deg, rgba(205,127,50,0.3), rgba(160,100,40,0.1));
-      border: 2px solid rgba(205,127,50,0.6);
-      border-bottom: none;
-    }
-
-    .podium-col.winner .podium-player-name {
-      font-size: 1.2rem;
-      color: var(--gold);
-      text-shadow: 0 0 15px rgba(0,212,255,0.5);
-    }
-
-    .podium-col.winner .podium-player-score {
-      font-size: 1.1rem;
-    }
-
-    .final-podium {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      margin-bottom: 2rem;
-    }
-
-    .final-podium-item {
-      display: flex;
-      align-items: center;
-      gap: 1.2rem;
-      padding: 0.75rem 1.5rem;
-      border-radius: var(--radius);
-      animation: podiumReveal 0.6s ease both;
-    }
-
-    .final-podium-item:nth-child(1) {
-      background: rgba(0,212,255,0.12);
-      border: 2px solid var(--gold);
-      box-shadow: 0 0 40px rgba(0,212,255,0.25);
-      animation-delay: 0.1s;
-    }
-
-    .final-podium-item:nth-child(2) {
-      background: rgba(180,180,210,0.06);
-      border: 2px solid rgba(180,180,210,0.4);
-      animation-delay: 0.3s;
-    }
-
-    .final-podium-item:nth-child(3) {
-      background: rgba(205,127,50,0.06);
-      border: 2px solid rgba(205,127,50,0.4);
-      animation-delay: 0.5s;
-    }
-
-    .final-podium-item:nth-child(n+4) {
-      background: rgba(255,255,255,0.02);
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-
-    @keyframes podiumReveal {
-      from { transform: scale(0.85) translateY(20px); opacity: 0; }
-      to   { transform: scale(1)    translateY(0);    opacity: 1; }
-    }
-
-    .final-medal { font-size: 2rem; width: 40px; text-align: center; }
-    .final-name  { flex: 1; font-size: 1.5rem; font-weight: 700; color: var(--white); text-align: left; }
-    .final-score { font-size: 1.5rem; font-weight: 800; color: var(--gold2); }
-
-    .final-actions {
-      display: flex;
-      justify-content: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-
-    .final-btn-new-game {
-      padding: 1rem 2.5rem;
-      background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(0,140,200,0.1));
-      border: 2px solid var(--gold);
-      border-radius: 12px;
-      color: var(--gold);
-      font-size: 1.2rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
-      box-shadow: 0 0 30px rgba(0,212,255,0.2);
-    }
-
-    .final-btn-new-game:hover {
-      background: rgba(0,212,255,0.25);
-      box-shadow: 0 0 50px rgba(0,212,255,0.4);
-      transform: translateY(-2px);
-    }
-
-    /* ===========================
-       BOUTONS HÔTE FLOTTANTS
-    =========================== */
-    .host-controls {
+    /* ===================================================
+       HOST CONTROLS (floating, bottom-right)
+       =================================================== */
+    #host-controls {
       position: fixed;
-      bottom: 2rem;
-      right: 2rem;
+      bottom: 78px;
+      right: 1.25rem;
       display: flex;
       flex-direction: column;
-      align-items: flex-end;
-      gap: 0.75rem;
+      gap: 0.6rem;
       z-index: 200;
     }
 
-    .host-controls.hidden { display: none; }
+    #host-controls.host-hidden {
+      display: none;
+    }
 
     .host-btn {
-      padding: 0.9rem 1.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.2rem;
       border: none;
-      border-radius: 12px;
-      font-size: 1.1rem;
+      border-radius: 100px;
+      font-size: 0.9rem;
       font-weight: 700;
       cursor: pointer;
-      transition: all 0.2s;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      transition: transform 0.18s, box-shadow 0.18s, background 0.18s;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
       white-space: nowrap;
     }
 
-    .host-btn-next {
-      background: #00FF88;
+    #btn-end-game {
+      background: #E21B3C;
+      color: #fff;
+    }
+
+    #btn-end-game:hover {
+      background: #ff2244;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(226, 27, 60, 0.5);
+    }
+
+    #btn-next-question {
+      background: #00D4FF;
       color: #000;
     }
 
-    .host-btn-next:hover {
-      background: #00ffaa;
+    #btn-next-question:hover {
+      background: #00EEFF;
       transform: translateY(-2px);
-      box-shadow: 0 6px 30px rgba(0,255,136,0.5);
+      box-shadow: 0 6px 20px rgba(0, 212, 255, 0.5);
     }
 
-    .host-btn-next:active {
-      transform: translateY(0) scale(0.97);
+    #btn-next-question.btn-hidden {
+      display: none;
     }
 
-    .host-btn-end {
-      background: rgba(255,51,102,0.85);
+    /* ===================================================
+       FINAL SCREEN (podium + confetti)
+       =================================================== */
+    #screen-final {
+      flex-direction: column;
+      align-items: center;
+      background: #1A1A2E;
+      overflow-y: auto;
+      padding: 2.5rem 1rem 7rem;
+      position: relative;
+    }
+
+    /* Confetti canvas */
+    #confetti-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .final-title {
+      position: relative;
+      z-index: 10;
+      font-size: clamp(1.5rem, 4vw, 2.4rem);
+      font-weight: 900;
+      color: #00D4FF;
+      text-align: center;
+      text-shadow: 0 0 30px rgba(0, 212, 255, 0.7);
+      margin-bottom: 0.25rem;
+    }
+
+    .final-subtitle {
+      position: relative;
+      z-index: 10;
+      font-size: 1rem;
+      color: #6B8CAA;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    /* Podium */
+    .podium-wrap {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      width: 100%;
+      max-width: 620px;
+    }
+
+    /* slot order: left=2nd, center=1st, right=3rd */
+    .podium-slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      max-width: 170px;
+    }
+
+    .podium-slot:nth-child(1) { animation: podRise 0.7s 0.3s ease both; }  /* 2nd */
+    .podium-slot:nth-child(2) { animation: podRise 0.7s 0.05s ease both; } /* 1st */
+    .podium-slot:nth-child(3) { animation: podRise 0.7s 0.5s ease both; }  /* 3rd */
+
+    @keyframes podRise {
+      from { transform: translateY(50px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    .podium-crown {
+      font-size: 1.6rem;
+      animation: crownBob 2s ease-in-out infinite;
+      margin-bottom: 0.2rem;
+    }
+
+    @keyframes crownBob {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-5px); }
+    }
+
+    .podium-avatar-big {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      font-weight: 900;
       color: #fff;
+      margin-bottom: 0.4rem;
+      box-shadow: 0 0 18px rgba(0, 0, 0, 0.5);
+    }
+
+    /* 1st place slot (center, child 2) gets bigger avatar */
+    .podium-slot:nth-child(2) .podium-avatar-big {
+      width: 66px;
+      height: 66px;
+      font-size: 1.6rem;
+      box-shadow: 0 0 28px rgba(0, 212, 255, 0.5);
+    }
+
+    .podium-name-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+      max-width: 130px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-bottom: 0.2rem;
+    }
+
+    .podium-slot:nth-child(2) .podium-name-label {
+      font-size: 1.05rem;
+      color: #00D4FF;
+      text-shadow: 0 0 12px rgba(0, 212, 255, 0.5);
+    }
+
+    .podium-score-label {
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: #00D4FF;
+      margin-bottom: 0.4rem;
+      font-family: 'Courier New', monospace;
+    }
+
+    .podium-slot:nth-child(2) .podium-score-label {
+      font-size: 1.15rem;
+    }
+
+    .podium-block {
+      width: 100%;
+      border-radius: 8px 8px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    /* 2nd */
+    .podium-slot:nth-child(1) .podium-block {
+      height: 70px;
+      background: linear-gradient(180deg, rgba(168,168,200,0.25), rgba(168,168,200,0.05));
+      border: 2px solid #A8A8C8;
+      border-bottom: none;
+    }
+
+    /* 1st */
+    .podium-slot:nth-child(2) .podium-block {
+      height: 110px;
+      background: linear-gradient(180deg, rgba(0,212,255,0.25), rgba(0,212,255,0.05));
+      border: 2px solid #00D4FF;
+      border-bottom: none;
+      box-shadow: 0 0 28px rgba(0, 212, 255, 0.3);
+    }
+
+    /* 3rd */
+    .podium-slot:nth-child(3) .podium-block {
+      height: 50px;
+      background: linear-gradient(180deg, rgba(205,127,50,0.25), rgba(205,127,50,0.05));
+      border: 2px solid #cd7f32;
+      border-bottom: none;
+    }
+
+    /* Full rankings list (rank 4+) */
+    .rankings-list {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      width: 100%;
+      max-width: 480px;
+      margin-bottom: 2rem;
+    }
+
+    .rank-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 1rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+    }
+
+    .rank-pos {
+      font-size: 0.9rem;
+      color: #6B8CAA;
+      width: 28px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .rank-name {
+      flex: 1;
       font-size: 0.95rem;
-      padding: 0.6rem 1.2rem;
+      font-weight: 600;
+      color: #fff;
     }
 
-    .host-btn-end:hover {
-      background: #FF3366;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 30px rgba(255,51,102,0.4);
+    .rank-score {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #00D4FF;
+      font-family: 'Courier New', monospace;
     }
 
-    .host-btn.hidden { display: none !important; }
-
-    /* Badge hôte dans le header */
-    .host-badge {
+    /* New game button */
+    .btn-new-game {
+      position: relative;
+      z-index: 10;
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.25rem 0.75rem;
-      background: rgba(0,255,136,0.1);
-      border: 1px solid rgba(0,255,136,0.4);
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: var(--green);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
+      gap: 0.6rem;
+      padding: 0.85rem 2rem;
+      background: #00D4FF;
+      color: #000;
+      border: none;
+      border-radius: 100px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+      box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
     }
 
-    /* ===========================
-       RESPONSIVE MOBILE (< 768px)
-    =========================== */
-    @media (max-width: 768px) {
-      body, html { overflow: auto; }
+    .btn-new-game:hover {
+      background: #00EEFF;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(0, 212, 255, 0.55);
+    }
 
-      .tv-header {
-        padding: 0.5rem 1rem;
-        height: auto;
-        flex-wrap: wrap;
+    /* ===================================================
+       NOTIFICATION TOAST
+       =================================================== */
+    #toast-container {
+      position: fixed;
+      top: 1.2rem;
+      right: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    .toast {
+      padding: 0.65rem 1.1rem;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      animation: toastIn 0.3s ease;
+      pointer-events: none;
+      max-width: 280px;
+    }
+
+    .toast.success { background: #00FF88; color: #000; }
+    .toast.error   { background: #FF3366; color: #fff; }
+    .toast.info    { background: #00D4FF; color: #000; }
+    .toast.warning { background: #FFD700; color: #000; }
+
+    @keyframes toastIn {
+      from { transform: translateX(110%); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+
+    @keyframes toastOut {
+      from { transform: translateX(0);    opacity: 1; }
+      to   { transform: translateX(110%); opacity: 0; }
+    }
+
+    /* ===================================================
+       MOBILE RESPONSIVE
+       =================================================== */
+    @media (max-width: 767px) {
+      .col-text {
+        font-size: 0.7rem;
+        -webkit-line-clamp: 3;
+      }
+
+      .avatar-circle {
+        width: 28px;
+        height: 28px;
+        font-size: 0.7rem;
+      }
+
+      #question-text {
+        font-size: 0.95rem;
+      }
+
+      #game-header {
+        padding: 0 0.75rem;
         gap: 0.5rem;
       }
 
-      .tv-timer { width: 52px; height: 52px; }
-      .timer-number { font-size: 1.1rem; }
-
-      .tv-main {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto auto;
-        overflow: auto;
+      .header-logo span {
+        display: none;
       }
 
-      .tv-question-zone {
-        border-right: none;
-        border-bottom: 2px solid var(--border);
-        padding: 1.2rem 1rem;
+      #leaderboard-bar {
+        height: 56px;
+        gap: 0.4rem;
+        padding: 0 0.6rem;
       }
 
-      .tv-question-text { font-size: 1.15rem; margin-bottom: 1rem; }
-      .tv-options-grid  { gap: 0.6rem; }
-      .tv-option        { font-size: 0.9rem; padding: 0.7rem 0.9rem; }
-
-      .tv-leaderboard { padding: 1rem; }
-
-      .final-title  { font-size: 2rem; }
-      .final-trophy { font-size: 4rem; }
-      .final-name   { font-size: 1.1rem; }
-      .final-score  { font-size: 1.1rem; }
-
-      .host-controls {
-        bottom: 1rem;
-        right: 1rem;
+      .lb-name {
+        max-width: 55px;
       }
 
-      .host-btn { font-size: 0.95rem; padding: 0.75rem 1.2rem; }
-    }
+      #host-controls {
+        bottom: 66px;
+        right: 0.75rem;
+      }
 
-    @media (max-width: 480px) {
-      .tv-options-grid { grid-template-columns: 1fr; }
-      .tv-question-counter { font-size: 1rem; }
-      .tv-question-counter span:first-child { font-size: 1.4rem; }
-
-      .final-podium-visual { height: 150px; }
-      .podium-block { width: 80px; }
-      .podium-col.winner .podium-block { height: 110px; }
-      .podium-col:nth-child(1) .podium-block { height: 80px; }
-      .podium-col:nth-child(3) .podium-block { height: 55px; }
+      .host-btn {
+        font-size: 0.82rem;
+        padding: 0.55rem 1rem;
+      }
     }
   </style>
+</head>
+<body>
 
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container"></div>
+
+  <!-- ================================================== -->
+  <!-- SCREEN: WAITING                                     -->
+  <!-- ================================================== -->
+  <div id="screen-waiting" class="screen active">
+    <i class="fas fa-tv waiting-tv-icon"></i>
+    <div class="waiting-title">Vue Spectateur</div>
+    <div class="waiting-subtitle">Connexion en cours...</div>
+    <div class="waiting-code-label">Code de partie</div>
+    <div class="waiting-code" id="display-code">----</div>
+    <div class="waiting-spinner">
+      <div class="spinner-ring"></div>
+      <span>En attente de la partie...</span>
+    </div>
+  </div>
+
+  <!-- ================================================== -->
+  <!-- SCREEN: GAME                                        -->
+  <!-- ================================================== -->
+  <div id="screen-game" class="screen">
+
+    <!-- HEADER -->
+    <header id="game-header">
+      <div class="header-logo">
+        <i class="fas fa-question-circle"></i>
+        <span>Question pour un Champion</span>
+      </div>
+
+      <div class="header-center">
+        <div id="question-counter">Q ? / ?</div>
+        <div class="timer-svg-wrap">
+          <svg id="timer-svg" viewBox="0 0 100 100">
+            <circle id="timer-track" cx="50" cy="50" r="42" />
+            <circle id="timer-arc"   cx="50" cy="50" r="42" />
+          </svg>
+          <div id="timer-text">--</div>
+        </div>
+      </div>
+
+      <div class="header-spacer"></div>
+    </header>
+
+    <!-- QUESTION ZONE -->
+    <div id="question-zone">
+      <div id="question-text">En attente de la premiere question...</div>
+      <div id="correct-banner"></div>
+    </div>
+
+    <!-- OPTIONS COLUMNS (built by JS) -->
+    <div id="options-area"></div>
+
+    <!-- PROGRESS BAR -->
+    <div id="progress-zone">
+      <div id="answers-track">
+        <div id="answers-fill"></div>
+      </div>
+      <div id="answers-label">0 / 0 ont repondu</div>
+    </div>
+
+    <!-- LEADERBOARD BAR -->
+    <div id="leaderboard-bar"></div>
+
+  </div>
+
+  <!-- ================================================== -->
+  <!-- SCREEN: FINAL                                       -->
+  <!-- ================================================== -->
+  <div id="screen-final" class="screen">
+    <canvas id="confetti-canvas"></canvas>
+
+    <div class="final-title">Partie terminee !</div>
+    <div class="final-subtitle">Classement final</div>
+
+    <!--
+      Podium: visual order = 2nd (left) | 1st (center) | 3rd (right)
+      DOM order matches visual order so flex align-items:flex-end works correctly.
+    -->
+    <div class="podium-wrap" id="podium-wrap">
+      <!-- 2nd place -->
+      <div class="podium-slot" id="pod-slot-2">
+        <div class="podium-avatar-big" id="pod-avatar-2"></div>
+        <div class="podium-name-label"  id="pod-name-2">---</div>
+        <div class="podium-score-label" id="pod-score-2">0 pts</div>
+        <div class="podium-block">&#x1F948;</div>
+      </div>
+      <!-- 1st place -->
+      <div class="podium-slot" id="pod-slot-1">
+        <div class="podium-crown">&#x1F451;</div>
+        <div class="podium-avatar-big" id="pod-avatar-1"></div>
+        <div class="podium-name-label"  id="pod-name-1">---</div>
+        <div class="podium-score-label" id="pod-score-1">0 pts</div>
+        <div class="podium-block">&#x1F947;</div>
+      </div>
+      <!-- 3rd place -->
+      <div class="podium-slot" id="pod-slot-3">
+        <div class="podium-avatar-big" id="pod-avatar-3"></div>
+        <div class="podium-name-label"  id="pod-name-3">---</div>
+        <div class="podium-score-label" id="pod-score-3">0 pts</div>
+        <div class="podium-block">&#x1F949;</div>
+      </div>
+    </div>
+
+    <!-- Rankings 4+ -->
+    <div class="rankings-list" id="rankings-list"></div>
+
+    <button class="btn-new-game" id="btn-new-game">
+      <i class="fas fa-redo"></i> Nouvelle partie
+    </button>
+  </div>
+
+  <!-- HOST CONTROLS (fixed floating) -->
+  <div id="host-controls" class="host-hidden">
+    <button class="host-btn" id="btn-next-question">
+      &#10145;&#65039; Question suivante
+    </button>
+    <button class="host-btn" id="btn-end-game">
+      &#9209;&#65039; Terminer la partie
+    </button>
+  </div>
+
+  <!-- Socket.IO CDN -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
   <script>
-    // ============================================
-    // SPECTATE.HTML — Vue spectateur / Hôte TV
-    // ============================================
+  // ======================================================
+  // SPECTATE.HTML — Logic
+  // ======================================================
 
-    const BACKEND_URL = 'https://questionpourunchampion-backend.onrender.com';
-    const TIMER_CIRCUMFERENCE = 263.9; // 2π × 42
+  const BACKEND_URL = 'https://questionpourunchampion-backend.onrender.com';
 
-    let socket = null;
-    let gameCode = null;
-    let isHostMode = false;
-    let hostName = null;
-    let currentTimerInterval = null;
-    let currentOptions = []; // mémoriser les options pour révéler la bonne réponse
-    let questionActive = false; // vrai pendant le timer
+  // --- URL params ---
+  const _params   = new URLSearchParams(window.location.search);
+  const gameCode  = (_params.get('code') || '').toUpperCase();
+  const isHost    = _params.get('host') === 'true';
 
-    // Utilitaires d'écrans
-    function showScreen(id) {
-      document.querySelectorAll('.screen').forEach(s => {
-        s.classList.remove('screen-active');
-        s.style.display = 'none';
-      });
-      const target = document.getElementById(id);
-      if (target) {
-        target.style.display = 'flex';
-        target.classList.add('screen-active');
-      }
+  // --- App state ---
+  let socket          = null;
+  let players         = [];   // [{name, score, isHost}] — non-host players
+  let prevScores      = {};   // name -> score before last question-results
+
+  // Per-question option state
+  let optionTextToIdx = {};   // option text -> column index (0-3)
+  let optionCounts    = [0, 0, 0, 0];  // answers per column
+
+  // Timer
+  let timerInterval   = null;
+  let timerTotal      = 1;
+
+  // --- Constants ---
+  const CIRCUMFERENCE   = 2 * Math.PI * 42;   // 263.9
+  const OPTION_COLORS   = ['#E21B3C', '#1368CE', '#26890C', '#FFA602'];
+  const OPTION_ICONS    = ['\u25b2', '\u25c6', '\u25cf', '\u25a0']; // ▲ ◆ ● ■
+  const OPTION_LETTERS  = ['A', 'B', 'C', 'D'];
+  const AVATAR_COLORS   = [
+    '#E21B3C', '#1368CE', '#26890C', '#FFA602', '#9B59B6', '#E67E22'
+  ];
+
+  // ======================================================
+  // UTILITIES
+  // ======================================================
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function avatarColor(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) {
+      h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+    }
+    return AVATAR_COLORS[h % AVATAR_COLORS.length];
+  }
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
+  }
+
+  function toast(msg, type) {
+    type = type || 'info';
+    const box = document.getElementById('toast-container');
+    if (!box) return;
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.textContent = msg;
+    box.appendChild(el);
+    setTimeout(function () {
+      el.style.animation = 'toastOut 0.3s ease forwards';
+      setTimeout(function () { el.remove(); }, 320);
+    }, 2800);
+  }
+
+  // ======================================================
+  // BUILD OPTION COLUMNS
+  // ======================================================
+
+  function buildColumns() {
+    const area = document.getElementById('options-area');
+    area.innerHTML = '';
+    for (let i = 0; i < 4; i++) {
+      const col = document.createElement('div');
+      col.className  = 'option-col';
+      col.dataset.idx = i;
+      col.innerHTML   = '<div class="col-header">'
+        + '<span class="col-icon">' + OPTION_ICONS[i] + '</span>'
+        + '<span class="col-letter">' + OPTION_LETTERS[i] + '</span>'
+        + '<span class="col-text" id="col-text-' + i + '"></span>'
+        + '</div>'
+        + '<div class="correct-check" id="col-check-' + i + '">\u2705</div>'
+        + '<div class="avatars-container" id="col-avatars-' + i + '"></div>'
+        + '<div class="col-bar-wrap">'
+        +   '<div class="col-bar-track">'
+        +     '<div class="col-bar-fill" id="col-bar-' + i + '"></div>'
+        +   '</div>'
+        +   '<div class="col-count-label" id="col-count-' + i + '">0</div>'
+        + '</div>';
+      area.appendChild(col);
+    }
+  }
+
+  // ======================================================
+  // TIMER (SVG circle)
+  // ======================================================
+
+  function startTimer(limitMs) {
+    stopTimer();
+    const total   = Math.floor(limitMs / 1000);
+    timerTotal    = total || 1;
+    let remaining = total;
+
+    const arc  = document.getElementById('timer-arc');
+    const text = document.getElementById('timer-text');
+
+    function render() {
+      var frac   = remaining / timerTotal;
+      var offset = CIRCUMFERENCE * (1 - frac);
+      var urgent = remaining <= 5;
+      var color  = urgent ? '#FF3366' : '#00D4FF';
+      if (arc)  { arc.style.strokeDashoffset = offset; arc.style.stroke = color; }
+      if (text) { text.textContent = remaining; text.style.color = color; }
     }
 
-    // ============================================
-    // INITIALISATION
-    // ============================================
+    render();
+    timerInterval = setInterval(function () {
+      remaining = Math.max(0, remaining - 1);
+      render();
+      if (remaining <= 0) stopTimer();
+    }, 1000);
+  }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const params = new URLSearchParams(window.location.search);
-      gameCode = params.get('code');
-      isHostMode = params.get('host') === 'true';
+  function stopTimer() {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  }
 
-      if (!gameCode) {
-        document.getElementById('waiting-status').textContent =
-          'Aucun code de partie dans l\'URL. Ajoutez ?code=XXXXXX';
-        return;
+  // ======================================================
+  // PROGRESS BAR
+  // ======================================================
+
+  function updateProgress(answered, total) {
+    var pct  = total > 0 ? Math.round((answered / total) * 100) : 0;
+    var fill = document.getElementById('answers-fill');
+    var lbl  = document.getElementById('answers-label');
+    if (fill) fill.style.width = pct + '%';
+    if (lbl)  lbl.textContent  = answered + ' / ' + total + ' ont repondu';
+  }
+
+  // ======================================================
+  // LEADERBOARD
+  // ======================================================
+
+  function renderLeaderboard(rankList, showDeltas) {
+    var bar = document.getElementById('leaderboard-bar');
+    if (!bar) return;
+
+    var sorted = rankList.slice().sort(function (a, b) {
+      return (b.score || 0) - (a.score || 0);
+    });
+    var top8   = sorted.slice(0, 8);
+    var medals = ['\uD83E\uDD47', '\uD83E\uDD48', '\uD83E\uDD49'];
+
+    bar.innerHTML = '';
+    top8.forEach(function (p, i) {
+      var delta    = showDeltas ? ((p.score || 0) - (prevScores[p.name] || 0)) : 0;
+      var deltaHtml = '';
+      if (showDeltas && delta !== 0) {
+        var sign  = delta > 0 ? '+' : '';
+        var cls   = delta > 0 ? 'positive' : 'negative';
+        deltaHtml = '<span class="lb-delta ' + cls + '">' + sign + delta + '</span>';
       }
-
-      document.getElementById('waiting-code').textContent = gameCode.toUpperCase();
-      document.getElementById('tv-game-code').textContent = gameCode.toUpperCase();
-
-      // En mode hôte, récupérer le nom depuis sessionStorage
-      if (isHostMode) {
-        const storedData = sessionStorage.getItem('multiGameData');
-        if (storedData) {
-          try {
-            const gameData = JSON.parse(storedData);
-            hostName = gameData.hostName || 'Hôte';
-          } catch (e) {
-            hostName = 'Hôte';
-          }
-        }
-        // Afficher le badge hôte dans le header
-        const tvTitle = document.querySelector('.tv-title');
-        if (tvTitle) {
-          const badge = document.createElement('span');
-          badge.className = 'host-badge';
-          badge.innerHTML = '<i class="fas fa-crown"></i> Hôte';
-          tvTitle.appendChild(badge);
-        }
-        setupHostButtons();
-      }
-
-      connectSocket();
+      var item = document.createElement('div');
+      item.className = 'lb-item' + (i === 0 ? ' lb-first' : '');
+      item.innerHTML  = '<span class="lb-medal">' + (medals[i] || '#' + (i + 1)) + '</span>'
+        + '<span class="lb-name">'  + escHtml(p.name)       + '</span>'
+        + '<span class="lb-score">' + (p.score || 0)        + '</span>'
+        + deltaHtml;
+      bar.appendChild(item);
     });
 
-    // ============================================
-    // CONNEXION SOCKET
-    // ============================================
+    // Save new scores for next delta calculation
+    rankList.forEach(function (p) { prevScores[p.name] = p.score || 0; });
+  }
 
-    function connectSocket() {
-      socket = io(BACKEND_URL, {
-        transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionDelay: 1500,
-        timeout: 20000,
-      });
+  // ======================================================
+  // RESET FOR NEW QUESTION
+  // ======================================================
 
-      socket.on('connect', () => {
-        if (isHostMode) {
-          document.getElementById('waiting-status').textContent = 'Reconnexion en tant qu\'hôte...';
-          socket.emit('rejoin-as-host', {
-            gameCode,
-            playerName: hostName || 'Hôte'
-          });
-        } else {
-          document.getElementById('waiting-status').textContent = 'Connecté — rejoindre la partie...';
-          socket.emit('spectate-join', { gameCode });
-        }
-      });
+  function resetQuestion() {
+    optionCounts = [0, 0, 0, 0];
 
-      socket.on('disconnect', () => {
-        document.getElementById('waiting-status').textContent = 'Connexion perdue, reconnexion...';
-      });
+    for (var i = 0; i < 4; i++) {
+      var avs = document.getElementById('col-avatars-' + i);
+      if (avs) avs.innerHTML = '';
 
-      // Réponse rejoin-as-host (mode hôte)
-      socket.on('rejoin-success', (data) => {
-        document.getElementById('waiting-status').textContent = `Hôte reconnecté !`;
-        if (data.players && data.players.length) {
-          updateLeaderboard(data.players.filter(p => !p.isHost), null);
-        }
-        showScreen('screen-game');
-        showHostControls(false); // pas de "Question suivante" tant qu'on n'a pas de résultats
-      });
+      var bar = document.getElementById('col-bar-' + i);
+      if (bar) bar.style.width = '0%';
 
-      // Réponse spectate-join (mode spectateur)
-      socket.on('spectate-joined', (data) => {
-        document.getElementById('waiting-status').textContent = `Partie "${data.gameCode}" trouvée !`;
+      var cnt = document.getElementById('col-count-' + i);
+      if (cnt) cnt.textContent = '0';
 
-        if (data.players && data.players.length) {
-          updateLeaderboard(data.players.filter(p => !p.isHost), null);
-        }
+      var chk = document.getElementById('col-check-' + i);
+      if (chk) chk.style.display = 'none';
 
-        if (data.state === 'playing') {
-          showScreen('screen-game');
-        }
-      });
-
-      // Partie démarrée (si on est encore en attente)
-      socket.on('game-started', () => {
-        showScreen('screen-game');
-        if (isHostMode) showHostControls(false);
-      });
-
-      // Nouvelle question
-      socket.on('new-question', (data) => {
-        showScreen('screen-game');
-        currentOptions = data.options || [];
-        questionActive = true;
-
-        // Compteur
-        document.getElementById('tv-q-current').textContent = data.questionNumber;
-        document.getElementById('tv-q-total').textContent   = data.totalQuestions;
-
-        // Question
-        document.getElementById('tv-question-text').textContent = data.question;
-
-        // Options (mode neutre)
-        renderOptions(data.options, null);
-
-        // Timer
-        const seconds = Math.round((data.timeLimit || 30000) / 1000);
-        startCircularTimer(seconds);
-
-        // En mode hôte : masquer "Question suivante" pendant la question
-        if (isHostMode) {
-          hideNextBtn();
-        }
-      });
-
-      // Résultats de la question
-      socket.on('question-results', (data) => {
-        stopTimer();
-        questionActive = false;
-
-        // Révéler la bonne réponse
-        renderOptions(currentOptions, data.correctAnswer);
-
-        // Leaderboard avec deltas
-        if (data.rankings) {
-          updateLeaderboard(
-            data.rankings.filter(p => !p.isHost),
-            data.answers
-          );
-        }
-
-        // En mode hôte : afficher "Question suivante"
-        if (isHostMode) {
-          showNextBtn();
-        }
-      });
-
-      // Fin de partie
-      socket.on('game-finished', (data) => {
-        stopTimer();
-        questionActive = false;
-        renderFinalScreen(data.rankings || []);
-        setTimeout(() => {
-          showScreen('screen-final');
-          // Cacher les boutons hôte
-          const hostControls = document.getElementById('host-controls');
-          if (hostControls) hostControls.classList.add('hidden');
-        }, 400);
-      });
-
-      socket.on('error', (data) => {
-        document.getElementById('waiting-status').textContent =
-          data.message || 'Erreur de connexion';
-      });
+      var col = document.querySelector('.option-col[data-idx="' + i + '"]');
+      if (col) { col.classList.remove('correct-col', 'wrong-col'); col.style.opacity = ''; }
     }
 
-    // ============================================
-    // BOUTONS HÔTE
-    // ============================================
+    var banner = document.getElementById('correct-banner');
+    if (banner) banner.style.display = 'none';
+  }
 
-    function setupHostButtons() {
-      const hostControls = document.getElementById('host-controls');
-      if (hostControls) hostControls.classList.remove('hidden');
+  // ======================================================
+  // HOST BUTTON VISIBILITY
+  // ======================================================
 
-      document.getElementById('btn-next-question').addEventListener('click', () => {
-        if (socket) {
-          socket.emit('next-question', { gameCode });
-          hideNextBtn();
-        }
-      });
+  function showNextBtn()  {
+    var b = document.getElementById('btn-next-question');
+    if (b) b.classList.remove('btn-hidden');
+  }
 
-      document.getElementById('btn-end-game').addEventListener('click', () => {
-        if (confirm('Terminer la partie maintenant ?')) {
-          if (socket) socket.emit('end-game', { gameCode });
-        }
-      });
-    }
+  function hideNextBtn() {
+    var b = document.getElementById('btn-next-question');
+    if (b) b.classList.add('btn-hidden');
+  }
 
-    function showNextBtn() {
-      const btn = document.getElementById('btn-next-question');
-      if (btn) {
-        btn.classList.remove('hidden');
-        // Petite animation d'entrée
-        btn.style.animation = 'none';
-        void btn.offsetHeight;
-        btn.style.animation = 'btnAppear 0.3s cubic-bezier(0.34,1.56,0.64,1)';
-      }
-    }
+  // ======================================================
+  // SOCKET EVENTS
+  // ======================================================
 
-    function hideNextBtn() {
-      const btn = document.getElementById('btn-next-question');
-      if (btn) btn.classList.add('hidden');
-    }
+  function connectSocket() {
+    socket = io(BACKEND_URL, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      timeout: 20000
+    });
 
-    function showHostControls(showNext) {
-      const hostControls = document.getElementById('host-controls');
-      if (hostControls) hostControls.classList.remove('hidden');
-      if (showNext) {
-        showNextBtn();
+    socket.on('connect', function () {
+      toast('Connecte !', 'success');
+
+      if (isHost) {
+        var hostName = 'Hote';
+        try {
+          var stored = sessionStorage.getItem('multiGameData');
+          if (stored) {
+            var d = JSON.parse(stored);
+            hostName = d.hostName || 'Hote';
+          }
+        } catch (e) {}
+        socket.emit('rejoin-as-host', { gameCode: gameCode, playerName: hostName });
       } else {
-        hideNextBtn();
+        socket.emit('spectate-join', { gameCode: gameCode });
       }
+    });
+
+    socket.on('disconnect', function () {
+      toast('Connexion perdue...', 'warning');
+    });
+
+    // Host rejoined
+    socket.on('rejoin-success', function (data) {
+      players = (data.players || []).filter(function (p) { return !p.isHost; });
+      renderLeaderboard(players, false);
+      showScreen('screen-game');
+    });
+
+    // Spectator joined (non-host)
+    socket.on('spectate-joined', function (data) {
+      players = (data.players || []).filter(function (p) { return !p.isHost; });
+      renderLeaderboard(players, false);
+      showScreen('screen-game');
+    });
+
+    // Game started
+    socket.on('game-started', function () {
+      showScreen('screen-game');
+      resetQuestion();
+    });
+
+    // New question
+    socket.on('new-question', function (data) {
+      handleNewQuestion(data);
+    });
+
+    // Player answered
+    socket.on('player-answered', function (data) {
+      handlePlayerAnswered(data);
+    });
+
+    // Question results
+    socket.on('question-results', function (data) {
+      handleQuestionResults(data);
+    });
+
+    // Game finished
+    socket.on('game-finished', function (data) {
+      handleGameFinished(data);
+    });
+
+    socket.on('error', function (data) {
+      toast((data && data.message) ? data.message : 'Erreur', 'error');
+    });
+  }
+
+  // ======================================================
+  // GAME HANDLERS
+  // ======================================================
+
+  function handleNewQuestion(data) {
+    showScreen('screen-game');
+    hideNextBtn();
+    stopTimer();
+    resetQuestion();
+
+    // Counter
+    var counter = document.getElementById('question-counter');
+    if (counter) {
+      counter.textContent = 'Q ' + data.questionNumber + ' / ' + data.totalQuestions;
     }
 
-    // ============================================
-    // TIMER CIRCULAIRE
-    // ============================================
+    // Question text
+    var qText = document.getElementById('question-text');
+    if (qText) qText.textContent = data.question || '';
 
-    function startCircularTimer(totalSeconds) {
-      const circle = document.getElementById('timer-circle');
-      const numberEl = document.getElementById('timer-number');
-      const timerEl = document.querySelector('.tv-timer');
-
-      stopTimer();
-
-      circle.style.transition = 'none';
-      circle.style.strokeDashoffset = '0';
-      circle.style.stroke = 'var(--gold)';
-      void circle.offsetHeight;
-
-      timerEl.classList.remove('timer-urgent');
-      numberEl.textContent = totalSeconds;
-
-      let remaining = totalSeconds;
-      const stepMs = 50;
-      const totalMs = totalSeconds * 1000;
-      const startTime = Date.now();
-
-      currentTimerInterval = setInterval(() => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / totalMs, 1);
-
-        circle.style.strokeDashoffset = (TIMER_CIRCUMFERENCE * progress).toFixed(2);
-
-        const newRemaining = Math.ceil(totalSeconds - (elapsed / 1000));
-        if (newRemaining !== remaining) {
-          remaining = newRemaining;
-          numberEl.textContent = Math.max(0, remaining);
-
-          if (remaining <= 5) {
-            timerEl.classList.add('timer-urgent');
-          }
-        }
-
-        if (progress >= 1) stopTimer();
-      }, stepMs);
+    // Option labels
+    var options = data.options || [];
+    optionTextToIdx = {};
+    for (var i = 0; i < 4; i++) {
+      var txt    = options[i] || '';
+      var colTxt = document.getElementById('col-text-' + i);
+      if (colTxt) colTxt.textContent = txt;
+      optionTextToIdx[txt] = i;
     }
 
-    function stopTimer() {
-      if (currentTimerInterval) {
-        clearInterval(currentTimerInterval);
-        currentTimerInterval = null;
-      }
+    // Progress
+    var total = (players.length) || (data.totalPlayers || 0);
+    updateProgress(0, total);
+
+    // Start timer
+    startTimer(data.timeLimit || 30000);
+  }
+
+  function handlePlayerAnswered(data) {
+    // data: { playerId, playerName, answer, totalAnswered, totalPlayers }
+    var idx = optionTextToIdx[data.answer];
+    if (idx !== undefined && idx !== null) {
+      addAvatar(idx, data.playerName);
+      optionCounts[idx]++;
+
+      var cnt = document.getElementById('col-count-' + idx);
+      if (cnt) cnt.textContent = optionCounts[idx];
     }
+    updateProgress(data.totalAnswered, data.totalPlayers);
+  }
 
-    // ============================================
-    // OPTIONS
-    // ============================================
+  function handleQuestionResults(data) {
+    stopTimer();
 
-    const LETTERS = ['A', 'B', 'C', 'D'];
+    var correct    = data.correctAnswer || '';
+    var correctIdx = optionTextToIdx[correct];
 
-    function renderOptions(options, correctAnswer) {
-      const grid = document.getElementById('tv-options-grid');
-      if (!grid) return;
-
-      grid.innerHTML = '';
-      options.forEach((opt, idx) => {
-        const div = document.createElement('div');
-        div.className = 'tv-option';
-        if (correctAnswer !== null && correctAnswer !== undefined) {
-          div.classList.add(opt === correctAnswer ? 'correct' : 'wrong');
-        }
-        div.innerHTML = `
-          <span class="tv-option-letter">${LETTERS[idx] || idx + 1}</span>
-          <span>${opt}</span>
-        `;
-        grid.appendChild(div);
+    // Tally counts from answers array for accurate bars
+    var countByIdx = [0, 0, 0, 0];
+    if (data.answers) {
+      data.answers.forEach(function (a) {
+        var idx = optionTextToIdx[a.answer];
+        if (idx !== undefined) countByIdx[idx]++;
       });
     }
+    var maxCount = Math.max(1, countByIdx[0], countByIdx[1], countByIdx[2], countByIdx[3]);
 
-    // ============================================
-    // LEADERBOARD
-    // ============================================
+    for (var i = 0; i < 4; i++) {
+      var col = document.querySelector('.option-col[data-idx="' + i + '"]');
+      if (!col) continue;
 
-    let previousScores = {};
-
-    function updateLeaderboard(players, answers) {
-      const list = document.getElementById('tv-leaderboard-list');
-      if (!list) return;
-
-      const top8 = players.slice(0, 8);
-
-      const gained = {};
-      if (answers) {
-        answers.forEach(a => {
-          gained[a.playerName] = a.pointsEarned || 0;
-        });
+      if (i === correctIdx) {
+        col.classList.add('correct-col');
+        var chk = document.getElementById('col-check-' + i);
+        if (chk) chk.style.display = 'block';
+      } else {
+        col.classList.add('wrong-col');
       }
 
+      var bar = document.getElementById('col-bar-' + i);
+      if (bar) bar.style.width = ((countByIdx[i] / maxCount) * 100) + '%';
+
+      var cnt = document.getElementById('col-count-' + i);
+      if (cnt) cnt.textContent = countByIdx[i];
+    }
+
+    // Correct banner
+    var banner = document.getElementById('correct-banner');
+    if (banner) {
+      banner.style.display = 'block';
+      banner.textContent   = '\u2705 Bonne reponse : ' + correct;
+    }
+
+    // Update leaderboard with deltas
+    var rankings = (data.rankings || []).filter(function (p) { return !p.isHost; });
+    renderLeaderboard(rankings, true);
+    players = rankings;
+
+    // Host: show next question button
+    if (isHost) showNextBtn();
+  }
+
+  function handleGameFinished(data) {
+    stopTimer();
+    var rankings = (data.rankings || []).filter(function (p) { return !p.isHost; });
+    renderFinalScreen(rankings);
+    showScreen('screen-final');
+    startConfetti();
+  }
+
+  // ======================================================
+  // ADD AVATAR TO COLUMN
+  // ======================================================
+
+  function addAvatar(idx, playerName) {
+    var container = document.getElementById('col-avatars-' + idx);
+    if (!container) return;
+    var circle = document.createElement('div');
+    circle.className     = 'avatar-circle';
+    circle.style.background = avatarColor(playerName);
+    circle.textContent   = playerName.charAt(0).toUpperCase();
+    circle.title         = playerName;
+    container.appendChild(circle);
+  }
+
+  // ======================================================
+  // FINAL SCREEN
+  // ======================================================
+
+  function renderFinalScreen(rankings) {
+    // Podium: visual DOM order is 2nd | 1st | 3rd
+    var podMap = [
+      { domSuffix: '2', rankIdx: 1 },
+      { domSuffix: '1', rankIdx: 0 },
+      { domSuffix: '3', rankIdx: 2 },
+    ];
+
+    podMap.forEach(function (pm) {
+      var player  = rankings[pm.rankIdx];
+      var slotEl  = document.getElementById('pod-slot-' + pm.domSuffix);
+      var nameEl  = document.getElementById('pod-name-'   + pm.domSuffix);
+      var scoreEl = document.getElementById('pod-score-'  + pm.domSuffix);
+      var avEl    = document.getElementById('pod-avatar-' + pm.domSuffix);
+
+      if (!player) {
+        if (slotEl) slotEl.style.visibility = 'hidden';
+        return;
+      }
+      if (slotEl) slotEl.style.visibility = 'visible';
+      if (nameEl)  nameEl.textContent  = player.name;
+      if (scoreEl) scoreEl.textContent = (player.score || 0) + ' pts';
+      if (avEl) {
+        avEl.style.background = avatarColor(player.name);
+        avEl.textContent      = player.name.charAt(0).toUpperCase();
+      }
+    });
+
+    // Rank 4+
+    var list = document.getElementById('rankings-list');
+    if (list) {
       list.innerHTML = '';
-      const medals = ['🥇', '🥈', '🥉'];
+      rankings.slice(3).forEach(function (p, i) {
+        var row = document.createElement('div');
+        row.className = 'rank-row';
+        row.innerHTML = '<span class="rank-pos">#' + (i + 4) + '</span>'
+          + '<span class="rank-name">' + escHtml(p.name) + '</span>'
+          + '<span class="rank-score">' + (p.score || 0) + ' pts</span>';
+        list.appendChild(row);
+      });
+    }
+  }
 
-      top8.forEach((player, idx) => {
-        const li = document.createElement('li');
-        li.className = 'tv-lb-item';
-        li.style.animationDelay = `${idx * 0.06}s`;
+  // ======================================================
+  // CONFETTI (CSS Canvas)
+  // ======================================================
 
-        const delta = gained[player.name];
-        let deltaHtml = '';
-        if (delta !== undefined && delta !== 0) {
-          const cls = delta > 0 ? '' : 'negative';
-          deltaHtml = `<span class="tv-lb-delta ${cls}">${delta > 0 ? '+' : ''}${delta}</span>`;
+  function startConfetti() {
+    var canvas = document.getElementById('confetti-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+
+    function resize() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    var colors = [
+      '#E21B3C', '#1368CE', '#26890C', '#FFA602',
+      '#00D4FF', '#FF00AA', '#00FF88', '#FFD700'
+    ];
+
+    var particles = [];
+    for (var n = 0; n < 150; n++) {
+      particles.push({
+        x:    Math.random() * canvas.width,
+        y:    (Math.random() * canvas.height) - canvas.height,
+        w:    7 + Math.random() * 8,
+        h:    4 + Math.random() * 5,
+        col:  colors[Math.floor(Math.random() * colors.length)],
+        vy:   2.2 + Math.random() * 3,
+        vx:   (Math.random() - 0.5) * 2.5,
+        rot:  Math.random() * 360,
+        rotV: (Math.random() - 0.5) * 4
+      });
+    }
+
+    var frame;
+    var age    = 0;
+    var active = true;
+
+    function draw() {
+      if (!active) return;
+      age++;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      var globalAlpha = age > 250 ? Math.max(0, 1 - (age - 250) / 110) : 1;
+
+      particles.forEach(function (c) {
+        c.y   += c.vy;
+        c.x   += c.vx;
+        c.rot += c.rotV;
+        if (c.y > canvas.height + 20) {
+          c.y = -20;
+          c.x = Math.random() * canvas.width;
         }
-
-        li.innerHTML = `
-          <span class="tv-lb-rank">${medals[idx] || idx + 1}</span>
-          <span class="tv-lb-name">${player.name}</span>
-          ${deltaHtml}
-          <span class="tv-lb-score">${player.score}</span>
-        `;
-        list.appendChild(li);
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        ctx.rotate((c.rot * Math.PI) / 180);
+        ctx.globalAlpha  = globalAlpha;
+        ctx.fillStyle    = c.col;
+        ctx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h);
+        ctx.restore();
       });
 
-      top8.forEach(p => { previousScores[p.name] = p.score; });
-    }
-
-    // ============================================
-    // ÉCRAN FINAL
-    // ============================================
-
-    function renderFinalScreen(rankings) {
-      const players = rankings.filter(p => !p.isHost);
-      const medals = ['🥇', '🥈', '🥉'];
-
-      // Podium visuel (top 3)
-      const podiumVisual = document.getElementById('final-podium-visual');
-      if (podiumVisual) {
-        const top3 = players.slice(0, 3);
-        // Ordre d'affichage : 2e, 1er, 3e
-        const displayOrder = [top3[1], top3[0], top3[2]];
-        podiumVisual.innerHTML = '';
-        displayOrder.forEach((player, visualIdx) => {
-          if (!player) {
-            const empty = document.createElement('div');
-            empty.className = 'podium-col';
-            empty.style.opacity = '0';
-            podiumVisual.appendChild(empty);
-            return;
-          }
-          const isWinner = visualIdx === 1;
-          const col = document.createElement('div');
-          col.className = 'podium-col' + (isWinner ? ' winner' : '');
-          const rankEmoji = medals[isWinner ? 0 : (visualIdx === 0 ? 1 : 2)];
-          col.innerHTML = `
-            <div class="podium-player-name">${player.name}</div>
-            <div class="podium-player-score">${player.score} pts</div>
-            <div class="podium-block">${rankEmoji}</div>
-          `;
-          podiumVisual.appendChild(col);
-        });
-      }
-
-      // Liste complète
-      const list = document.getElementById('final-podium-list');
-      if (list) {
-        list.innerHTML = '';
-        players.forEach((player, idx) => {
-          const li = document.createElement('li');
-          li.className = 'final-podium-item';
-          li.innerHTML = `
-            <span class="final-medal">${medals[idx] || `#${idx + 1}`}</span>
-            <span class="final-name">${player.name}</span>
-            <span class="final-score">${player.score} pts</span>
-          `;
-          list.appendChild(li);
-        });
-      }
-
-      // Bouton "Nouvelle partie"
-      const btnNewGame = document.getElementById('btn-new-game');
-      if (btnNewGame) {
-        btnNewGame.addEventListener('click', () => {
-          sessionStorage.removeItem('multiGameData');
-          window.location.href = 'multijoueur.html';
-        });
+      if (age < 380) {
+        frame = requestAnimationFrame(draw);
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        active = false;
       }
     }
 
-    // Animation bouton apparition
-    const animStyle = document.createElement('style');
-    animStyle.textContent = `
-      @keyframes btnAppear {
-        from { transform: scale(0.5) translateY(20px); opacity: 0; }
-        to   { transform: scale(1)   translateY(0);    opacity: 1; }
+    draw();
+  }
+
+  // ======================================================
+  // ENTRY POINT
+  // ======================================================
+
+  document.addEventListener('DOMContentLoaded', function () {
+    // Show code in waiting screen
+    var displayCode = document.getElementById('display-code');
+    if (displayCode) displayCode.textContent = gameCode || '----';
+
+    if (!gameCode) {
+      toast('Code de partie manquant dans l\'URL (?code=XXXX)', 'error');
+      return;
+    }
+
+    // Host controls visibility
+    var hostControls = document.getElementById('host-controls');
+    if (isHost && hostControls) {
+      hostControls.classList.remove('host-hidden');
+    }
+
+    // Hide next-question button initially
+    hideNextBtn();
+
+    // Build option columns
+    buildColumns();
+
+    // Buttons
+    document.getElementById('btn-end-game').addEventListener('click', function () {
+      if (confirm('Voulez-vous vraiment terminer la partie ?')) {
+        if (socket) socket.emit('end-game', { gameCode: gameCode });
       }
-    `;
-    document.head.appendChild(animStyle);
+    });
+
+    document.getElementById('btn-next-question').addEventListener('click', function () {
+      if (socket) socket.emit('next-question', { gameCode: gameCode });
+      hideNextBtn();
+    });
+
+    document.getElementById('btn-new-game').addEventListener('click', function () {
+      sessionStorage.removeItem('multiGameData');
+      window.location.href = 'multijoueur.html';
+    });
+
+    // Connect
+    connectSocket();
+  });
   </script>
-
 </body>
 </html>

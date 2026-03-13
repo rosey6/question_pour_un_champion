@@ -109,10 +109,7 @@
         <button id="btn-vote-theme" class="bouton bouton-secondaire hidden">
           🗳️ Voter le thème (IA)
         </button>
-        <button id="btn-spectate" class="bouton bouton-secondaire" title="Ouvrir la vue TV en grand écran">
-          📺 Vue spectateur
-        </button>
-        <button id="btn-demarrer" class="bouton bouton-principal" disabled>
+<button id="btn-demarrer" class="bouton bouton-principal" disabled>
           <i class="fas fa-play"></i> Demarrer la partie
           <span id="btn-demarrer-count">(0/2 min)</span>
         </button>
@@ -1064,18 +1061,6 @@
             btnVoteTheme.disabled = true;
             btnVoteTheme.textContent = '⏳ Vote en cours...';
           }
-        });
-      }
-
-      // Bouton vue spectateur
-      const btnSpectate = document.getElementById('btn-spectate');
-      if (btnSpectate) {
-        btnSpectate.addEventListener('click', () => {
-          const base = window.location.href.includes('localhost') || window.location.href.includes('127.0.0.1')
-            ? window.location.href.split('/').slice(0, -1).join('/')
-            : window.location.origin;
-          const url = `${base}/spectate.html?code=${gameData.gameCode}`;
-          window.open(url, '_blank');
         });
       }
 

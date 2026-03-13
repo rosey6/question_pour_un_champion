@@ -997,6 +997,17 @@ io.on("connection", (socket) => {
       timestamp: Date.now(),
     });
 
+    // Informer tout le monde qu'un joueur vient de répondre (sans révéler si correct)
+    io.to(gameCode).emit('player-answered', {
+      playerId: socket.id,
+      playerName: player.name,
+      answer: answer,
+      totalAnswered: game.answers.length,
+      totalPlayers: Object.keys(game.players).filter(
+        id => !game.players[id].isHost
+      ).length
+    });
+
     // Vérifier si tous les joueurs actifs ont répondu
     const activePlayers = Object.values(game.players).filter(
       (p) => game.mode !== "spectator" || !p.isHost
