@@ -1,10 +1,25 @@
+// ============================================
+// server.js — Point d'entree du serveur
+// Init Express, Socket.IO, middlewares, routes HTTP et handlers Socket.IO
+// ============================================
+
+"use strict";
+
 const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
 const cors = require("cors");
+const helmet = require("helmet");
 const path = require("path");
 const fs = require("fs");
-// Groq API (gratuit) - pas besoin de SDK, on utilise fetch
+const { z } = require("zod");
+const { RateLimiterMemory } = require("rate-limiter-flexible");
+
+// Modules internes
+const { calculerScore, obtenirClassement, POINTS_PAR_RANG } = require("./logique/jeu");
+const { melangerTableau, piocherQuestion, genererQuestionsViaGroq } = require("./logique/questions");
+// Le minuteur serveur est disponible mais non utilise dans ce flux (le timer est gere via setTimeout existant)
+// const { gererMinuteur, arreterMinuteur } = require("./logique/minuteur");
 
 const app = express();
 const server = http.createServer(app);
@@ -12,55 +27,152 @@ const server = http.createServer(app);
 // ============================================
 // CORS / ORIGINS
 // ============================================
-// But: permettre la migration du frontend (ex: Cloudflare Workers) sans casser Socket.IO.
-// - Si ALLOWED_ORIGINS est défini (liste séparée par des virgules), on applique cette allow-list.
-// - Sinon, on garde une liste raisonnable par défaut (Vercel historique + localhost + Workers).
-function getAllowedOrigins() {
-  const raw = (process.env.ALLOWED_ORIGINS || "").trim();
-  if (raw) {
-    return raw
+function obtenirOriginesAutorisees() {
+  const brut = (process.env.ALLOWED_ORIGINS || "").trim();
+  if (brut) {
+    return brut
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
   }
-
   return [
     "https://question-pour-un-champion-murex.vercel.app",
     "https://question-pour-un-championv2.bambaa148.workers.dev",
+    "https://questionpourunchampion.netlify.app",
     "http://localhost:3000",
     "http://localhost:5173",
+    "http://127.0.0.1:5500",
   ];
 }
 
-const allowedOrigins = getAllowedOrigins();
+const originesAutorisees = obtenirOriginesAutorisees();
 
-// Configuration Socket.io
+// Configuration Socket.IO
 const io = socketIo(server, {
   cors: {
-    // Autoriser uniquement les origines listées.
-    origin: allowedOrigins,
+    origin: originesAutorisees,
     methods: ["GET", "POST"],
   },
   transports: ["websocket", "polling"],
 });
 
-// Middleware
+// ============================================
+// HELMET — En-tetes de securite HTTP
+// ============================================
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https://commons.wikimedia.org", "https://cdnjs.cloudflare.com"],
+        connectSrc: ["'self'", ...originesAutorisees],
+        fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: originesAutorisees,
     methods: ["GET", "POST"],
   })
 );
 app.use(express.json());
 
-// Route de santé pour Render
+// ============================================
+// SCHEMAS DE VALIDATION ZOD
+// ============================================
+
+const schemaRejoindrePartie = z.object({
+  gameCode: z.string().regex(/^[A-Z0-9]{4,6}$/, "Code partie : 4-6 caracteres alphanumeriques majuscules"),
+  playerName: z.string().min(1, "Nom de joueur requis").max(20, "Nom de joueur : 20 caracteres maximum"),
+});
+
+const schemaSoumettreReponse = z.object({
+  gameCode: z.string().min(1),
+  answer: z.string().max(200, "Reponse : 200 caracteres maximum"),
+});
+
+const schemaVoteTheme = z.object({
+  gameCode: z.string().min(1),
+  theme: z.string().min(1, "Theme requis"),
+});
+
+const schemaDemarrerPartie = z.object({
+  gameCode: z.string().min(1),
+  settings: z.any().optional(),
+});
+
+/**
+ * validerPayload — Valide un payload avec un schema Zod.
+ * @param {z.ZodSchema} schema
+ * @param {any} donnees
+ * @returns {{ valide: boolean, erreur: string|null, donnees: any }}
+ */
+function validerPayload(schema, donnees) {
+  const resultat = schema.safeParse(donnees);
+  if (resultat.success) {
+    return { valide: true, erreur: null, donnees: resultat.data };
+  }
+  const messagesErreur = resultat.error.issues.map((i) => i.message).join(", ");
+  return { valide: false, erreur: messagesErreur, donnees: null };
+}
+
+// ============================================
+// LIMITEURS DE DEBIT (rate-limiter-flexible)
+// ============================================
+
+const limiteurRejoindre = new RateLimiterMemory({ points: 10, duration: 60, keyPrefix: "rejoindre" });
+const limiteurReponse = new RateLimiterMemory({ points: 5, duration: 10, keyPrefix: "reponse" });
+const limiteurVote = new RateLimiterMemory({ points: 3, duration: 30, keyPrefix: "vote" });
+const limiteurDemarrer = new RateLimiterMemory({ points: 5, duration: 60, keyPrefix: "demarrer" });
+
+/**
+ * verifierLimite — Verifie si une action est autorisee par le limiteur.
+ * @param {RateLimiterMemory} limiteur
+ * @param {string} cle
+ * @returns {Promise<{ autorise: boolean, attente: number }>}
+ */
+async function verifierLimite(limiteur, cle) {
+  try {
+    await limiteur.consume(cle, 1);
+    return { autorise: true, attente: 0 };
+  } catch (resultatRejet) {
+    const attente = Math.ceil((resultatRejet.msBeforeNext || 1000) / 1000);
+    return { autorise: false, attente };
+  }
+}
+
+// ============================================
+// THEMES PREDEFINIS
+// ============================================
+
+const THEMES_PREDEFINIS = [
+  "Histoire",
+  "Géographie",
+  "Sciences",
+  "Littérature",
+  "Cinéma",
+  "Sport",
+  "Musique",
+  "Gastronomie",
+];
+
+// ============================================
+// ROUTES HTTP
+// ============================================
+
 app.get("/health", (req, res) => {
   res.json({
     status: "online",
     service: "Question pour un Champion - Serveur Multijoueur",
     timestamp: new Date().toISOString(),
-    activeGames: Object.keys(games).length,
-    activePlayers: Object.keys(players).length,
+    activeGames: Object.keys(parties).length,
+    activePlayers: Object.keys(joueurs).length,
   });
 });
 
@@ -77,1261 +189,307 @@ app.get("/", (req, res) => {
 
 app.get("/stats", (req, res) => {
   res.json({
-    totalGames: Object.keys(games).length,
-    totalPlayers: Object.keys(players).length,
+    totalGames: Object.keys(parties).length,
+    totalPlayers: Object.keys(joueurs).length,
     uptime: process.uptime(),
   });
 });
 
-// ============================================
-// GÉNÉRATION DE QUESTIONS VIA IA (Groq API - GRATUIT)
-// ============================================
+app.get("/api/themes", (req, res) => {
+  res.json({ themes: THEMES_PREDEFINIS });
+});
 
-// Groq est gratuit ! Créer un compte sur https://console.groq.com
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
-
-// Thèmes prédéfinis
-const THEMES_PREDEFINIS = [
-  "Histoire",
-  "Géographie",
-  "Sciences",
-  "Littérature",
-  "Cinéma",
-  "Sport",
-  "Musique",
-  "Gastronomie"
-];
-
-// Fonction pour générer le prompt
-function generateQuestionsPrompt(theme, count) {
-  return `Génère exactement ${count} questions de quiz de culture générale sur le thème "${theme}".
-
-IMPORTANT: Ta réponse doit être UNIQUEMENT un tableau JSON valide, sans aucun texte avant ou après.
-
-Format JSON requis:
-[
-  {
-    "question": "La question complète en français avec un point d'interrogation",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
-    "reponseCorrecte": "La bonne réponse (doit être exactement une des 4 options)"
-  }
-]
-
-Règles strictes:
-- Exactement ${count} questions
-- Questions en français
-- Chaque question a exactement 4 options
-- Une seule réponse correcte par question
-- La reponseCorrecte doit correspondre EXACTEMENT à une des options
-- Difficulté variée (facile, moyen, difficile)
-- Questions factuelles avec des réponses vérifiables
-- Évite les questions trop obscures ou controversées
-
-Génère maintenant les ${count} questions sur "${theme}":`;
-}
-
-// Fonction pour extraire les mots-clés pour Wikidata
-function buildSearchQuery(question, answer) {
-  const q = String(question || "").toLowerCase();
-  const a = String(answer || "").trim();
-  const tags = [];
-
-  if (q.includes("capitale")) tags.push("capitale");
-  if (q.includes("pays")) tags.push("pays");
-  if (q.includes("océan") || q.includes("ocean")) tags.push("océan");
-  if (q.includes("fleuve") || q.includes("rivière")) tags.push("fleuve");
-  if (q.includes("planète") || q.includes("planete")) tags.push("planète");
-  if (q.includes("symbole chimique")) tags.push("élément chimique symbole");
-  if (q.includes("élément chimique")) tags.push("élément chimique");
-  if (q.includes("monnaie")) tags.push("monnaie");
-  if (q.includes("langue")) tags.push("langue");
-  if (q.includes("désert")) tags.push("désert");
-  if (q.includes("monument")) tags.push("monument");
-
-  // Si c'est une année, inclure le contexte
-  if (/^\d{3,4}$/.test(a)) {
-    return `${question} ${a}`.trim();
-  }
-
-  const extra = tags.length ? " " + tags.join(" ") : "";
-  return (a + extra).trim();
-}
-
-// Fonction pour chercher sur Wikidata
-async function searchWikidata(query) {
-  try {
-    const url = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=fr&uselang=fr&format=json&limit=5&origin=*`;
-    const response = await fetch(url, {
-      headers: { "User-Agent": "qpu-champion-backend/1.0" }
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.search?.[0] || null;
-  } catch {
-    return null;
-  }
-}
-
-// Fonction pour obtenir l'image depuis Wikidata
-async function getWikidataImage(entityId) {
-  try {
-    const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${entityId}&props=claims&format=json&origin=*`;
-    const response = await fetch(url, {
-      headers: { "User-Agent": "qpu-champion-backend/1.0" }
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    const entity = data.entities?.[entityId];
-    if (!entity) return null;
-
-    // Chercher les propriétés d'image
-    const imageProps = ["P18", "P41", "P154", "P94", "P242"];
-    for (const prop of imageProps) {
-      const claim = entity.claims?.[prop]?.[0];
-      const fileName = claim?.mainsnak?.datavalue?.value;
-      if (fileName) {
-        return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName)}?width=900`;
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-// Fonction pour créer un placeholder SVG
-function makePlaceholder(answer) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630">
-  <defs>
-    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0%" stop-color="#72DDF7"/>
-      <stop offset="35%" stop-color="#8093F1"/>
-      <stop offset="70%" stop-color="#B388EB"/>
-      <stop offset="100%" stop-color="#F7AEF8"/>
-    </linearGradient>
-  </defs>
-  <rect width="100%" height="100%" fill="url(#g)"/>
-  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
-        font-family="Arial, sans-serif" font-size="64" fill="#111">
-    ${String(answer).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
-  </text>
-</svg>`;
-  return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
-}
-
-// Fonction pour enrichir une question
-async function enrichQuestion(questionObj) {
-  const question = questionObj.question || "";
-  const answer = questionObj.reponseCorrecte || "";
-  const query = buildSearchQuery(question, answer);
-
-  try {
-    const entity = await searchWikidata(query);
-    if (entity?.id) {
-      const imageUrl = await getWikidataImage(entity.id);
-      return {
-        ...questionObj,
-        wikidataId: entity.id,
-        wikidataLabel: entity.label,
-        illustrationTexte: entity.description
-          ? `${answer} — ${entity.description}`.slice(0, 140)
-          : answer,
-        imageUrl: imageUrl || makePlaceholder(answer)
-      };
-    }
-  } catch (e) {
-    console.log("Erreur enrichissement:", e.message);
-  }
-
-  // Fallback: placeholder
-  return {
-    ...questionObj,
-    wikidataId: null,
-    wikidataLabel: null,
-    illustrationTexte: answer,
-    imageUrl: makePlaceholder(answer)
-  };
-}
-
-// Endpoint POST /api/generate-questions
 app.post("/api/generate-questions", async (req, res) => {
   const { theme, count = 10 } = req.body;
 
   if (!theme) {
-    return res.status(400).json({
-      success: false,
-      error: "Le thème est requis"
-    });
+    return res.status(400).json({ success: false, error: "Le theme est requis" });
   }
 
-  if (!GROQ_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     return res.status(500).json({
       success: false,
-      error: "La clé API Groq n'est pas configurée. Créez un compte gratuit sur https://console.groq.com"
+      error: "La cle API Groq n'est pas configuree. Creez un compte gratuit sur https://console.groq.com",
     });
   }
 
-  const questionCount = Math.min(Math.max(1, parseInt(count) || 10), 30);
-
   try {
-    console.log(`Génération de ${questionCount} questions sur "${theme}" via Groq...`);
-
-    // Appel à l'API Groq (gratuit, compatible OpenAI)
-    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile", // Modèle gratuit et puissant
-        messages: [
-          {
-            role: "user",
-            content: generateQuestionsPrompt(theme, questionCount)
-          }
-        ],
-        max_tokens: 4096,
-        temperature: 0.7
-      })
-    });
-
-    if (!groqResponse.ok) {
-      const errorData = await groqResponse.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `Erreur Groq: ${groqResponse.status}`);
-    }
-
-    const groqData = await groqResponse.json();
-    let responseText = groqData.choices?.[0]?.message?.content?.trim() || "";
-
-    if (!responseText) {
-      throw new Error("Réponse vide de Groq");
-    }
-
-    // Nettoyer les backticks markdown si présents
-    if (responseText.startsWith("```")) {
-      const lines = responseText.split("\n");
-      const jsonLines = [];
-      let inJson = false;
-      for (const line of lines) {
-        if (line.startsWith("```") && !inJson) {
-          inJson = true;
-          continue;
-        } else if (line.startsWith("```") && inJson) {
-          break;
-        } else if (inJson) {
-          jsonLines.push(line);
-        }
-      }
-      responseText = jsonLines.join("\n");
-    }
-
-    const questions = JSON.parse(responseText);
-
-    if (!Array.isArray(questions)) {
-      throw new Error("La réponse n'est pas un tableau JSON");
-    }
-
-    // Valider et corriger les questions
-    for (const q of questions) {
-      if (!q.question || !q.options || !q.reponseCorrecte) {
-        throw new Error("Question mal formatée");
-      }
-      if (q.options.length !== 4) {
-        throw new Error("Chaque question doit avoir 4 options");
-      }
-      if (!q.options.includes(q.reponseCorrecte)) {
-        q.reponseCorrecte = q.options[0];
-      }
-    }
-
-    console.log(`✓ ${questions.length} questions générées, enrichissement...`);
-
-    // Enrichir les questions (en parallèle, max 3 à la fois)
-    const enrichedQuestions = [];
-    for (let i = 0; i < questions.length; i += 3) {
-      const batch = questions.slice(i, i + 3);
-      const enrichedBatch = await Promise.all(batch.map(enrichQuestion));
-      enrichedQuestions.push(...enrichedBatch);
-      // Petit délai pour éviter le rate limiting Wikidata
-      if (i + 3 < questions.length) {
-        await new Promise(r => setTimeout(r, 500));
-      }
-    }
-
-    console.log(`✓ Questions enrichies avec succès`);
-
-    res.json({
-      success: true,
-      theme,
-      count: enrichedQuestions.length,
-      questions: enrichedQuestions
-    });
-
-  } catch (error) {
-    console.error("Erreur génération questions:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message || "Erreur lors de la génération des questions"
-    });
+    const questionsEnrichies = await genererQuestionsViaGroq(theme, count);
+    res.json({ success: true, theme, count: questionsEnrichies.length, questions: questionsEnrichies });
+  } catch (erreur) {
+    console.error("Erreur generation questions:", erreur);
+    res.status(500).json({ success: false, error: erreur.message || "Erreur lors de la generation des questions" });
   }
 });
 
-// Endpoint GET /api/themes (liste des thèmes prédéfinis)
-app.get("/api/themes", (req, res) => {
-  res.json({
-    themes: THEMES_PREDEFINIS
-  });
-});
-
 // ============================================
-// GÉNÉRATION VIA GROQ (helper réutilisable pour le vote de thème)
+// CHARGEMENT DES QUESTIONS (backup JSON local)
 // ============================================
 
-async function generateQuestionsViaGroq(theme, count) {
-  const questionCount = Math.min(Math.max(1, parseInt(count) || 10), 30);
+let toutesLesQuestions = [];
 
-  console.log(`[generateQuestionsViaGroq] Génération de ${questionCount} questions sur "${theme}"...`);
-
-  const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${GROQ_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        {
-          role: "user",
-          content: generateQuestionsPrompt(theme, questionCount)
-        }
-      ],
-      max_tokens: 4096,
-      temperature: 0.7
-    })
-  });
-
-  if (!groqResponse.ok) {
-    const errorData = await groqResponse.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || `Erreur Groq: ${groqResponse.status}`);
-  }
-
-  const groqData = await groqResponse.json();
-  let responseText = groqData.choices?.[0]?.message?.content?.trim() || "";
-
-  if (!responseText) {
-    throw new Error("Réponse vide de Groq");
-  }
-
-  // Nettoyer les backticks markdown si présents
-  if (responseText.startsWith("```")) {
-    const lines = responseText.split("\n");
-    const jsonLines = [];
-    let inJson = false;
-    for (const line of lines) {
-      if (line.startsWith("```") && !inJson) {
-        inJson = true;
-        continue;
-      } else if (line.startsWith("```") && inJson) {
-        break;
-      } else if (inJson) {
-        jsonLines.push(line);
-      }
-    }
-    responseText = jsonLines.join("\n");
-  }
-
-  const questions = JSON.parse(responseText);
-
-  if (!Array.isArray(questions)) {
-    throw new Error("La réponse n'est pas un tableau JSON");
-  }
-
-  // Valider et corriger les questions
-  for (const q of questions) {
-    if (!q.question || !q.options || !q.reponseCorrecte) {
-      throw new Error("Question mal formatée");
-    }
-    if (q.options.length !== 4) {
-      throw new Error("Chaque question doit avoir 4 options");
-    }
-    if (!q.options.includes(q.reponseCorrecte)) {
-      q.reponseCorrecte = q.options[0];
-    }
-  }
-
-  console.log(`[generateQuestionsViaGroq] ${questions.length} questions générées, enrichissement...`);
-
-  // Enrichir en batch (max 3 à la fois)
-  const enrichedQuestions = [];
-  for (let i = 0; i < questions.length; i += 3) {
-    const batch = questions.slice(i, i + 3);
-    const enrichedBatch = await Promise.all(batch.map(enrichQuestion));
-    enrichedQuestions.push(...enrichedBatch);
-    if (i + 3 < questions.length) {
-      await new Promise(r => setTimeout(r, 500));
-    }
-  }
-
-  console.log(`[generateQuestionsViaGroq] Enrichissement terminé (${enrichedQuestions.length} questions)`);
-  return enrichedQuestions;
-}
-
-// ============================================
-// CHARGEMENT DES QUESTIONS (Optionnel - backup)
-// ============================================
-
-let allQuestions = [];
-
-function loadQuestions() {
+function chargerQuestions() {
   try {
-    const questionsPath = path.join(__dirname, "questions.json");
-    if (fs.existsSync(questionsPath)) {
-      const data = fs.readFileSync(questionsPath, "utf8");
-      allQuestions = JSON.parse(data);
-      console.log(
-        `✅ ${allQuestions.length} questions chargées depuis questions.json`
-      );
+    const cheminQuestions = path.join(__dirname, "questions.json");
+    if (fs.existsSync(cheminQuestions)) {
+      const donnees = fs.readFileSync(cheminQuestions, "utf8");
+      toutesLesQuestions = JSON.parse(donnees);
+      console.log(`${toutesLesQuestions.length} questions chargees depuis questions.json`);
     } else {
-      console.log("ℹ️ Aucun fichier questions.json trouvé dans le backend");
-      allQuestions = [];
+      console.log("Aucun fichier questions.json trouve dans le backend");
+      toutesLesQuestions = [];
     }
-  } catch (error) {
-    console.error("❌ Erreur de chargement des questions:", error);
-    allQuestions = [];
+  } catch (erreur) {
+    console.error("Erreur de chargement des questions:", erreur);
+    toutesLesQuestions = [];
   }
 }
 
-// Charger les questions au démarrage
-loadQuestions();
+chargerQuestions();
 
 // ============================================
-// FONCTIONS UTILITAIRES
+// FONCTIONS UTILITAIRES SERVEUR
 // ============================================
 
-function generateGameCode() {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+function genererCodePartie() {
+  const caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let code = "";
   for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+    code += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
   }
   return code;
 }
 
-function shuffleArray(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
-}
-
-function getRandomQuestions(count) {
-  if (count <= 0 || allQuestions.length === 0) {
-    // Questions par défaut si aucune disponible
+function obtenirQuestionsAleatoires(nombre) {
+  if (nombre <= 0 || toutesLesQuestions.length === 0) {
     return [
-      {
-        question: "Quelle est la capitale de la France ?",
-        options: ["Paris", "Londres", "Berlin", "Madrid"],
-        reponseCorrecte: "Paris",
-      },
-      {
-        question: "Quel est le plus grand océan du monde ?",
-        options: ["Atlantique", "Indien", "Pacifique", "Arctique"],
-        reponseCorrecte: "Pacifique",
-      },
-    ].slice(0, Math.min(count, 2));
+      { question: "Quelle est la capitale de la France ?", options: ["Paris", "Londres", "Berlin", "Madrid"], reponseCorrecte: "Paris" },
+      { question: "Quel est le plus grand ocean du monde ?", options: ["Atlantique", "Indien", "Pacifique", "Arctique"], reponseCorrecte: "Pacifique" },
+    ].slice(0, Math.min(nombre, 2));
   }
-
-  if (count > allQuestions.length) {
-    count = allQuestions.length;
-  }
-
-  // Créer une copie mélangée
-  const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
-
-  // Retourner le nombre demandé
-  return shuffled.slice(0, count);
+  const nombreEffectif = Math.min(nombre, toutesLesQuestions.length);
+  return melangerTableau([...toutesLesQuestions]).slice(0, nombreEffectif);
 }
 
 // ============================================
-// STOCKAGE DES PARTIES
+// STOCKAGE DES PARTIES EN MEMOIRE
 // ============================================
 
-const games = {};
-const players = {};
+const parties = {};
+const joueurs = {};
 
-// Nettoyage défensif des timers (buzzer/answer) par partie
-function clearGameTimers(game) {
-  if (!game) return;
-  if (game._buzzerTimer) {
-    clearTimeout(game._buzzerTimer);
-    game._buzzerTimer = null;
+function annulerTimersPartie(partie) {
+  if (!partie) return;
+  if (partie._buzzerTimer) {
+    clearTimeout(partie._buzzerTimer);
+    partie._buzzerTimer = null;
   }
-  if (game._answerTimer) {
-    clearTimeout(game._answerTimer);
-    game._answerTimer = null;
+  if (partie._answerTimer) {
+    clearTimeout(partie._answerTimer);
+    partie._answerTimer = null;
   }
 }
 
 // ============================================
-// GESTION SOCKET.IO
+// LOGIQUE INTERNE DE JEU
 // ============================================
 
-io.on("connection", (socket) => {
-  console.log("Nouveau joueur connecté:", socket.id);
+/**
+ * normaliserParametres — Normalise les parametres de partie envoyes par le client.
+ * @param {Object} bruts - Parametres bruts (plusieurs noms de champs possibles)
+ * @returns {{ maxPlayers, questionsCount, timePerQuestion, timePerAnswer }}
+ */
+function normaliserParametres(bruts = {}) {
+  const maxJoueurs = Number(bruts.maxPlayers ?? bruts.playersCount ?? bruts.nombreJoueurs ?? 4);
+  const nombreQuestions = Number(bruts.questionsCount ?? bruts.nombreQuestions ?? 10);
+  const dureeQuestion = Number(bruts.timePerQuestion ?? bruts.dureeQuestion ?? 30);
+  const dureeReponse = Number(bruts.timePerAnswer ?? bruts.dureeReponse ?? 15);
+  return {
+    maxPlayers: Number.isFinite(maxJoueurs) && maxJoueurs > 0 ? maxJoueurs : 4,
+    questionsCount: Number.isFinite(nombreQuestions) ? nombreQuestions : 10,
+    timePerQuestion: Number.isFinite(dureeQuestion) ? dureeQuestion : 30,
+    timePerAnswer: Number.isFinite(dureeReponse) ? dureeReponse : 15,
+  };
+}
 
-  // Normalise les paramètres envoyés par le frontend (plusieurs noms possibles selon les versions)
-  function normalizeSettings(raw = {}) {
-    const maxPlayers = Number(raw.maxPlayers ?? raw.playersCount ?? raw.nombreJoueurs ?? 4);
-    const questionsCount = Number(raw.questionsCount ?? raw.nombreQuestions ?? 10);
-    const timePerQuestion = Number(raw.timePerQuestion ?? raw.dureeQuestion ?? 30);
-    const timePerAnswer = Number(raw.timePerAnswer ?? raw.dureeReponse ?? 15);
-    return {
-      maxPlayers: Number.isFinite(maxPlayers) && maxPlayers > 0 ? maxPlayers : 4,
-      questionsCount: Number.isFinite(questionsCount) ? questionsCount : 10,
-      timePerQuestion: Number.isFinite(timePerQuestion) ? timePerQuestion : 30,
-      timePerAnswer: Number.isFinite(timePerAnswer) ? timePerAnswer : 15,
-    };
+/**
+ * demarrerPartieInterne — Initialise et lance une partie.
+ * @param {string} codePartie
+ * @param {Object|null} parametresBruts
+ */
+function demarrerPartieInterne(codePartie, parametresBruts = null) {
+  const partie = parties[codePartie];
+  if (!partie || partie.state !== "waiting") return;
+
+  const parametres = normaliserParametres(parametresBruts || partie.settings || {});
+  partie.settings = parametres;
+
+  if (partie.providedQuestions && partie.providedQuestions.length > 0) {
+    partie.questions = partie.providedQuestions.slice(0, parametres.questionsCount);
+    console.log(`Partie ${codePartie}: utilisation de ${partie.questions.length} questions IA`);
+  } else {
+    partie.questions = obtenirQuestionsAleatoires(parametres.questionsCount);
+    console.log(`Partie ${codePartie}: utilisation de ${partie.questions.length} questions locales`);
   }
 
-  // Démarre une partie (sans concept d'hôte : n'importe quel joueur peut déclencher, et on démarre aussi automatiquement quand la salle est pleine)
-  function startGameInternal(gameCode, rawSettings = null) {
-    const game = games[gameCode];
-    if (!game || game.state !== "waiting") return;
+  partie.currentQuestionIndex = 0;
+  partie.state = "playing";
+  partie.questionOpen = false;
+  partie.answers = [];
+  partie.questionHistory = [];
+  partie.streaks = {};
 
-    const normalizedSettings = normalizeSettings(rawSettings || game.settings || {});
-    game.settings = normalizedSettings;
-
-    // Utiliser les questions IA si fournies, sinon questions locales
-    if (game.providedQuestions && game.providedQuestions.length > 0) {
-      game.questions = game.providedQuestions.slice(0, normalizedSettings.questionsCount);
-      console.log(`Partie ${gameCode}: utilisation de ${game.questions.length} questions IA`);
-    } else {
-      game.questions = getRandomQuestions(normalizedSettings.questionsCount);
-      console.log(`Partie ${gameCode}: utilisation de ${game.questions.length} questions locales`);
-    }
-    game.currentQuestionIndex = 0;
-    game.state = "playing";
-    game.questionOpen = false;
-    game.answers = [];
-    game.questionHistory = [];
-    game.streaks = {};
-
-    // Reset réponses/score structure
-    Object.keys(game.players).forEach((pid) => {
-      game.players[pid].hasAnswered = false;
-      if (typeof game.scores[pid] !== "number") game.scores[pid] = 0;
-      game.streaks[pid] = 0;
-    });
-
-    io.to(gameCode).emit("game-started", {
-      gameCode: gameCode,
-      mode: game.mode || "spectator", // Inclure le mode
-      settings: game.settings,
-      players: Object.values(game.players).map((p) => ({
-        id: p.id,
-        name: p.name,
-        score: game.scores[p.id] ?? 0,
-        isHost: p.isHost || false,
-      })),
-    });
-
-    // Lancer première question
-    sendQuestionToAll(gameCode);
-  }
-
-  // Créer une partie
-  socket.on("create-game", ({ playerName, settings, mode, questions }) => {
-    const gameCode = generateGameCode();
-
-    const normalizedSettings = normalizeSettings(settings || {});
-    const gameMode = mode || "spectator"; // "spectator" ou "classic"
-
-    // Si des questions IA sont fournies, les stocker
-    const providedQuestions = Array.isArray(questions) ? questions : null;
-
-    games[gameCode] = {
-      code: gameCode,
-      // compat : conservé pour l'UI (affiche le créateur), mais aucun privilège spécial côté serveur
-      hostId: socket.id,
-      hostName: playerName,
-      mode: gameMode, // Mode de jeu
-      players: {},
-      state: "waiting",
-      settings: normalizedSettings,
-      currentQuestionIndex: 0,
-      questions: [], // Sera rempli au démarrage
-      providedQuestions: providedQuestions, // Questions IA fournies par le client
-      scores: {},
-      questionOpen: false,
-      answers: [],
-      questionHistory: [],
-      streaks: {},
-      createdAt: Date.now(),
-    };
-
-    if (providedQuestions) {
-      console.log(`Partie ${gameCode}: ${providedQuestions.length} questions IA fournies`);
-    }
-
-    // Le créateur est un joueur comme les autres (surtout en mode classic)
-    players[socket.id] = {
-      id: socket.id,
-      gameCode: gameCode,
-      name: playerName,
-      score: 0,
-      isHost: gameMode === "spectator", // En mode spectator, le créateur est hôte, en classic il est joueur
-      hasAnswered: false,
-    };
-
-    games[gameCode].players[socket.id] = players[socket.id];
-    games[gameCode].scores[socket.id] = 0;
-
-    socket.join(gameCode);
-
-    socket.emit("game-created", {
-      success: true,
-      gameCode: gameCode,
-      mode: gameMode,
-      message: "Partie créée avec succès",
-    });
-
-    console.log(`Partie créée: ${gameCode} par ${playerName} (mode: ${gameMode})`);
+  Object.keys(partie.players).forEach((idJoueur) => {
+    partie.players[idJoueur].hasAnswered = false;
+    if (typeof partie.scores[idJoueur] !== "number") partie.scores[idJoueur] = 0;
+    partie.streaks[idJoueur] = 0;
   });
 
-  // Rejoindre en tant qu'hôte (reconnexion après navigation)
-  socket.on("rejoin-as-host", ({ gameCode, playerName }) => {
-    const game = games[gameCode];
-
-    if (!game) {
-      socket.emit("rejoin-error", { message: "Partie introuvable" });
-      return;
-    }
-
-    // Trouver l'ancien socket de l'hôte et le remplacer
-    const oldHostId = game.hostId;
-
-    // Mettre à jour l'hôte avec le nouveau socket
-    game.hostId = socket.id;
-
-    // Annuler le timer de suppression si l'hôte se reconnecte
-    delete game.hostDisconnectedAt;
-
-    // En mode classique, le créateur est un joueur comme les autres (pas d'hôte)
-    // En mode spectateur, le créateur est l'hôte (ne joue pas)
-    const isHostPlayer = game.mode === "spectator";
-
-    // Transférer ou recréer le joueur hôte
-    if (oldHostId && game.players[oldHostId]) {
-      // Copier les données de l'ancien socket vers le nouveau
-      const oldPlayerData = game.players[oldHostId];
-      players[socket.id] = {
-        id: socket.id,
-        gameCode: gameCode,
-        name: playerName || oldPlayerData.name,
-        score: oldPlayerData.score || 0,
-        isHost: isHostPlayer,
-        hasAnswered: oldPlayerData.hasAnswered || false,
-      };
-      game.players[socket.id] = players[socket.id];
-      game.scores[socket.id] = oldPlayerData.score || 0;
-
-      // Supprimer l'ancien
-      delete game.players[oldHostId];
-      delete game.scores[oldHostId];
-      delete players[oldHostId];
-    } else {
-      // Créer le joueur hôte s'il n'existait pas
-      players[socket.id] = {
-        id: socket.id,
-        gameCode: gameCode,
-        name: playerName,
-        score: 0,
-        isHost: isHostPlayer,
-        hasAnswered: false,
-      };
-      game.players[socket.id] = players[socket.id];
-      game.scores[socket.id] = 0;
-    }
-
-    socket.join(gameCode);
-
-    socket.emit("rejoin-success", {
-      gameCode: gameCode,
-      hostName: game.hostName,
-      mode: game.mode || "spectator",
-      players: Object.values(game.players).map((p) => ({
-        id: p.id,
-        name: p.name,
-        score: p.score || 0,
-        isHost: p.isHost || false,
-      })),
-      settings: game.settings,
-    });
-
-    // Si le jeu est en cours et qu'il y a une question active, l'envoyer à l'hôte qui rejoint
-    if (game.state === "playing" && game.currentQuestion) {
-      const shuffledOptions = shuffleArray([...game.currentQuestion.options]);
-      socket.emit("new-question", {
-        question: game.currentQuestion.question,
-        options: shuffledOptions,
-        timeLimit: game.settings.timePerQuestion * 1000,
-        questionNumber: game.currentQuestionIndex + 1,
-        totalQuestions: game.questions.length,
-        imageUrl: game.currentQuestion.imageUrl || null,
-        illustrationTexte: game.currentQuestion.illustrationTexte || null,
-      });
-    }
-
-    console.log(`${isHostPlayer ? 'Hôte' : 'Créateur-joueur'} ${playerName} reconnecté à la partie ${gameCode}`);
+  io.to(codePartie).emit("game-started", {
+    gameCode: codePartie,
+    mode: partie.mode || "spectator",
+    settings: partie.settings,
+    players: Object.values(partie.players).map((j) => ({
+      id: j.id,
+      name: j.name,
+      score: partie.scores[j.id] ?? 0,
+      isHost: j.isHost || false,
+    })),
   });
 
-  // Rejoindre une partie
-  socket.on("join-game", ({ gameCode, playerName }) => {
-    const game = games[gameCode];
-
-    if (!game) {
-      socket.emit("join-error", { message: "Code de partie invalide" });
-      return;
-    }
-
-    if (game.state !== "waiting") {
-      socket.emit("join-error", { message: "La partie a déjà commencé" });
-      return;
-    }
-
-    const maxPlayers = Number(game.settings?.maxPlayers ?? 4);
-    if (Object.keys(game.players).length >= maxPlayers) {
-      socket.emit("join-error", {
-        message: `La partie est complète (max ${maxPlayers} joueurs)`,
-      });
-      return;
-    }
-
-    // Vérifier nom unique
-    const existingPlayer = Object.values(game.players).find(
-      (p) => p.name.toLowerCase() === playerName.toLowerCase()
-    );
-
-    if (existingPlayer) {
-      socket.emit("join-error", { message: "Ce nom est déjà pris" });
-      return;
-    }
-
-    // Ajouter le joueur
-    players[socket.id] = {
-      id: socket.id,
-      gameCode: gameCode,
-      name: playerName,
-      score: 0,
-      isHost: false,
-      hasAnswered: false,
-    };
-
-    game.players[socket.id] = players[socket.id];
-    game.scores[socket.id] = 0;
-
-    socket.join(gameCode);
-
-    // Informer tous les joueurs
-    io.to(gameCode).emit("player-joined", {
-      playerId: socket.id,
-      playerName: playerName,
-      players: Object.values(game.players).map((p) => ({
-        id: p.id,
-        name: p.name,
-        score: p.score,
-        isHost: p.isHost,
-      })),
-    });
-
-    socket.emit("join-success", {
-      gameCode: gameCode,
-      hostName: game.hostName,
-      mode: game.mode || "spectator", // Envoyer le mode au joueur qui rejoint
-      players: Object.values(game.players).map((p) => ({
-        id: p.id,
-        name: p.name,
-        score: p.score,
-        isHost: p.isHost,
-      })),
-      settings: game.settings,
-    });
-
-    console.log(`${playerName} a rejoint ${gameCode}`);
-
-    // Démarrage automatique dès que la salle est pleine
-    if (Object.keys(game.players).length >= maxPlayers) {
-      startGameInternal(gameCode);
-    }
-  });
-
-  // Rejoindre une partie en cours (reconnexion après navigation)
-  socket.on("rejoin-game", ({ gameCode, playerName }) => {
-    const game = games[gameCode];
-
-    if (!game) {
-      socket.emit("rejoin-error", { message: "Partie introuvable" });
-      return;
-    }
-
-    // Chercher le joueur existant par son nom
-    const existingPlayerEntry = Object.entries(game.players).find(
-      ([id, p]) => p.name.toLowerCase() === playerName.toLowerCase()
-    );
-
-    if (existingPlayerEntry) {
-      const [oldPlayerId, oldPlayerData] = existingPlayerEntry;
-
-      // Transférer les données vers le nouveau socket
-      players[socket.id] = {
-        id: socket.id,
-        gameCode: gameCode,
-        name: playerName,
-        score: oldPlayerData.score || 0,
-        isHost: false,
-        hasAnswered: oldPlayerData.hasAnswered || false,
-      };
-
-      game.players[socket.id] = players[socket.id];
-      game.scores[socket.id] = oldPlayerData.score || 0;
-
-      // Supprimer l'ancien socket
-      if (oldPlayerId !== socket.id) {
-        delete game.players[oldPlayerId];
-        delete game.scores[oldPlayerId];
-        delete players[oldPlayerId];
-      }
-    } else {
-      // Nouveau joueur qui rejoint en cours de partie (s'il y a de la place)
-      players[socket.id] = {
-        id: socket.id,
-        gameCode: gameCode,
-        name: playerName,
-        score: 0,
-        isHost: false,
-        hasAnswered: false,
-      };
-
-      game.players[socket.id] = players[socket.id];
-      game.scores[socket.id] = 0;
-    }
-
-    socket.join(gameCode);
-
-    socket.emit("rejoin-success", {
-      gameCode: gameCode,
-      hostName: game.hostName,
-      mode: game.mode || "spectator",
-      players: Object.values(game.players).map((p) => ({
-        id: p.id,
-        name: p.name,
-        score: game.scores[p.id] || p.score || 0,
-        isHost: p.isHost || false,
-      })),
-      settings: game.settings,
-      gameState: game.state,
-      currentQuestionIndex: game.currentQuestionIndex,
-    });
-
-    // Si le jeu est en cours et qu'il y a une question active, l'envoyer au joueur qui rejoint
-    if (game.state === "playing" && game.currentQuestion) {
-      const shuffledOptions = shuffleArray([...game.currentQuestion.options]);
-      socket.emit("new-question", {
-        question: game.currentQuestion.question,
-        options: shuffledOptions,
-        timeLimit: game.settings.timePerQuestion * 1000,
-        questionNumber: game.currentQuestionIndex + 1,
-        totalQuestions: game.questions.length,
-        imageUrl: game.currentQuestion.imageUrl || null,
-        illustrationTexte: game.currentQuestion.illustrationTexte || null,
-      });
-    }
-
-    console.log(`${playerName} reconnecté à la partie ${gameCode}`);
-  });
-
-  // Démarrer la partie
-  socket.on("start-game", ({ gameCode, settings }) => {
-    const game = games[gameCode];
-    if (!game) {
-      socket.emit("error", { message: "Code de partie invalide" });
-      return;
-    }
-
-    // Déjà en cours
-    if (game.state !== "waiting") {
-      return;
-    }
-
-    // Mettre à jour/normaliser les paramètres (si fournis)
-    if (settings) {
-      game.settings = normalizeSettings(settings);
-    }
-
-    // Démarrage uniquement si au moins 2 joueurs (évite une partie vide)
-    if (Object.keys(game.players).length < 2) {
-      socket.emit("error", { message: "Au moins 2 joueurs requis" });
-      return;
-    }
-
-    // Démarrer la partie de manière centralisée (questions côté serveur)
-    startGameInternal(gameCode);
-  });
-
-  // Soumettre une réponse (nouveau système : tous les joueurs répondent)
-  socket.on("submit-answer", ({ gameCode, answer }) => {
-    const game = games[gameCode];
-    const player = players[socket.id];
-
-    if (!game || !player || !game.questionOpen) return;
-    if (player.hasAnswered) return;
-
-    player.hasAnswered = true;
-    game.answers.push({
-      playerId: socket.id,
-      playerName: player.name,
-      answer,
-      timestamp: Date.now(),
-    });
-
-    // Informer tout le monde qu'un joueur vient de répondre (sans révéler si correct)
-    io.to(gameCode).emit('player-answered', {
-      playerId: socket.id,
-      playerName: player.name,
-      answer: answer,
-      totalAnswered: game.answers.length,
-      totalPlayers: Object.keys(game.players).filter(
-        id => !game.players[id].isHost
-      ).length
-    });
-
-    // Vérifier si tous les joueurs actifs ont répondu
-    const activePlayers = Object.values(game.players).filter(
-      (p) => game.mode !== "spectator" || !p.isHost
-    );
-    const allAnswered = activePlayers.every((p) => p.hasAnswered);
-    if (allAnswered) {
-      clearGameTimers(game);
-      finalizeQuestion(gameCode);
-    }
-  });
-
-  // Passer à la question suivante (hôte seulement)
-  socket.on("next-question", ({ gameCode }) => {
-    const game = games[gameCode];
-    if (!game || socket.id !== game.hostId) return;
-
-    nextQuestion(gameCode);
-  });
-
-  // Rejoindre en tant que spectateur TV (lecture seule — ne modifie JAMAIS game.players)
-  socket.on("spectate-join", ({ gameCode }) => {
-    const game = games[gameCode];
-    if (!game) {
-      socket.emit("error", { message: "Partie introuvable" });
-      return;
-    }
-
-    // Rejoindre la room SANS être ajouté à game.players ni game.scores
-    socket.join(gameCode);
-
-    socket.emit("spectate-joined", {
-      gameCode,
-      hostName: game.hostName,
-      mode: game.mode,
-      state: game.state,
-      settings: game.settings,
-      players: Object.values(game.players)
-        .filter((p) => game.mode !== "spectator" || !p.isHost)
-        .sort((a, b) => (b.score || 0) - (a.score || 0))
-        .map((p) => ({
-          name: p.name,
-          score: game.scores[p.id] || 0,
-        })),
-    });
-
-    // Renvoyer la question en cours si une partie est active
-    if (game.state === "playing" && game.currentQuestion) {
-      const shuffledOptions = shuffleArray([...game.currentQuestion.options]);
-      socket.emit("new-question", {
-        question: game.currentQuestion.question,
-        options: shuffledOptions,
-        timeLimit: game.settings.timePerQuestion * 1000,
-        questionNumber: game.currentQuestionIndex + 1,
-        totalQuestions: game.questions.length,
-        imageUrl: game.currentQuestion.imageUrl || null,
-        illustrationTexte: game.currentQuestion.illustrationTexte || null,
-      });
-    }
-
-    console.log(`Spectateur connecté à la partie ${gameCode}`);
-  });
-
-  // Terminer la partie
-  socket.on("end-game", ({ gameCode }) => {
-    const game = games[gameCode];
-    if (!game || socket.id !== game.hostId) return;
-
-    endGame(gameCode);
-  });
-
-  // Lancer le vote du thème (hôte seulement, mode IA)
-  socket.on("start-theme-vote", async ({ gameCode }) => {
-    const game = games[gameCode];
-
-    if (!game) return;
-    if (game.state !== "waiting") return;
-    if (socket.id !== game.hostId) return;
-
-    // Tirer 3 thèmes aléatoires
-    const themes = shuffleArray([...THEMES_PREDEFINIS]).slice(0, 3);
-
-    game.themeVoteActive = true;
-    game.themeVotes = {};
-    themes.forEach(t => { game.themeVotes[t] = 0; });
-    game.themeVoteOptions = themes;
-    game.themeVotedBy = {};
-
-    io.to(gameCode).emit("theme-vote-started", { themes, duration: 20 });
-
-    console.log(`Vote de thème lancé pour ${gameCode}: ${themes.join(", ")}`);
-
-    // Timer de 20 secondes
-    game._themeVoteTimer = setTimeout(async () => {
-      game.themeVoteActive = false;
-
-      // Calculer le gagnant
-      const votes = game.themeVotes;
-      const maxVotes = Math.max(...Object.values(votes));
-      const candidates = Object.keys(votes).filter(t => votes[t] === maxVotes);
-      const winner = candidates[Math.floor(Math.random() * candidates.length)];
-
-      io.to(gameCode).emit("theme-vote-result", { winner, votes });
-
-      console.log(`Vote terminé pour ${gameCode}, thème gagnant: ${winner}`);
-
-      // Générer les questions
-      try {
-        const questions = await generateQuestionsViaGroq(winner, game.settings.questionsCount || 10);
-        game.providedQuestions = questions;
-        io.to(gameCode).emit("questions-ready", { count: questions.length, theme: winner });
-        console.log(`Questions prêtes pour ${gameCode}: ${questions.length} questions sur "${winner}"`);
-      } catch (err) {
-        console.error(`Erreur génération questions pour ${gameCode}:`, err.message);
-        io.to(gameCode).emit("questions-error", { message: "Erreur lors de la génération des questions" });
-      }
-    }, 20000);
-  });
-
-  // Voter pour un thème
-  socket.on("vote-theme", ({ gameCode, theme }) => {
-    const game = games[gameCode];
-
-    if (!game) return;
-    if (!game.themeVoteActive) return;
-    if (!game.themeVoteOptions || !game.themeVoteOptions.includes(theme)) return;
-
-    // Un joueur = un vote
-    if (game.themeVotedBy[socket.id]) return;
-
-    game.themeVotedBy[socket.id] = theme;
-    game.themeVotes[theme]++;
-
-    io.to(gameCode).emit("theme-vote-update", {
-      votes: game.themeVotes,
-      total: Object.keys(game.themeVotedBy).length
-    });
-  });
-
-  // Déconnexion
-  socket.on("disconnect", () => {
-    console.log("Déconnexion:", socket.id);
-
-    const player = players[socket.id];
-    if (player) {
-      const gameCode = player.gameCode;
-      const game = games[gameCode];
-
-      if (game) {
-        delete game.players[socket.id];
-        delete game.scores[socket.id];
-
-        if (player.isHost) {
-          // Grace period: attendre 10 secondes avant de supprimer la partie
-          // Cela permet à l'hôte de se reconnecter après navigation
-          console.log(`Hôte déconnecté de ${gameCode}, attente de reconnexion...`);
-
-          const disconnectedHostId = socket.id;
-          game.hostDisconnectedAt = Date.now();
-
-          setTimeout(() => {
-            // Vérifier si la partie existe toujours et si l'hôte ne s'est pas reconnecté
-            if (games[gameCode] && games[gameCode].hostDisconnectedAt) {
-              // L'hôte ne s'est pas reconnecté dans le délai
-              console.log(`Hôte non reconnecté, suppression de ${gameCode}`);
-              io.to(gameCode).emit("host-disconnected");
-              delete games[gameCode];
-            }
-          }, 10000); // 10 secondes de grace period
-        } else {
-          io.to(gameCode).emit("player-left", {
-            playerId: socket.id,
-            playerName: player.name,
-            players: Object.values(game.players).map((p) => ({
-              id: p.id,
-              name: p.name,
-              score: p.score,
-            })),
-          });
-        }
-      }
-
-      delete players[socket.id];
-    }
-  });
-});
-
-// ============================================
-// FONCTIONS INTERNES
-// ============================================
-
-function sendQuestionToAll(gameCode) {
-  const game = games[gameCode];
-
-  if (!game || game.state !== "playing") return;
-
-  // Vérifier s'il reste des questions
-  if (game.currentQuestionIndex >= game.questions.length) {
-    endGame(gameCode);
+  envoyerQuestionATous(codePartie);
+}
+
+function envoyerQuestionATous(codePartie) {
+  const partie = parties[codePartie];
+  if (!partie || partie.state !== "playing") return;
+
+  if (partie.currentQuestionIndex >= partie.questions.length) {
+    terminerPartie(codePartie);
     return;
   }
 
-  const questionData = game.questions[game.currentQuestionIndex];
+  const donneesQuestion = piocherQuestion(partie.questions, partie.currentQuestionIndex);
+  if (!donneesQuestion) {
+    terminerPartie(codePartie);
+    return;
+  }
 
-  // Conserver la question courante côté serveur (évite de faire confiance au client pour la correction)
-  game.currentQuestion = {
-    question: questionData.question,
-    options: questionData.options,
-    correctAnswer: questionData.reponseCorrecte,
-    imageUrl: questionData.imageUrl || null,
-    illustrationTexte: questionData.illustrationTexte || null,
+  partie.currentQuestion = {
+    question: donneesQuestion.question,
+    options: donneesQuestion.options,
+    correctAnswer: donneesQuestion.reponseCorrecte,
+    imageUrl: donneesQuestion.imageUrl || null,
+    illustrationTexte: donneesQuestion.illustrationTexte || null,
   };
-  clearGameTimers(game);
+  annulerTimersPartie(partie);
 
-  // Ouvrir la question — tous les joueurs peuvent répondre
-  game.questionOpen = true;
-  game.answers = [];
-  game.questionStartedAt = Date.now();
+  partie.questionOpen = true;
+  partie.answers = [];
+  partie.questionStartedAt = Date.now();
 
-  // Réinitialiser les réponses
-  Object.keys(game.players).forEach((playerId) => {
-    if (players[playerId]) {
-      players[playerId].hasAnswered = false;
+  Object.keys(partie.players).forEach((idJoueur) => {
+    if (joueurs[idJoueur]) {
+      joueurs[idJoueur].hasAnswered = false;
     }
   });
 
-  // Mélanger les options
-  const shuffledOptions = shuffleArray([...questionData.options]);
+  const optionsMelangees = melangerTableau([...donneesQuestion.options]);
 
-  // Envoyer à tous les joueurs (sans correctAnswer)
-  io.to(gameCode).emit("new-question", {
-    question: questionData.question,
-    options: shuffledOptions,
-    timeLimit: game.settings.timePerQuestion * 1000,
-    questionNumber: game.currentQuestionIndex + 1,
-    totalQuestions: game.questions.length,
-    imageUrl: questionData.imageUrl || null,
-    illustrationTexte: questionData.illustrationTexte || null,
+  io.to(codePartie).emit("new-question", {
+    question: donneesQuestion.question,
+    options: optionsMelangees,
+    timeLimit: partie.settings.timePerQuestion * 1000,
+    questionNumber: partie.currentQuestionIndex + 1,
+    totalQuestions: partie.questions.length,
+    imageUrl: donneesQuestion.imageUrl || null,
+    illustrationTexte: donneesQuestion.illustrationTexte || null,
   });
 
-  console.log(
-    `Question ${game.currentQuestionIndex + 1}/${game.questions.length} envoyée`
-  );
+  console.log(`Question ${partie.currentQuestionIndex + 1}/${partie.questions.length} envoyee`);
 
-  // Clore la question après le temps imparti
-  game._buzzerTimer = setTimeout(() => {
-    if (games[gameCode] && game.questionOpen) {
-      finalizeQuestion(gameCode);
+  partie._buzzerTimer = setTimeout(() => {
+    if (parties[codePartie] && partie.questionOpen) {
+      finaliserQuestion(codePartie);
     }
-  }, game.settings.timePerQuestion * 1000);
+  }, partie.settings.timePerQuestion * 1000);
 }
 
-function finalizeQuestion(gameCode) {
-  const game = games[gameCode];
-  if (!game || !game.questionOpen) return;
+function finaliserQuestion(codePartie) {
+  const partie = parties[codePartie];
+  if (!partie || !partie.questionOpen) return;
 
-  game.questionOpen = false;
-  clearGameTimers(game);
+  partie.questionOpen = false;
+  annulerTimersPartie(partie);
 
-  const correctAnswer = game.currentQuestion.correctAnswer;
-  const POINTS_BY_RANK = [10, 8, 6, 5, 4, 3, 2, 1];
+  const reponseCorrecte = partie.currentQuestion.correctAnswer;
 
-  // Trier les bonnes réponses par timestamp (ordre d'arrivée)
-  const correctAnswers = game.answers
-    .filter((a) => String(a.answer) === String(correctAnswer))
+  // Trier les bonnes reponses par ordre d'arrivee
+  const bonnesReponses = partie.answers
+    .filter((a) => String(a.answer) === String(reponseCorrecte))
     .sort((a, b) => a.timestamp - b.timestamp);
 
-  const wrongAnswers = game.answers.filter(
-    (a) => String(a.answer) !== String(correctAnswer)
+  const mauvaisesReponses = partie.answers.filter(
+    (a) => String(a.answer) !== String(reponseCorrecte)
   );
 
-  const answeredIds = new Set(game.answers.map((a) => a.playerId));
-  const answerResults = [];
+  const idsAyantRepondu = new Set(partie.answers.map((a) => a.playerId));
+  const resultatsReponses = [];
 
-  // Points pour les bonnes réponses (par rang de rapidité)
-  correctAnswers.forEach((ans, rank) => {
-    const player = players[ans.playerId];
-    if (!player) return;
+  // Points pour les bonnes reponses (rang = ordre d'arrivee)
+  bonnesReponses.forEach((ans, rang) => {
+    const joueur = joueurs[ans.playerId];
+    if (!joueur) return;
 
-    const basePoints = POINTS_BY_RANK[rank] ?? 1;
-    game.streaks[ans.playerId] = (game.streaks[ans.playerId] || 0) + 1;
-    const streakBonus = game.streaks[ans.playerId] >= 3 ? 2 : 0;
-    const totalPoints = basePoints + streakBonus;
+    const streakActuel = partie.streaks[ans.playerId] || 0;
+    const scoreActuel = partie.scores[ans.playerId] || 0;
+    const { pointsGagnes, nouveauStreak } = calculerScore(rang, true, streakActuel, scoreActuel);
 
-    player.score = (player.score || 0) + totalPoints;
-    game.scores[ans.playerId] = player.score;
+    partie.streaks[ans.playerId] = nouveauStreak;
+    joueur.score = scoreActuel + pointsGagnes;
+    partie.scores[ans.playerId] = joueur.score;
 
-    answerResults.push({
+    resultatsReponses.push({
       playerId: ans.playerId,
       playerName: ans.playerName,
       answer: ans.answer,
       isCorrect: true,
-      pointsEarned: totalPoints,
-      rank: rank + 1,
-      responseTimeMs: ans.timestamp - game.questionStartedAt,
+      pointsEarned: pointsGagnes,
+      rank: rang + 1,
+      responseTimeMs: ans.timestamp - partie.questionStartedAt,
     });
   });
 
-  // Malus pour les mauvaises réponses
-  wrongAnswers.forEach((ans) => {
-    const player = players[ans.playerId];
-    if (!player) return;
+  // Malus pour les mauvaises reponses
+  mauvaisesReponses.forEach((ans) => {
+    const joueur = joueurs[ans.playerId];
+    if (!joueur) return;
 
-    game.streaks[ans.playerId] = 0;
-    player.score = Math.max(0, (player.score || 0) - 3);
-    game.scores[ans.playerId] = player.score;
+    const scoreActuel = partie.scores[ans.playerId] || 0;
+    const { pointsGagnes, nouveauStreak } = calculerScore(-1, false, 0, scoreActuel);
 
-    answerResults.push({
+    partie.streaks[ans.playerId] = nouveauStreak;
+    joueur.score = Math.max(0, scoreActuel + pointsGagnes);
+    partie.scores[ans.playerId] = joueur.score;
+
+    resultatsReponses.push({
       playerId: ans.playerId,
       playerName: ans.playerName,
       answer: ans.answer,
       isCorrect: false,
-      pointsEarned: -3,
+      pointsEarned: pointsGagnes,
       rank: null,
-      responseTimeMs: ans.timestamp - game.questionStartedAt,
+      responseTimeMs: ans.timestamp - partie.questionStartedAt,
     });
   });
 
-  // Pas de réponse
-  Object.values(game.players).forEach((p) => {
-    if (!answeredIds.has(p.id)) {
-      game.streaks[p.id] = 0;
-      answerResults.push({
-        playerId: p.id,
-        playerName: p.name,
+  // Pas de reponse
+  Object.values(partie.players).forEach((j) => {
+    if (!idsAyantRepondu.has(j.id)) {
+      partie.streaks[j.id] = 0;
+      resultatsReponses.push({
+        playerId: j.id,
+        playerName: j.name,
         answer: null,
         isCorrect: false,
         pointsEarned: 0,
@@ -1341,104 +499,570 @@ function finalizeQuestion(gameCode) {
     }
   });
 
-  const rankings = Object.values(game.players)
-    .sort((a, b) => (b.score || 0) - (a.score || 0))
-    .map((p, idx) => ({
-      position: idx + 1,
-      name: p.name,
-      score: game.scores[p.id] || 0,
-      streak: game.streaks[p.id] || 0,
-      isHost: p.isHost || false,
-    }));
+  const classement = obtenirClassement(partie.players, partie.scores, partie.streaks);
 
-  // Historique
-  game.questionHistory.push({
-    question: game.currentQuestion.question,
-    correctAnswer,
-    answers: answerResults,
+  partie.questionHistory.push({
+    question: partie.currentQuestion.question,
+    correctAnswer: reponseCorrecte,
+    answers: resultatsReponses,
   });
 
-  io.to(gameCode).emit("question-results", {
-    correctAnswer,
-    question: game.currentQuestion.question,
-    imageUrl: game.currentQuestion.imageUrl || null,
-    illustrationTexte: game.currentQuestion.illustrationTexte || null,
-    answers: answerResults,
-    rankings,
+  io.to(codePartie).emit("question-results", {
+    correctAnswer: reponseCorrecte,
+    question: partie.currentQuestion.question,
+    imageUrl: partie.currentQuestion.imageUrl || null,
+    illustrationTexte: partie.currentQuestion.illustrationTexte || null,
+    answers: resultatsReponses,
+    rankings: classement,
   });
 
-  // Mode classique : avancer automatiquement après 5s
-  // Mode spectateur : attendre que l'hôte clique "Question suivante"
-  if (game.mode === "classic") {
+  // Mode classique : avancer automatiquement apres 5s
+  if (partie.mode === "classic") {
     setTimeout(() => {
-      if (games[gameCode]) nextQuestion(gameCode);
+      if (parties[codePartie]) questionSuivante(codePartie);
     }, 5000);
   }
 }
 
-function nextQuestion(gameCode) {
-  const game = games[gameCode];
-  if (!game) return;
+function questionSuivante(codePartie) {
+  const partie = parties[codePartie];
+  if (!partie) return;
 
-  game.currentQuestionIndex++;
+  partie.currentQuestionIndex++;
 
-  if (game.currentQuestionIndex >= game.questions.length) {
-    endGame(gameCode);
+  if (partie.currentQuestionIndex >= partie.questions.length) {
+    terminerPartie(codePartie);
   } else {
     setTimeout(() => {
-      sendQuestionToAll(gameCode);
+      envoyerQuestionATous(codePartie);
     }, 2000);
   }
 }
 
-function endGame(gameCode) {
-  const game = games[gameCode];
-  if (!game) return;
+function terminerPartie(codePartie) {
+  const partie = parties[codePartie];
+  if (!partie) return;
 
-  game.state = "finished";
+  partie.state = "finished";
 
-  // Calculer les classements
-  const rankings = Object.values(game.players)
-    .sort((a, b) => b.score - a.score)
-    .map((player, index) => ({
-      position: index + 1,
-      name: player.name,
-      score: player.score,
-      isHost: player.isHost || false,
-    }));
+  const classement = obtenirClassement(partie.players, partie.scores, partie.streaks);
 
-  io.to(gameCode).emit("game-finished", {
-    rankings,
-    history: game.questionHistory || [],
+  io.to(codePartie).emit("game-finished", {
+    rankings: classement,
+    history: partie.questionHistory || [],
   });
 
-  console.log(
-    `Partie ${gameCode} terminée. Gagnant: ${rankings[0]?.name || "Aucun"}`
-  );
+  console.log(`Partie ${codePartie} terminee. Gagnant: ${classement[0]?.name || "Aucun"}`);
 
-  // Nettoyer après 5 minutes
+  // Nettoyage apres 5 minutes
   setTimeout(() => {
-    if (games[gameCode]) {
-      Object.keys(game.players).forEach((playerId) => {
-        delete players[playerId];
+    if (parties[codePartie]) {
+      Object.keys(partie.players).forEach((idJoueur) => {
+        delete joueurs[idJoueur];
       });
-      delete games[gameCode];
+      delete parties[codePartie];
     }
   }, 5 * 60 * 1000);
 }
 
 // ============================================
-// DÉMARRAGE DU SERVEUR
+// HANDLERS SOCKET.IO
+// ============================================
+
+io.on("connection", (socket) => {
+  console.log("Nouveau joueur connecte:", socket.id);
+
+  // Creer une partie
+  socket.on("create-game", ({ playerName, settings, mode, questions }) => {
+    const codePartie = genererCodePartie();
+    const parametres = normaliserParametres(settings || {});
+    const modeJeu = mode || "spectator";
+    const questionsAI = Array.isArray(questions) ? questions : null;
+
+    parties[codePartie] = {
+      code: codePartie,
+      hostId: socket.id,
+      hostName: playerName,
+      mode: modeJeu,
+      players: {},
+      state: "waiting",
+      settings: parametres,
+      currentQuestionIndex: 0,
+      questions: [],
+      providedQuestions: questionsAI,
+      scores: {},
+      questionOpen: false,
+      answers: [],
+      questionHistory: [],
+      streaks: {},
+      createdAt: Date.now(),
+    };
+
+    if (questionsAI) {
+      console.log(`Partie ${codePartie}: ${questionsAI.length} questions IA fournies`);
+    }
+
+    joueurs[socket.id] = {
+      id: socket.id,
+      gameCode: codePartie,
+      name: playerName,
+      score: 0,
+      isHost: modeJeu === "spectator",
+      hasAnswered: false,
+    };
+
+    parties[codePartie].players[socket.id] = joueurs[socket.id];
+    parties[codePartie].scores[socket.id] = 0;
+
+    socket.join(codePartie);
+
+    socket.emit("game-created", {
+      success: true,
+      gameCode: codePartie,
+      mode: modeJeu,
+      message: "Partie creee avec succes",
+    });
+
+    console.log(`Partie creee: ${codePartie} par ${playerName} (mode: ${modeJeu})`);
+  });
+
+  // Rejoindre en tant qu'hote (reconnexion apres navigation)
+  socket.on("rejoin-as-host", ({ gameCode, playerName }) => {
+    const partie = parties[gameCode];
+
+    if (!partie) {
+      socket.emit("rejoin-error", { message: "Partie introuvable" });
+      return;
+    }
+
+    const ancienIdHote = partie.hostId;
+    partie.hostId = socket.id;
+    delete partie.hostDisconnectedAt;
+
+    const estHoteJoueur = partie.mode === "spectator";
+
+    if (ancienIdHote && partie.players[ancienIdHote]) {
+      const ancienJoueur = partie.players[ancienIdHote];
+      joueurs[socket.id] = {
+        id: socket.id,
+        gameCode,
+        name: playerName || ancienJoueur.name,
+        score: ancienJoueur.score || 0,
+        isHost: estHoteJoueur,
+        hasAnswered: ancienJoueur.hasAnswered || false,
+      };
+      partie.players[socket.id] = joueurs[socket.id];
+      partie.scores[socket.id] = ancienJoueur.score || 0;
+      delete partie.players[ancienIdHote];
+      delete partie.scores[ancienIdHote];
+      delete joueurs[ancienIdHote];
+    } else {
+      joueurs[socket.id] = { id: socket.id, gameCode, name: playerName, score: 0, isHost: estHoteJoueur, hasAnswered: false };
+      partie.players[socket.id] = joueurs[socket.id];
+      partie.scores[socket.id] = 0;
+    }
+
+    socket.join(gameCode);
+
+    socket.emit("rejoin-success", {
+      gameCode,
+      hostName: partie.hostName,
+      mode: partie.mode || "spectator",
+      players: Object.values(partie.players).map((j) => ({ id: j.id, name: j.name, score: j.score || 0, isHost: j.isHost || false })),
+      settings: partie.settings,
+    });
+
+    if (partie.state === "playing" && partie.currentQuestion) {
+      const optionsMelangees = melangerTableau([...partie.currentQuestion.options]);
+      socket.emit("new-question", {
+        question: partie.currentQuestion.question,
+        options: optionsMelangees,
+        timeLimit: partie.settings.timePerQuestion * 1000,
+        questionNumber: partie.currentQuestionIndex + 1,
+        totalQuestions: partie.questions.length,
+        imageUrl: partie.currentQuestion.imageUrl || null,
+        illustrationTexte: partie.currentQuestion.illustrationTexte || null,
+      });
+    }
+
+    console.log(`${estHoteJoueur ? "Hote" : "Createur-joueur"} ${playerName} reconnecte a ${gameCode}`);
+  });
+
+  // Rejoindre une partie (salle d'attente)
+  socket.on("join-game", async ({ gameCode, playerName }) => {
+    const { valide, erreur, donnees } = validerPayload(schemaRejoindrePartie, { gameCode, playerName });
+    if (!valide) {
+      socket.emit("erreur-validation", { message: erreur });
+      return;
+    }
+    gameCode = donnees.gameCode;
+    playerName = donnees.playerName;
+
+    const adresseIp = socket.handshake.address || "inconnu";
+    const { autorise, attente } = await verifierLimite(limiteurRejoindre, adresseIp);
+    if (!autorise) {
+      socket.emit("erreur-limite", { message: `Trop de tentatives. Reessayez dans ${attente}s.` });
+      return;
+    }
+
+    const partie = parties[gameCode];
+
+    if (!partie) {
+      socket.emit("join-error", { message: "Code de partie invalide" });
+      return;
+    }
+    if (partie.state !== "waiting") {
+      socket.emit("join-error", { message: "La partie a deja commence" });
+      return;
+    }
+
+    const maxJoueurs = Number(partie.settings?.maxPlayers ?? 4);
+    if (Object.keys(partie.players).length >= maxJoueurs) {
+      socket.emit("join-error", { message: `La partie est complete (max ${maxJoueurs} joueurs)` });
+      return;
+    }
+
+    const joueurExistant = Object.values(partie.players).find(
+      (j) => j.name.toLowerCase() === playerName.toLowerCase()
+    );
+    if (joueurExistant) {
+      socket.emit("join-error", { message: "Ce nom est deja pris" });
+      return;
+    }
+
+    joueurs[socket.id] = { id: socket.id, gameCode, name: playerName, score: 0, isHost: false, hasAnswered: false };
+    partie.players[socket.id] = joueurs[socket.id];
+    partie.scores[socket.id] = 0;
+
+    socket.join(gameCode);
+
+    io.to(gameCode).emit("player-joined", {
+      playerId: socket.id,
+      playerName,
+      players: Object.values(partie.players).map((j) => ({ id: j.id, name: j.name, score: j.score, isHost: j.isHost })),
+    });
+
+    socket.emit("join-success", {
+      gameCode,
+      hostName: partie.hostName,
+      mode: partie.mode || "spectator",
+      players: Object.values(partie.players).map((j) => ({ id: j.id, name: j.name, score: j.score, isHost: j.isHost })),
+      settings: partie.settings,
+    });
+
+    console.log(`${playerName} a rejoint ${gameCode}`);
+
+    if (Object.keys(partie.players).length >= maxJoueurs) {
+      demarrerPartieInterne(gameCode);
+    }
+  });
+
+  // Reconnexion en cours de partie
+  socket.on("rejoin-game", ({ gameCode, playerName }) => {
+    const partie = parties[gameCode];
+
+    if (!partie) {
+      socket.emit("rejoin-error", { message: "Partie introuvable" });
+      return;
+    }
+
+    const entreeExistante = Object.entries(partie.players).find(
+      ([, j]) => j.name.toLowerCase() === playerName.toLowerCase()
+    );
+
+    if (entreeExistante) {
+      const [ancienId, ancienJoueur] = entreeExistante;
+      joueurs[socket.id] = { id: socket.id, gameCode, name: playerName, score: ancienJoueur.score || 0, isHost: false, hasAnswered: ancienJoueur.hasAnswered || false };
+      partie.players[socket.id] = joueurs[socket.id];
+      partie.scores[socket.id] = ancienJoueur.score || 0;
+      if (ancienId !== socket.id) {
+        delete partie.players[ancienId];
+        delete partie.scores[ancienId];
+        delete joueurs[ancienId];
+      }
+    } else {
+      joueurs[socket.id] = { id: socket.id, gameCode, name: playerName, score: 0, isHost: false, hasAnswered: false };
+      partie.players[socket.id] = joueurs[socket.id];
+      partie.scores[socket.id] = 0;
+    }
+
+    socket.join(gameCode);
+
+    socket.emit("rejoin-success", {
+      gameCode,
+      hostName: partie.hostName,
+      mode: partie.mode || "spectator",
+      players: Object.values(partie.players).map((j) => ({ id: j.id, name: j.name, score: partie.scores[j.id] || j.score || 0, isHost: j.isHost || false })),
+      settings: partie.settings,
+      gameState: partie.state,
+      currentQuestionIndex: partie.currentQuestionIndex,
+    });
+
+    if (partie.state === "playing" && partie.currentQuestion) {
+      const optionsMelangees = melangerTableau([...partie.currentQuestion.options]);
+      socket.emit("new-question", {
+        question: partie.currentQuestion.question,
+        options: optionsMelangees,
+        timeLimit: partie.settings.timePerQuestion * 1000,
+        questionNumber: partie.currentQuestionIndex + 1,
+        totalQuestions: partie.questions.length,
+        imageUrl: partie.currentQuestion.imageUrl || null,
+        illustrationTexte: partie.currentQuestion.illustrationTexte || null,
+      });
+    }
+
+    console.log(`${playerName} reconnecte a ${gameCode}`);
+  });
+
+  // Demarrer la partie (hote)
+  socket.on("start-game", async ({ gameCode, settings }) => {
+    const { valide, erreur } = validerPayload(schemaDemarrerPartie, { gameCode, settings });
+    if (!valide) {
+      socket.emit("erreur-validation", { message: erreur });
+      return;
+    }
+
+    const { autorise, attente } = await verifierLimite(limiteurDemarrer, socket.id);
+    if (!autorise) {
+      socket.emit("erreur-limite", { message: `Trop de tentatives de demarrage. Reessayez dans ${attente}s.` });
+      return;
+    }
+
+    const partie = parties[gameCode];
+    if (!partie) {
+      socket.emit("error", { message: "Code de partie invalide" });
+      return;
+    }
+    if (socket.id !== partie.hostId) {
+      socket.emit("erreur-validation", { message: "Seul l'hote peut demarrer la partie" });
+      return;
+    }
+    if (partie.state !== "waiting") return;
+
+    if (settings) {
+      partie.settings = normaliserParametres(settings);
+    }
+
+    if (Object.keys(partie.players).length < 2) {
+      socket.emit("error", { message: "Au moins 2 joueurs requis" });
+      return;
+    }
+
+    demarrerPartieInterne(gameCode);
+  });
+
+  // Soumettre une reponse
+  socket.on("submit-answer", async ({ gameCode, answer }) => {
+    const { valide, erreur } = validerPayload(schemaSoumettreReponse, { gameCode, answer });
+    if (!valide) {
+      socket.emit("erreur-validation", { message: erreur });
+      return;
+    }
+
+    const { autorise, attente } = await verifierLimite(limiteurReponse, socket.id);
+    if (!autorise) {
+      socket.emit("erreur-limite", { message: `Trop de soumissions. Reessayez dans ${attente}s.` });
+      return;
+    }
+
+    const partie = parties[gameCode];
+    const joueur = joueurs[socket.id];
+
+    if (!partie || !joueur || !partie.questionOpen) return;
+    if (joueur.hasAnswered) return;
+
+    joueur.hasAnswered = true;
+    partie.answers.push({ playerId: socket.id, playerName: joueur.name, answer, timestamp: Date.now() });
+
+    io.to(gameCode).emit("player-answered", {
+      playerId: socket.id,
+      playerName: joueur.name,
+      totalAnswered: partie.answers.length,
+      totalPlayers: Object.keys(partie.players).filter((id) => !partie.players[id].isHost).length,
+    });
+
+    const joueursActifs = Object.values(partie.players).filter(
+      (j) => partie.mode !== "spectator" || !j.isHost
+    );
+    const tousOntRepondu = joueursActifs.every((j) => j.hasAnswered);
+    if (tousOntRepondu) {
+      annulerTimersPartie(partie);
+      finaliserQuestion(gameCode);
+    }
+  });
+
+  // Question suivante (hote)
+  socket.on("next-question", ({ gameCode }) => {
+    const partie = parties[gameCode];
+    if (!partie || socket.id !== partie.hostId) return;
+    questionSuivante(gameCode);
+  });
+
+  // Rejoindre en tant que spectateur TV (lecture seule)
+  socket.on("spectate-join", ({ gameCode }) => {
+    const partie = parties[gameCode];
+    if (!partie) {
+      socket.emit("error", { message: "Partie introuvable" });
+      return;
+    }
+
+    socket.join(gameCode);
+
+    socket.emit("spectate-joined", {
+      gameCode,
+      hostName: partie.hostName,
+      mode: partie.mode,
+      state: partie.state,
+      settings: partie.settings,
+      players: Object.values(partie.players)
+        .filter((j) => partie.mode !== "spectator" || !j.isHost)
+        .sort((a, b) => (b.score || 0) - (a.score || 0))
+        .map((j) => ({ name: j.name, score: partie.scores[j.id] || 0 })),
+    });
+
+    if (partie.state === "playing" && partie.currentQuestion) {
+      const optionsMelangees = melangerTableau([...partie.currentQuestion.options]);
+      socket.emit("new-question", {
+        question: partie.currentQuestion.question,
+        options: optionsMelangees,
+        timeLimit: partie.settings.timePerQuestion * 1000,
+        questionNumber: partie.currentQuestionIndex + 1,
+        totalQuestions: partie.questions.length,
+        imageUrl: partie.currentQuestion.imageUrl || null,
+        illustrationTexte: partie.currentQuestion.illustrationTexte || null,
+      });
+    }
+
+    console.log(`Spectateur connecte a ${gameCode}`);
+  });
+
+  // Terminer la partie (hote)
+  socket.on("end-game", ({ gameCode }) => {
+    const partie = parties[gameCode];
+    if (!partie || socket.id !== partie.hostId) return;
+    terminerPartie(gameCode);
+  });
+
+  // Lancer le vote du theme (hote, mode IA)
+  socket.on("start-theme-vote", async ({ gameCode }) => {
+    const partie = parties[gameCode];
+    if (!partie || partie.state !== "waiting" || socket.id !== partie.hostId) return;
+
+    const themes = melangerTableau([...THEMES_PREDEFINIS]).slice(0, 3);
+
+    partie.themeVoteActive = true;
+    partie.themeVotes = {};
+    themes.forEach((t) => { partie.themeVotes[t] = 0; });
+    partie.themeVoteOptions = themes;
+    partie.themeVotedBy = {};
+
+    io.to(gameCode).emit("theme-vote-started", { themes, duration: 20 });
+    console.log(`Vote de theme lance pour ${gameCode}: ${themes.join(", ")}`);
+
+    partie._themeVoteTimer = setTimeout(async () => {
+      partie.themeVoteActive = false;
+
+      const votes = partie.themeVotes;
+      const maxVotes = Math.max(...Object.values(votes));
+      const candidats = Object.keys(votes).filter((t) => votes[t] === maxVotes);
+      const gagnant = candidats[Math.floor(Math.random() * candidats.length)];
+
+      io.to(gameCode).emit("theme-vote-result", { winner: gagnant, votes });
+      console.log(`Vote termine pour ${gameCode}, theme gagnant: ${gagnant}`);
+
+      try {
+        const questions = await genererQuestionsViaGroq(gagnant, partie.settings.questionsCount || 10);
+        partie.providedQuestions = questions;
+        io.to(gameCode).emit("questions-ready", { count: questions.length, theme: gagnant });
+        console.log(`Questions pretes pour ${gameCode}: ${questions.length} questions sur "${gagnant}"`);
+      } catch (erreur) {
+        console.error(`Erreur generation questions pour ${gameCode}:`, erreur.message);
+        io.to(gameCode).emit("questions-error", { message: "Erreur lors de la generation des questions" });
+      }
+    }, 20000);
+  });
+
+  // Voter pour un theme
+  socket.on("vote-theme", async ({ gameCode, theme }) => {
+    const { valide, erreur } = validerPayload(schemaVoteTheme, { gameCode, theme });
+    if (!valide) {
+      socket.emit("erreur-validation", { message: erreur });
+      return;
+    }
+
+    const { autorise, attente } = await verifierLimite(limiteurVote, socket.id);
+    if (!autorise) {
+      socket.emit("erreur-limite", { message: `Trop de votes. Reessayez dans ${attente}s.` });
+      return;
+    }
+
+    const partie = parties[gameCode];
+    if (!partie || !partie.themeVoteActive) return;
+
+    if (!partie.themeVoteOptions || !partie.themeVoteOptions.includes(theme)) {
+      socket.emit("erreur-validation", { message: "Theme invalide : ne fait pas partie des options proposees" });
+      return;
+    }
+
+    if (partie.themeVotedBy[socket.id]) return;
+
+    partie.themeVotedBy[socket.id] = theme;
+    partie.themeVotes[theme]++;
+
+    io.to(gameCode).emit("theme-vote-update", {
+      votes: partie.themeVotes,
+      total: Object.keys(partie.themeVotedBy).length,
+    });
+  });
+
+  // Deconnexion
+  socket.on("disconnect", () => {
+    console.log("Deconnexion:", socket.id);
+
+    const joueur = joueurs[socket.id];
+    if (joueur) {
+      const codePartie = joueur.gameCode;
+      const partie = parties[codePartie];
+
+      if (partie) {
+        delete partie.players[socket.id];
+        delete partie.scores[socket.id];
+
+        if (joueur.isHost) {
+          console.log(`Hote deconnecte de ${codePartie}, attente de reconnexion...`);
+          partie.hostDisconnectedAt = Date.now();
+
+          setTimeout(() => {
+            if (parties[codePartie] && parties[codePartie].hostDisconnectedAt) {
+              console.log(`Hote non reconnecte, suppression de ${codePartie}`);
+              io.to(codePartie).emit("host-disconnected");
+              delete parties[codePartie];
+            }
+          }, 10000);
+        } else {
+          io.to(codePartie).emit("player-left", {
+            playerId: socket.id,
+            playerName: joueur.name,
+            players: Object.values(partie.players).map((j) => ({ id: j.id, name: j.name, score: j.score })),
+          });
+        }
+      }
+
+      delete joueurs[socket.id];
+    }
+  });
+});
+
+// ============================================
+// DEMARRAGE DU SERVEUR
 // ============================================
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✅ Serveur démarré sur le port ${PORT}`);
-  if (allQuestions.length > 0) {
-    console.log(`✅ ${allQuestions.length} questions prêtes (backup)`);
+  console.log(`Serveur demarre sur le port ${PORT}`);
+  if (toutesLesQuestions.length > 0) {
+    console.log(`${toutesLesQuestions.length} questions pretes (backup)`);
   } else {
-    console.log(
-      `ℹ️ Aucune question dans le backend, attente des questions du frontend`
-    );
+    console.log("Aucune question dans le backend, attente des questions du frontend");
   }
 });
