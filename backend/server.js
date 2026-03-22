@@ -18,6 +18,7 @@ const { RateLimiterMemory } = require("rate-limiter-flexible");
 // Modules internes
 const { calculerScore, obtenirClassement, POINTS_PAR_RANG } = require("./logique/jeu");
 const { melangerTableau, piocherQuestion, genererQuestionsViaGroq } = require("./logique/questions");
+const { sauvegarderPartie, recupererPartie, supprimerPartie } = require("./stockage/redis");
 // Le minuteur serveur est disponible mais non utilise dans ce flux (le timer est gere via setTimeout existant)
 // const { gererMinuteur, arreterMinuteur } = require("./logique/minuteur");
 
