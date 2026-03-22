@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#000000" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org https://cdnjs.cloudflare.com;" />
+  <link rel="stylesheet" href="./css/animations.css" />
   <title>Partie en cours - Question pour un Champion</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -33,6 +34,11 @@
           <span id="info-joueurs" class="info-badge"><i class="fas fa-users"></i> <span id="player-count">0</span></span>
         </div>
       </header>
+
+      <!-- Compteur de réponses en temps réel -->
+      <div class="compteur-reponses-wrapper" style="text-align:center;margin-bottom:0.5rem;">
+        <span id="compteur-reponses">0/0 joueurs ont répondu</span>
+      </div>
 
       <!-- Scores -->
       <div id="scores-grid" class="scores-bar">
@@ -1158,8 +1164,15 @@
     }
   </style>
 
+  <!-- CDN Socket.IO (doit précéder les modules ES6) -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!-- CDN Chart.js (doit précéder les modules ES6) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-  <script src="multijoueur-game.js"></script>
+
+  <!-- Point d'entrée ES6 modules -->
+  <script type="module" src="./js/principal.js"></script>
+
+  <!-- Legacy (conservé intact — ne pas supprimer) -->
+  <!-- <script src="multijoueur-game.js"></script> -->
 </body>
 </html>

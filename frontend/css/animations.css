@@ -1,0 +1,196 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   QUESTION POUR UN CHAMPION — animations.css
+   Règle absolue : uniquement transform et opacity dans les keyframes.
+   Les effets colorés passent par box-shadow sur l'élément, jamais en keyframe.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   § KEYFRAMES
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Réponse correcte — scale pulse */
+@keyframes pulse-correct {
+  0%   { transform: scale(1);    opacity: 1; }
+  30%  { transform: scale(1.05); opacity: 1; }
+  65%  { transform: scale(1.02); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+/* Réponse incorrecte — shake horizontal */
+@keyframes shake-incorrect {
+  0%   { transform: translateX(0);   opacity: 1; }
+  14%  { transform: translateX(-8px); }
+  28%  { transform: translateX(8px);  }
+  42%  { transform: translateX(-6px); }
+  57%  { transform: translateX(6px);  }
+  71%  { transform: translateX(-4px); }
+  85%  { transform: translateX(4px);  }
+  100% { transform: translateX(0);   opacity: 1; }
+}
+
+/* Minuteur urgent — pulsation scale + opacité */
+@keyframes pulsation-urgente {
+  0%   { transform: scale(1);    opacity: 1;    }
+  50%  { transform: scale(1.04); opacity: 0.85; }
+  100% { transform: scale(1);    opacity: 1;    }
+}
+
+/* Entrée question — slide-fade in */
+@keyframes entree-question {
+  0%   { transform: translateY(16px); opacity: 0; }
+  100% { transform: translateY(0);    opacity: 1; }
+}
+
+/* Sortie réponse — scale-fade out */
+@keyframes sortie-reponse {
+  0%   { transform: scale(1);    opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0; }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   § CLASSE .correcte
+   Glow vert via box-shadow (propriété non animée dans keyframes).
+   --emerald : #00FF88
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.correcte {
+  animation: pulse-correct 600ms ease-out both;
+  box-shadow:
+    0 0 0   2px var(--emerald, #00FF88),
+    0 0 16px 4px var(--emerald, #00FF88),
+    0 0 32px 8px rgba(0, 255, 136, 0.35);
+}
+
+/* Renforcement du glow via filter appliqué sur l'élément (hors keyframe) */
+.correcte::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 12px 2px rgba(0, 255, 136, 0.2);
+  opacity: 1;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   § CLASSE .incorrecte
+   Glow rouge via box-shadow.
+   --ruby : #FF2D6A
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.incorrecte {
+  animation: shake-incorrect 500ms ease-out both;
+  box-shadow:
+    0 0 0   2px var(--ruby, #FF2D6A),
+    0 0 16px 4px var(--ruby, #FF2D6A),
+    0 0 32px 8px rgba(255, 45, 106, 0.35);
+}
+
+.incorrecte::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 12px 2px rgba(255, 45, 106, 0.2);
+  opacity: 1;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   § CLASSE .minuteur-urgent
+   La couleur rouge est portée par la classe CSS (color + text-shadow),
+   jamais dans les keyframes.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.minuteur-urgent {
+  animation: pulsation-urgente 0.8s ease-in-out infinite;
+  color: var(--ruby, #FF2D6A);
+  text-shadow:
+    0 0 8px  var(--ruby, #FF2D6A),
+    0 0 20px rgba(255, 45, 106, 0.6);
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   § CLASSE .entree-question
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.entree-question {
+  animation: entree-question 300ms ease-out both;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   § CLASSE .sortie-reponse
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.sortie-reponse {
+  animation: sortie-reponse 200ms ease-in both;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   § WILL-CHANGE — desktop uniquement (eviter la sur-promotion sur mobile)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@media (min-width: 768px) {
+  .correcte,
+  .incorrecte,
+  .minuteur-urgent,
+  .entree-question,
+  .sortie-reponse {
+    will-change: transform, opacity;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   § COMPTEUR DE RÉPONSES — #compteur-reponses
+   ───────────────────────────────────────────────────────────────────────────── */
+
+#compteur-reponses {
+  display: inline-block;
+  font-size: 0.82rem;
+  color: var(--steel, #6B8CAA);
+  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--charcoal-light, #122240);
+  border-radius: var(--radius-pill, 100px);
+  transition: color 0.25s ease, border-color 0.25s ease;
+}
+
+#compteur-reponses.complet {
+  color: var(--emerald, #00FF88);
+  border-color: var(--emerald, #00FF88);
+}
+
+/* Notifications glissantes */
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes slideOut {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(100%); opacity: 0; }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   § ACCESSIBILITÉ — prefers-reduced-motion
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
