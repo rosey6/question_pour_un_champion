@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#000000" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;" />
   <title>Creer une partie - Question pour un Champion</title>
@@ -309,8 +309,16 @@
       cursor: pointer;
     }
 
-    .mode-option input {
-      display: none;
+    .mode-option input,
+    .source-option input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
 
     .mode-card {
@@ -333,6 +341,12 @@
       background: rgba(0, 140, 200, 0.1);
       border-color: var(--gold-glow);
       box-shadow: 0 0 35px rgba(0, 212, 255, 0.25);
+    }
+
+    .mode-option input:focus-visible + .mode-card,
+    .source-option input:focus-visible + .source-card {
+      outline: 3px solid var(--gold-glow);
+      outline-offset: 4px;
     }
 
     .mode-icon {
@@ -434,10 +448,6 @@
 
     .source-option {
       cursor: pointer;
-    }
-
-    .source-option input {
-      display: none;
     }
 
     .source-card {
@@ -647,22 +657,24 @@
     let socket = null;
 
     // Gestion des modes
-    document.querySelectorAll('.mode-option').forEach(option => {
-      option.addEventListener('click', () => {
-        document.querySelectorAll('.mode-option').forEach(o => o.classList.remove('active'));
-        option.classList.add('active');
+    document.querySelectorAll('input[name="mode"]').forEach(input => {
+      input.addEventListener('change', () => {
+        document.querySelectorAll('.mode-option').forEach(option => {
+          option.classList.toggle('active', option.querySelector('input')?.checked);
+        });
       });
     });
 
     // Gestion des sources de questions
-    document.querySelectorAll('.source-option').forEach(option => {
-      option.addEventListener('click', () => {
-        document.querySelectorAll('.source-option').forEach(o => o.classList.remove('active'));
-        option.classList.add('active');
+    document.querySelectorAll('input[name="question-source"]').forEach(input => {
+      input.addEventListener('change', () => {
+        document.querySelectorAll('.source-option').forEach(option => {
+          option.classList.toggle('active', option.querySelector('input')?.checked);
+        });
 
         // Afficher/masquer le champ theme
         const aiThemeSection = document.getElementById('ai-theme-section');
-        const source = option.dataset.source;
+        const source = document.querySelector('input[name="question-source"]:checked')?.value;
         if (source === 'ai') {
           aiThemeSection.classList.remove('hidden');
         } else {
@@ -765,11 +777,17 @@
         // Sauvegarder le code et les infos
         gameData.gameCode = data.gameCode;
         gameData.socketId = socket.id;
+        if (data.hostToken) gameData.hostToken = data.hostToken;
+        if (data.playerToken) gameData.playerToken = data.playerToken;
         sessionStorage.setItem('multiGameData', JSON.stringify(gameData));
 
         // Rediriger vers la page du code
         window.location.href = 'multijoueur-code.html';
       });
+
+      socket.on('error', (data) => gererErreurSocket(data, 'error'));
+      socket.on('erreur-validation', (data) => gererErreurSocket(data, 'error'));
+      socket.on('erreur-limite', (data) => gererErreurSocket(data, 'warning'));
 
       socket.on('connect_error', (error) => {
         console.error('Erreur connexion:', error);
@@ -786,9 +804,17 @@
       }, 15000);
     });
 
+    function gererErreurSocket(data, type = 'error') {
+      document.getElementById('loading-overlay')?.classList.add('hidden');
+      showNotification(data?.message || 'Une erreur est survenue', type);
+    }
+
     // Notification
     function showNotification(message, type = 'info') {
       const notif = document.createElement('div');
+      notif.setAttribute('role', 'status');
+      notif.setAttribute('aria-live', 'polite');
+      notif.setAttribute('aria-atomic', 'true');
       notif.style.cssText = `
         position: fixed;
         top: 20px;

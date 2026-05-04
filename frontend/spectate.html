@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#1A1A2E" />
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
@@ -1128,12 +1128,37 @@
   // UTILITIES
   // ======================================================
 
-  function escHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+  function getStoredGameData() {
+    try {
+      var stored = sessionStorage.getItem('multiGameData');
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function persistTokens(data) {
+    if (!data) return;
+    var stored = getStoredGameData();
+    var changed = false;
+    if (data.hostToken) { stored.hostToken = data.hostToken; changed = true; }
+    if (data.playerToken) { stored.playerToken = data.playerToken; changed = true; }
+    if (changed) sessionStorage.setItem('multiGameData', JSON.stringify(stored));
+  }
+
+  function hostPayload(extra) {
+    var stored = getStoredGameData();
+    var payload = Object.assign({ gameCode: gameCode }, extra || {});
+    if (stored.hostToken) payload.hostToken = stored.hostToken;
+    return payload;
+  }
+
+  function appendText(parent, text, tagName, className) {
+    var el = document.createElement(tagName || 'span');
+    if (className) el.className = className;
+    el.textContent = text;
+    parent.appendChild(el);
+    return el;
   }
 
   function avatarColor(name) {
@@ -1156,6 +1181,9 @@
     if (!box) return;
     const el = document.createElement('div');
     el.className = 'toast ' + type;
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.setAttribute('aria-atomic', 'true');
     el.textContent = msg;
     box.appendChild(el);
     setTimeout(function () {
@@ -1255,18 +1283,14 @@
     bar.innerHTML = '';
     top8.forEach(function (p, i) {
       var delta    = showDeltas ? ((p.score || 0) - (prevScores[p.name] || 0)) : 0;
-      var deltaHtml = '';
-      if (showDeltas && delta !== 0) {
-        var sign  = delta > 0 ? '+' : '';
-        var cls   = delta > 0 ? 'positive' : 'negative';
-        deltaHtml = '<span class="lb-delta ' + cls + '">' + sign + delta + '</span>';
-      }
       var item = document.createElement('div');
       item.className = 'lb-item' + (i === 0 ? ' lb-first' : '');
-      item.innerHTML  = '<span class="lb-medal">' + (medals[i] || '#' + (i + 1)) + '</span>'
-        + '<span class="lb-name">'  + escHtml(p.name)       + '</span>'
-        + '<span class="lb-score">' + (p.score || 0)        + '</span>'
-        + deltaHtml;
+      appendText(item, medals[i] || '#' + (i + 1), 'span', 'lb-medal');
+      appendText(item, p.name, 'span', 'lb-name');
+      appendText(item, p.score || 0, 'span', 'lb-score');
+      if (showDeltas && delta !== 0) {
+        appendText(item, (delta > 0 ? '+' : '') + delta, 'span', 'lb-delta ' + (delta > 0 ? 'positive' : 'negative'));
+      }
       bar.appendChild(item);
     });
 
@@ -1334,13 +1358,10 @@
       if (isHost) {
         var hostName = 'Hote';
         try {
-          var stored = sessionStorage.getItem('multiGameData');
-          if (stored) {
-            var d = JSON.parse(stored);
-            hostName = d.hostName || 'Hote';
-          }
+          var d = getStoredGameData();
+          hostName = d.hostName || 'Hote';
         } catch (e) {}
-        socket.emit('rejoin-as-host', { gameCode: gameCode, playerName: hostName });
+        socket.emit('rejoin-as-host', hostPayload({ playerName: hostName }));
       } else {
         socket.emit('spectate-join', { gameCode: gameCode });
       }
@@ -1352,6 +1373,7 @@
 
     // Host rejoined
     socket.on('rejoin-success', function (data) {
+      persistTokens(data);
       players = (data.players || []).filter(function (p) { return !p.isHost; });
       renderLeaderboard(players, false);
       showScreen('screen-game');
@@ -1392,6 +1414,14 @@
 
     socket.on('error', function (data) {
       toast((data && data.message) ? data.message : 'Erreur', 'error');
+    });
+
+    socket.on('erreur-validation', function (data) {
+      toast((data && data.message) ? data.message : 'Données invalides', 'error');
+    });
+
+    socket.on('erreur-limite', function (data) {
+      toast((data && data.message) ? data.message : 'Limite atteinte, réessayez plus tard', 'warning');
     });
   }
 
@@ -1559,9 +1589,9 @@
       rankings.slice(3).forEach(function (p, i) {
         var row = document.createElement('div');
         row.className = 'rank-row';
-        row.innerHTML = '<span class="rank-pos">#' + (i + 4) + '</span>'
-          + '<span class="rank-name">' + escHtml(p.name) + '</span>'
-          + '<span class="rank-score">' + (p.score || 0) + ' pts</span>';
+        appendText(row, '#' + (i + 4), 'span', 'rank-pos');
+        appendText(row, p.name, 'span', 'rank-name');
+        appendText(row, (p.score || 0) + ' pts', 'span', 'rank-score');
         list.appendChild(row);
       });
     }
@@ -1670,12 +1700,12 @@
     // Buttons
     document.getElementById('btn-end-game').addEventListener('click', function () {
       if (confirm('Voulez-vous vraiment terminer la partie ?')) {
-        if (socket) socket.emit('end-game', { gameCode: gameCode });
+        if (socket) socket.emit('end-game', hostPayload());
       }
     });
 
     document.getElementById('btn-next-question').addEventListener('click', function () {
-      if (socket) socket.emit('next-question', { gameCode: gameCode });
+      if (socket) socket.emit('next-question', hostPayload());
       hideNextBtn();
     });
 

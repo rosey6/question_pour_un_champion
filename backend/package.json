@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
+    "dev": "node --watch server.js",
     "test": "vitest run"
   },
   "keywords": [
@@ -25,7 +25,7 @@
     "zod": "^4.3.6"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=20.19.0"
   },
   "devDependencies": {
     "vitest": "^4.1.0"

@@ -8,6 +8,41 @@ let socket = null;
 let gameData = null;
 let currentQuestionData = null;
 
+function persistTokens(data) {
+  if (!data || !gameData) return;
+  if (data.hostToken) gameData.hostToken = data.hostToken;
+  if (data.playerToken) gameData.playerToken = data.playerToken;
+  sessionStorage.setItem('multiGameData', JSON.stringify(gameData));
+}
+
+function hostPayload(extra = {}) {
+  const payload = { gameCode: gameData.gameCode, ...extra };
+  if (gameData.hostToken) payload.hostToken = gameData.hostToken;
+  return payload;
+}
+
+function playerPayload(extra = {}) {
+  const payload = { gameCode: gameData.gameCode, ...extra };
+  if (gameData.playerToken) payload.playerToken = gameData.playerToken;
+  return payload;
+}
+
+function appendIcon(parent, className) {
+  const icon = document.createElement('i');
+  icon.className = className;
+  icon.setAttribute('aria-hidden', 'true');
+  parent.appendChild(icon);
+  return icon;
+}
+
+function appendText(parent, text, tagName = 'span', className = '') {
+  const el = document.createElement(tagName);
+  if (className) el.className = className;
+  el.textContent = text;
+  parent.appendChild(el);
+  return el;
+}
+
 // Etat du jeu
 let gameState = {
   players: [],
@@ -125,7 +160,7 @@ function setupHostUI() {
   if (btnNext) {
     btnNext.addEventListener('click', () => {
       if (socket) {
-        socket.emit('next-question', { gameCode: gameData.gameCode });
+        socket.emit('next-question', hostPayload());
         hideElement('result-zone');
       }
     });
@@ -150,12 +185,12 @@ function connectToGame() {
 
     if (gameState.isHost) {
       socket.emit('rejoin-as-host', {
-        gameCode: gameData.gameCode,
+        ...hostPayload(),
         playerName: gameData.hostName
       });
     } else {
       socket.emit('rejoin-game', {
-        gameCode: gameData.gameCode,
+        ...playerPayload(),
         playerName: gameData.playerName
       });
     }
@@ -168,6 +203,7 @@ function connectToGame() {
 
   socket.on('rejoin-success', (data) => {
     console.log('Rejoint avec succes');
+    persistTokens(data);
     gameState.players = data.players || [];
     updateScoresDisplay();
   });
@@ -225,9 +261,11 @@ function connectToGame() {
 
   // Erreur
   socket.on('error', (data) => {
-    console.error('Erreur:', data);
-    showNotification(data.message || 'Erreur', 'error');
+    handleSocketError(data);
   });
+
+  socket.on('erreur-validation', (data) => handleSocketError(data, 'error'));
+  socket.on('erreur-limite', (data) => handleSocketError(data, 'warning'));
 }
 
 // ============================================
@@ -282,7 +320,7 @@ function displayQuestion(data) {
           gameState.hasAnsweredCurrentQuestion = true;
 
           socket.emit('submit-answer', {
-            gameCode: gameData.gameCode,
+            ...playerPayload(),
             answer: opt
           });
 
@@ -355,7 +393,10 @@ function displayHostResults(data) {
   const resultStatus = document.getElementById('result-status');
   if (resultStatus) {
     resultStatus.className = 'result-status correct';
-    resultStatus.innerHTML = `<i class="fas fa-check-circle"></i><span>Bonne réponse : <strong>${data.correctAnswer}</strong></span>`;
+    resultStatus.replaceChildren();
+    appendIcon(resultStatus, 'fas fa-check-circle');
+    const label = appendText(resultStatus, 'Bonne réponse : ');
+    appendText(label, data.correctAnswer, 'strong');
   }
 
   const correctAnswer = document.getElementById('correct-answer');
@@ -380,7 +421,9 @@ function displayHostResults(data) {
   if (resultAnswer && data.answers) {
     const correctCount = data.answers.filter(a => a.isCorrect).length;
     const total = data.answers.filter(a => a.answer !== null).length;
-    resultAnswer.innerHTML = `<strong>${correctCount}/${total}</strong> bonnes réponses`;
+    resultAnswer.replaceChildren();
+    appendText(resultAnswer, `${correctCount}/${total}`, 'strong');
+    resultAnswer.append(' bonnes réponses');
   }
 }
 
@@ -395,13 +438,19 @@ function displayPlayerResults(data, myResult) {
       const pts = myResult.pointsEarned;
       const streakMsg = pts > (myResult.rank <= 8 ? [10,8,6,5,4,3,2,1][myResult.rank-1] : 1) ? ' 🔥 Série !' : '';
       resultStatus.className = 'result-status correct';
-      resultStatus.innerHTML = `<i class="fas fa-check-circle"></i><span>Bonne réponse ! +${pts} pts${streakMsg}</span>`;
+      resultStatus.replaceChildren();
+      appendIcon(resultStatus, 'fas fa-check-circle');
+      appendText(resultStatus, `Bonne réponse ! +${pts} pts${streakMsg}`);
     } else if (myResult && myResult.answer !== null) {
       resultStatus.className = 'result-status incorrect';
-      resultStatus.innerHTML = `<i class="fas fa-times-circle"></i><span>Mauvaise réponse (${myResult.pointsEarned} pts)</span>`;
+      resultStatus.replaceChildren();
+      appendIcon(resultStatus, 'fas fa-times-circle');
+      appendText(resultStatus, `Mauvaise réponse (${myResult.pointsEarned} pts)`);
     } else {
       resultStatus.className = 'result-status incorrect';
-      resultStatus.innerHTML = `<i class="fas fa-clock"></i><span>Temps écoulé ! (0 pts)</span>`;
+      resultStatus.replaceChildren();
+      appendIcon(resultStatus, 'fas fa-clock');
+      appendText(resultStatus, 'Temps écoulé ! (0 pts)');
     }
   }
 
@@ -432,10 +481,8 @@ function displayPlayerResults(data, myResult) {
       const medals = ['🥇', '🥈', '🥉'];
       const row = document.createElement('div');
       row.className = 'score-row' + (idx === 0 ? ' first' : '');
-      row.innerHTML = `
-        <span class="score-row-name">${medals[idx] || `#${idx+1}`} ${player.name}${player.streak >= 3 ? ' 🔥' : ''}</span>
-        <span class="score-row-points">${player.score} pts</span>
-      `;
+      appendText(row, `${medals[idx] || `#${idx+1}`} ${player.name}${player.streak >= 3 ? ' 🔥' : ''}`, 'span', 'score-row-name');
+      appendText(row, `${player.score} pts`, 'span', 'score-row-points');
       scoresList.appendChild(row);
     });
   }
@@ -478,10 +525,8 @@ function updateScoresDisplay() {
   playersToShow.forEach((player, idx) => {
     const chip = document.createElement('div');
     chip.className = 'score-chip' + (idx === 0 && player.score > 0 ? ' leader' : '');
-    chip.innerHTML = `
-      <span class="score-name">${player.name}</span>
-      <span class="score-points">${player.score || 0}</span>
-    `;
+    appendText(chip, player.name, 'span', 'score-name');
+    appendText(chip, player.score || 0, 'span', 'score-points');
     container.appendChild(chip);
   });
 
@@ -542,11 +587,9 @@ function renderOtherRankings(rankings) {
   rankings.slice(3).forEach((player, idx) => {
     const row = document.createElement('div');
     row.className = 'other-rank-row';
-    row.innerHTML = `
-      <span class="other-rank-pos">#${idx + 4}</span>
-      <span class="other-rank-name">${player.name}</span>
-      <span class="other-rank-score">${player.score} pts</span>
-    `;
+    appendText(row, `#${idx + 4}`, 'span', 'other-rank-pos');
+    appendText(row, player.name, 'span', 'other-rank-name');
+    appendText(row, `${player.score} pts`, 'span', 'other-rank-score');
     container.appendChild(row);
   });
 }
@@ -729,8 +772,16 @@ function hideElement(id) {
   if (el) el.classList.add('hidden');
 }
 
+function handleSocketError(data, type = 'error') {
+  console.error('Erreur:', data);
+  showNotification(data?.message || data || 'Erreur', type);
+}
+
 function showNotification(message, type = 'info') {
   const notif = document.createElement('div');
+  notif.setAttribute('role', 'status');
+  notif.setAttribute('aria-live', 'polite');
+  notif.setAttribute('aria-atomic', 'true');
   const colors = {
     success: '#00FF88',
     error: '#FF3366',

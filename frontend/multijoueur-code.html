@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#000000" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;" />
   <title>Inviter des joueurs - Question pour un Champion</title>
@@ -723,6 +723,38 @@
     let gameData = null;
     let players = [];
 
+    function sauvegarderTokens(data) {
+      if (!data || !gameData) return;
+      if (data.hostToken) gameData.hostToken = data.hostToken;
+      if (data.playerToken) gameData.playerToken = data.playerToken;
+      sessionStorage.setItem('multiGameData', JSON.stringify(gameData));
+    }
+
+    function payloadHote() {
+      const payload = { gameCode: gameData.gameCode };
+      if (gameData.hostToken) payload.hostToken = gameData.hostToken;
+      return payload;
+    }
+
+    function safeDomId(prefix, value) {
+      return `${prefix}-${String(value).replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+    }
+
+    function appendIcon(parent, className) {
+      const icon = document.createElement('i');
+      icon.className = className;
+      icon.setAttribute('aria-hidden', 'true');
+      parent.appendChild(icon);
+      return icon;
+    }
+
+    function appendTextSpan(parent, text) {
+      const span = document.createElement('span');
+      span.textContent = text;
+      parent.appendChild(span);
+      return span;
+    }
+
     // Initialisation
     document.addEventListener('DOMContentLoaded', () => {
       // Recuperer les donnees de la session
@@ -774,13 +806,14 @@
         console.log('Reconnecte au serveur');
         // Rejoindre la partie en tant qu'hote
         socket.emit('rejoin-as-host', {
-          gameCode: gameData.gameCode,
+          ...payloadHote(),
           playerName: gameData.hostName
         });
       });
 
       socket.on('rejoin-success', (data) => {
         console.log('Rejoint avec succes:', data);
+        sauvegarderTokens(data);
         players = data.players || [];
         updatePlayersList();
       });
@@ -801,6 +834,7 @@
 
       socket.on('game-started', (data) => {
         console.log('Partie demarree:', data);
+        sauvegarderTokens(data);
         gameData.players = data.players;
         gameData.isHost = true;
         sessionStorage.setItem('multiGameData', JSON.stringify(gameData));
@@ -813,9 +847,11 @@
       });
 
       socket.on('error', (data) => {
-        console.error('Erreur:', data);
-        showNotification(data.message || 'Une erreur est survenue', 'error');
+        gererErreurSocket(data);
       });
+
+      socket.on('erreur-validation', (data) => gererErreurSocket(data, 'error'));
+      socket.on('erreur-limite', (data) => gererErreurSocket(data, 'warning'));
 
       socket.on('disconnect', () => {
         console.log('Deconnecte');
@@ -881,7 +917,7 @@
         btn.dataset.theme = theme;
         btn.addEventListener('click', () => {
           if (socket) {
-            socket.emit('vote-theme', { gameCode: gameData.gameCode, theme });
+            socket.emit('vote-theme', { gameCode: gameData.gameCode, theme, hostToken: gameData.hostToken });
           }
           // Marquer le bouton voté et désactiver tous
           document.querySelectorAll('.vote-theme-btn').forEach(b => {
@@ -898,11 +934,25 @@
       themes.forEach(theme => {
         const row = document.createElement('div');
         row.className = 'vote-bar-row';
-        row.innerHTML = `
-          <span class="vote-bar-label">${theme}</span>
-          <div class="vote-bar-track"><div class="vote-bar-fill" id="bar-${theme.replace(/\s+/g, '-')}" style="width:0%"></div></div>
-          <span class="vote-bar-count" id="count-${theme.replace(/\s+/g, '-')}">0</span>
-        `;
+        const label = document.createElement('span');
+        label.className = 'vote-bar-label';
+        label.textContent = theme;
+
+        const track = document.createElement('div');
+        track.className = 'vote-bar-track';
+
+        const fill = document.createElement('div');
+        fill.className = 'vote-bar-fill';
+        fill.id = safeDomId('bar', theme);
+        fill.style.width = '0%';
+        track.appendChild(fill);
+
+        const count = document.createElement('span');
+        count.className = 'vote-bar-count';
+        count.id = safeDomId('count', theme);
+        count.textContent = '0';
+
+        row.append(label, track, count);
         barsContainer.appendChild(row);
       });
 
@@ -931,8 +981,8 @@
     function updateVoteBars(votes, total) {
       const maxVotes = Math.max(1, ...Object.values(votes));
       Object.entries(votes).forEach(([theme, count]) => {
-        const barId = `bar-${theme.replace(/\s+/g, '-')}`;
-        const countId = `count-${theme.replace(/\s+/g, '-')}`;
+        const barId = safeDomId('bar', theme);
+        const countId = safeDomId('count', theme);
         const bar = document.getElementById(barId);
         const countEl = document.getElementById(countId);
         if (bar) bar.style.width = `${(count / maxVotes) * 100}%`;
@@ -989,7 +1039,8 @@
       if (gameData.mode === 'spectator') {
         const hostCard = document.createElement('div');
         hostCard.className = 'player-card host';
-        hostCard.innerHTML = `<i class="fas fa-crown"></i><span>${gameData.hostName}</span>`;
+        appendIcon(hostCard, 'fas fa-crown');
+        appendTextSpan(hostCard, gameData.hostName);
         container.appendChild(hostCard);
       }
 
@@ -999,14 +1050,16 @@
       if (otherPlayers.length === 0 && gameData.mode === 'spectator') {
         const waiting = document.createElement('div');
         waiting.className = 'waiting-message';
-        waiting.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>En attente des joueurs...</span>';
+        appendIcon(waiting, 'fas fa-spinner fa-spin');
+        appendTextSpan(waiting, 'En attente des joueurs...');
         container.appendChild(waiting);
       }
 
       otherPlayers.forEach(player => {
         const card = document.createElement('div');
         card.className = 'player-card';
-        card.innerHTML = `<i class="fas fa-user"></i><span>${player.name}</span>`;
+        appendIcon(card, 'fas fa-user');
+        appendTextSpan(card, player.name);
         container.appendChild(card);
       });
 
@@ -1057,7 +1110,7 @@
       if (btnVoteTheme) {
         btnVoteTheme.addEventListener('click', () => {
           if (socket) {
-            socket.emit('start-theme-vote', { gameCode: gameData.gameCode });
+            socket.emit('start-theme-vote', payloadHote());
             btnVoteTheme.disabled = true;
             btnVoteTheme.textContent = '⏳ Vote en cours...';
           }
@@ -1086,7 +1139,7 @@
         btnAnnuler.addEventListener('click', () => {
           if (confirm('Voulez-vous vraiment annuler la partie ?')) {
             if (socket) {
-              socket.emit('cancel-game', { gameCode: gameData.gameCode });
+              socket.emit('cancel-game', payloadHote());
               socket.disconnect();
             }
             sessionStorage.removeItem('multiGameData');
@@ -1101,7 +1154,7 @@
         btnDemarrer.addEventListener('click', () => {
           if (socket) {
             socket.emit('start-game', {
-              gameCode: gameData.gameCode,
+              ...payloadHote(),
               settings: gameData.settings
             });
             btnDemarrer.disabled = true;
@@ -1111,8 +1164,16 @@
       }
     }
 
+    function gererErreurSocket(data, type = 'error') {
+      console.error('Erreur:', data);
+      showNotification(data?.message || data || 'Une erreur est survenue', type);
+    }
+
     function showNotification(message, type = 'info') {
       const notif = document.createElement('div');
+      notif.setAttribute('role', 'status');
+      notif.setAttribute('aria-live', 'polite');
+      notif.setAttribute('aria-atomic', 'true');
       notif.style.cssText = `
         position: fixed;
         top: 20px;

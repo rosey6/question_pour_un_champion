@@ -25,6 +25,22 @@ function masquerElement(identifiant) {
   if (el) el.classList.add('hidden');
 }
 
+function appendIcon(parent, className) {
+  const icon = document.createElement('i');
+  icon.className = className;
+  icon.setAttribute('aria-hidden', 'true');
+  parent.appendChild(icon);
+  return icon;
+}
+
+function appendText(parent, text, tagName = 'span', className = '') {
+  const el = document.createElement(tagName);
+  if (className) el.className = className;
+  el.textContent = text;
+  parent.appendChild(el);
+  return el;
+}
+
 // ─── Initialisation ────────────────────────────────────────────────────────────
 
 /**
@@ -202,8 +218,10 @@ function _afficherResultatsHote(donnees) {
   const statutResultat = document.getElementById('result-status');
   if (statutResultat) {
     statutResultat.className = 'result-status correct';
-    statutResultat.innerHTML =
-      `<i class="fas fa-check-circle"></i><span>Bonne réponse : <strong>${donnees.correctAnswer}</strong></span>`;
+    statutResultat.replaceChildren();
+    appendIcon(statutResultat, 'fas fa-check-circle');
+    const texte = appendText(statutResultat, 'Bonne réponse : ');
+    appendText(texte, donnees.correctAnswer, 'strong');
   }
 
   const bonneReponse = document.getElementById('correct-answer');
@@ -223,7 +241,9 @@ function _afficherResultatsHote(donnees) {
   if (resumeReponse && donnees.answers) {
     const bonnes = donnees.answers.filter(a => a.isCorrect).length;
     const total  = donnees.answers.filter(a => a.answer !== null).length;
-    resumeReponse.innerHTML = `<strong>${bonnes}/${total}</strong> bonnes réponses`;
+    resumeReponse.replaceChildren();
+    appendText(resumeReponse, `${bonnes}/${total}`, 'strong');
+    resumeReponse.append(' bonnes réponses');
   }
 }
 
@@ -245,16 +265,19 @@ function _afficherResultatsJoueur(donnees, monResultat) {
       const pointsBase    = monResultat.rank <= 8 ? tableauPoints[monResultat.rank - 1] : 1;
       const msgSerie      = pts > pointsBase ? ' Série !' : '';
       statutResultat.className = 'result-status correct';
-      statutResultat.innerHTML =
-        `<i class="fas fa-check-circle"></i><span>Bonne réponse ! +${pts} pts${msgSerie}</span>`;
+      statutResultat.replaceChildren();
+      appendIcon(statutResultat, 'fas fa-check-circle');
+      appendText(statutResultat, `Bonne réponse ! +${pts} pts${msgSerie}`);
     } else if (monResultat && monResultat.answer !== null) {
       statutResultat.className = 'result-status incorrect';
-      statutResultat.innerHTML =
-        `<i class="fas fa-times-circle"></i><span>Mauvaise réponse (${monResultat.pointsEarned} pts)</span>`;
+      statutResultat.replaceChildren();
+      appendIcon(statutResultat, 'fas fa-times-circle');
+      appendText(statutResultat, `Mauvaise réponse (${monResultat.pointsEarned} pts)`);
     } else {
       statutResultat.className = 'result-status incorrect';
-      statutResultat.innerHTML =
-        `<i class="fas fa-clock"></i><span>Temps écoulé ! (0 pts)</span>`;
+      statutResultat.replaceChildren();
+      appendIcon(statutResultat, 'fas fa-clock');
+      appendText(statutResultat, 'Temps écoulé ! (0 pts)');
     }
   }
 
@@ -280,10 +303,8 @@ function _afficherResultatsJoueur(donnees, monResultat) {
     donnees.rankings.slice(0, 5).forEach((joueur, idx) => {
       const ligne = document.createElement('div');
       ligne.className = 'score-row' + (idx === 0 ? ' first' : '');
-      ligne.innerHTML = `
-        <span class="score-row-name">${medailles[idx] || `#${idx + 1}`} ${joueur.name}${joueur.streak >= 3 ? ' 🔥' : ''}</span>
-        <span class="score-row-points">${joueur.score} pts</span>
-      `;
+      appendText(ligne, `${medailles[idx] || `#${idx + 1}`} ${joueur.name}${joueur.streak >= 3 ? ' 🔥' : ''}`, 'span', 'score-row-name');
+      appendText(ligne, `${joueur.score} pts`, 'span', 'score-row-points');
       listeScores.appendChild(ligne);
     });
   }
@@ -388,10 +409,8 @@ export function mettreAJourScores() {
   joueursAffiches.forEach((joueur, idx) => {
     const puce = document.createElement('div');
     puce.className = 'score-chip' + (idx === 0 && joueur.score > 0 ? ' leader' : '');
-    puce.innerHTML = `
-      <span class="score-name">${joueur.name}</span>
-      <span class="score-points">${joueur.score || 0}</span>
-    `;
+    appendText(puce, joueur.name, 'span', 'score-name');
+    appendText(puce, joueur.score || 0, 'span', 'score-points');
     conteneur.appendChild(puce);
   });
 
@@ -461,11 +480,9 @@ function _rendreAutresClassements(classement) {
   classement.slice(3).forEach((joueur, idx) => {
     const ligne = document.createElement('div');
     ligne.className = 'other-rank-row';
-    ligne.innerHTML = `
-      <span class="other-rank-pos">#${idx + 4}</span>
-      <span class="other-rank-name">${joueur.name}</span>
-      <span class="other-rank-score">${joueur.score} pts</span>
-    `;
+    appendText(ligne, `#${idx + 4}`, 'span', 'other-rank-pos');
+    appendText(ligne, joueur.name, 'span', 'other-rank-name');
+    appendText(ligne, `${joueur.score} pts`, 'span', 'other-rank-score');
     conteneur.appendChild(ligne);
   });
 }
@@ -733,6 +750,9 @@ export function afficherNotification(message, type = 'info') {
   };
 
   const notif = document.createElement('div');
+  notif.setAttribute('role', 'status');
+  notif.setAttribute('aria-live', 'polite');
+  notif.setAttribute('aria-atomic', 'true');
   notif.style.cssText = `
     position: fixed;
     top: 20px;

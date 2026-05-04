@@ -12,6 +12,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 const { z } = require("zod");
 const { RateLimiterMemory } = require("rate-limiter-flexible");
 
@@ -88,24 +89,104 @@ app.use(express.json());
 // SCHEMAS DE VALIDATION ZOD
 // ============================================
 
+const LIMITES_PARAMETRES = {
+  maxPlayers: { min: 1, max: 12 },
+  questionsCount: { min: 1, max: 30 },
+  timePerQuestion: { min: 5, max: 120 },
+  timePerAnswer: { min: 5, max: 60 },
+};
+
+const schemaCodePartie = z
+  .string()
+  .regex(/^[A-Z0-9]{4,6}$/, "Code partie : 4-6 caracteres alphanumeriques majuscules");
+
+const schemaNomJoueur = z
+  .string()
+  .trim()
+  .min(1, "Nom de joueur requis")
+  .max(20, "Nom de joueur : 20 caracteres maximum");
+
+const schemaToken = z.string().min(32).max(128).optional();
+
+const schemaParametresPartie = z
+  .object({
+    maxPlayers: z.coerce.number().int().min(LIMITES_PARAMETRES.maxPlayers.min).max(LIMITES_PARAMETRES.maxPlayers.max).optional(),
+    playersCount: z.coerce.number().int().min(LIMITES_PARAMETRES.maxPlayers.min).max(LIMITES_PARAMETRES.maxPlayers.max).optional(),
+    nombreJoueurs: z.coerce.number().int().min(LIMITES_PARAMETRES.maxPlayers.min).max(LIMITES_PARAMETRES.maxPlayers.max).optional(),
+    questionsCount: z.coerce.number().int().min(LIMITES_PARAMETRES.questionsCount.min).max(LIMITES_PARAMETRES.questionsCount.max).optional(),
+    nombreQuestions: z.coerce.number().int().min(LIMITES_PARAMETRES.questionsCount.min).max(LIMITES_PARAMETRES.questionsCount.max).optional(),
+    timePerQuestion: z.coerce.number().int().min(LIMITES_PARAMETRES.timePerQuestion.min).max(LIMITES_PARAMETRES.timePerQuestion.max).optional(),
+    dureeQuestion: z.coerce.number().int().min(LIMITES_PARAMETRES.timePerQuestion.min).max(LIMITES_PARAMETRES.timePerQuestion.max).optional(),
+    timePerAnswer: z.coerce.number().int().min(LIMITES_PARAMETRES.timePerAnswer.min).max(LIMITES_PARAMETRES.timePerAnswer.max).optional(),
+    dureeReponse: z.coerce.number().int().min(LIMITES_PARAMETRES.timePerAnswer.min).max(LIMITES_PARAMETRES.timePerAnswer.max).optional(),
+  })
+  .strict();
+
+const schemaQuestionFournie = z
+  .object({
+    question: z.string().trim().min(1).max(300),
+    options: z.array(z.string().trim().min(1).max(120)).length(4),
+    reponseCorrecte: z.string().trim().min(1).max(120),
+    imageUrl: z.string().max(3000).nullable().optional(),
+    illustrationTexte: z.string().max(200).nullable().optional(),
+    wikidataId: z.string().max(30).nullable().optional(),
+    wikidataLabel: z.string().max(120).nullable().optional(),
+  })
+  .refine((q) => q.options.includes(q.reponseCorrecte), {
+    message: "La reponseCorrecte doit correspondre a une option",
+    path: ["reponseCorrecte"],
+  });
+
+const schemaCreerPartie = z
+  .object({
+    playerName: schemaNomJoueur,
+    settings: schemaParametresPartie.optional(),
+    mode: z.enum(["spectator", "classic"]).optional(),
+    questions: z.array(schemaQuestionFournie).min(1).max(LIMITES_PARAMETRES.questionsCount.max).nullable().optional(),
+  })
+  .strict();
+
 const schemaRejoindrePartie = z.object({
-  gameCode: z.string().regex(/^[A-Z0-9]{4,6}$/, "Code partie : 4-6 caracteres alphanumeriques majuscules"),
-  playerName: z.string().min(1, "Nom de joueur requis").max(20, "Nom de joueur : 20 caracteres maximum"),
+  gameCode: schemaCodePartie,
+  playerName: schemaNomJoueur,
+});
+
+const schemaReconnecterHote = schemaRejoindrePartie.extend({
+  hostToken: schemaToken,
+});
+
+const schemaReconnecterJoueur = schemaRejoindrePartie.extend({
+  playerToken: schemaToken,
 });
 
 const schemaSoumettreReponse = z.object({
-  gameCode: z.string().min(1),
-  answer: z.string().max(200, "Reponse : 200 caracteres maximum"),
+  gameCode: schemaCodePartie,
+  answer: z.string().trim().min(1, "Reponse requise").max(200, "Reponse : 200 caracteres maximum"),
 });
 
 const schemaVoteTheme = z.object({
-  gameCode: z.string().min(1),
-  theme: z.string().min(1, "Theme requis"),
+  gameCode: schemaCodePartie,
+  theme: z.string().trim().min(1, "Theme requis").max(50, "Theme : 50 caracteres maximum"),
 });
 
 const schemaDemarrerPartie = z.object({
-  gameCode: z.string().min(1),
-  settings: z.any().optional(),
+  gameCode: schemaCodePartie,
+  hostToken: schemaToken,
+  settings: schemaParametresPartie.optional(),
+});
+
+const schemaCommandeHote = z.object({
+  gameCode: schemaCodePartie,
+  hostToken: schemaToken,
+});
+
+const schemaSpectateur = z.object({
+  gameCode: schemaCodePartie,
+});
+
+const schemaGenererQuestions = z.object({
+  theme: z.string().trim().min(1, "Le theme est requis").max(60, "Theme : 60 caracteres maximum"),
+  count: z.coerce.number().int().min(LIMITES_PARAMETRES.questionsCount.min).max(LIMITES_PARAMETRES.questionsCount.max).default(10),
 });
 
 /**
@@ -131,6 +212,8 @@ const limiteurRejoindre = new RateLimiterMemory({ points: 10, duration: 60, keyP
 const limiteurReponse = new RateLimiterMemory({ points: 5, duration: 10, keyPrefix: "reponse" });
 const limiteurVote = new RateLimiterMemory({ points: 3, duration: 30, keyPrefix: "vote" });
 const limiteurDemarrer = new RateLimiterMemory({ points: 5, duration: 60, keyPrefix: "demarrer" });
+const limiteurCreerPartie = new RateLimiterMemory({ points: 5, duration: 60, keyPrefix: "creer-partie" });
+const limiteurGenererQuestions = new RateLimiterMemory({ points: 3, duration: 60, keyPrefix: "generer-questions" });
 
 /**
  * verifierLimite — Verifie si une action est autorisee par le limiteur.
@@ -146,6 +229,37 @@ async function verifierLimite(limiteur, cle) {
     const attente = Math.ceil((resultatRejet.msBeforeNext || 1000) / 1000);
     return { autorise: false, attente };
   }
+}
+
+function genererTokenSession() {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+function comparerTokens(tokenFourni, tokenAttendu) {
+  if (!tokenFourni || !tokenAttendu) return false;
+  const fourni = Buffer.from(String(tokenFourni));
+  const attendu = Buffer.from(String(tokenAttendu));
+  if (fourni.length !== attendu.length) return false;
+  return crypto.timingSafeEqual(fourni, attendu);
+}
+
+function hoteAutorise(partie, socket, hostToken) {
+  if (!partie) return false;
+  return socket.id === partie.hostId || comparerTokens(hostToken, partie.hostToken);
+}
+
+function joueurAppartientPartie(partie, joueur, socketId, codePartie) {
+  return Boolean(
+    partie &&
+      joueur &&
+      joueur.gameCode === codePartie &&
+      partie.players[socketId] &&
+      partie.players[socketId].gameCode === codePartie
+  );
+}
+
+function clamp(nombre, minimum, maximum) {
+  return Math.min(Math.max(nombre, minimum), maximum);
 }
 
 // ============================================
@@ -201,11 +315,17 @@ app.get("/api/themes", (req, res) => {
 });
 
 app.post("/api/generate-questions", async (req, res) => {
-  const { theme, count = 10 } = req.body;
-
-  if (!theme) {
-    return res.status(400).json({ success: false, error: "Le theme est requis" });
+  const adresseIp = req.ip || req.socket?.remoteAddress || "inconnu";
+  const limite = await verifierLimite(limiteurGenererQuestions, adresseIp);
+  if (!limite.autorise) {
+    return res.status(429).json({ success: false, error: `Trop de generations. Reessayez dans ${limite.attente}s.` });
   }
+
+  const validation = validerPayload(schemaGenererQuestions, req.body || {});
+  if (!validation.valide) {
+    return res.status(400).json({ success: false, error: validation.erreur });
+  }
+  const { theme, count } = validation.donnees;
 
   if (!process.env.GROQ_API_KEY) {
     return res.status(500).json({
@@ -291,6 +411,49 @@ function annulerTimersPartie(partie) {
   }
 }
 
+function memoriserSessionJoueur(partie, joueur) {
+  if (!partie || !joueur?.playerToken) return;
+  if (!partie.playerSessions) partie.playerSessions = {};
+  partie.playerSessions[joueur.playerToken] = {
+    id: joueur.id,
+    gameCode: joueur.gameCode,
+    name: joueur.name,
+    score: partie.scores[joueur.id] ?? joueur.score ?? 0,
+    isHost: joueur.isHost || false,
+    hasAnswered: joueur.hasAnswered || false,
+    playerToken: joueur.playerToken,
+  };
+}
+
+function attacherJoueur(partie, socketId, session) {
+  if (!partie.playerSessions) partie.playerSessions = {};
+  const joueur = {
+    id: socketId,
+    gameCode: partie.code,
+    name: session.name,
+    score: session.score || 0,
+    isHost: session.isHost || false,
+    hasAnswered: session.hasAnswered || false,
+    playerToken: session.playerToken,
+  };
+  joueurs[socketId] = joueur;
+  partie.players[socketId] = joueur;
+  partie.scores[socketId] = joueur.score;
+  if (joueur.playerToken) {
+    partie.playerSessions[joueur.playerToken] = { ...joueur };
+  }
+  return joueur;
+}
+
+function serialiserJoueurs(partie) {
+  return Object.values(partie.players).map((j) => ({
+    id: j.id,
+    name: j.name,
+    score: partie.scores[j.id] ?? j.score ?? 0,
+    isHost: j.isHost || false,
+  }));
+}
+
 // ============================================
 // LOGIQUE INTERNE DE JEU
 // ============================================
@@ -305,11 +468,15 @@ function normaliserParametres(bruts = {}) {
   const nombreQuestions = Number(bruts.questionsCount ?? bruts.nombreQuestions ?? 10);
   const dureeQuestion = Number(bruts.timePerQuestion ?? bruts.dureeQuestion ?? 30);
   const dureeReponse = Number(bruts.timePerAnswer ?? bruts.dureeReponse ?? 15);
+  const maxPlayers = Number.isFinite(maxJoueurs) ? maxJoueurs : 4;
+  const questionsCount = Number.isFinite(nombreQuestions) ? nombreQuestions : 10;
+  const timePerQuestion = Number.isFinite(dureeQuestion) ? dureeQuestion : 30;
+  const timePerAnswer = Number.isFinite(dureeReponse) ? dureeReponse : 15;
   return {
-    maxPlayers: Number.isFinite(maxJoueurs) && maxJoueurs > 0 ? maxJoueurs : 4,
-    questionsCount: Number.isFinite(nombreQuestions) ? nombreQuestions : 10,
-    timePerQuestion: Number.isFinite(dureeQuestion) ? dureeQuestion : 30,
-    timePerAnswer: Number.isFinite(dureeReponse) ? dureeReponse : 15,
+    maxPlayers: clamp(Math.trunc(maxPlayers), LIMITES_PARAMETRES.maxPlayers.min, LIMITES_PARAMETRES.maxPlayers.max),
+    questionsCount: clamp(Math.trunc(questionsCount), LIMITES_PARAMETRES.questionsCount.min, LIMITES_PARAMETRES.questionsCount.max),
+    timePerQuestion: clamp(Math.trunc(timePerQuestion), LIMITES_PARAMETRES.timePerQuestion.min, LIMITES_PARAMETRES.timePerQuestion.max),
+    timePerAnswer: clamp(Math.trunc(timePerAnswer), LIMITES_PARAMETRES.timePerAnswer.min, LIMITES_PARAMETRES.timePerAnswer.max),
   };
 }
 
@@ -336,6 +503,7 @@ function demarrerPartieInterne(codePartie, parametresBruts = null) {
   partie.currentQuestionIndex = 0;
   partie.state = "playing";
   partie.questionOpen = false;
+  partie._advancePending = false;
   partie.answers = [];
   partie.questionHistory = [];
   partie.streaks = {};
@@ -350,12 +518,7 @@ function demarrerPartieInterne(codePartie, parametresBruts = null) {
     gameCode: codePartie,
     mode: partie.mode || "spectator",
     settings: partie.settings,
-    players: Object.values(partie.players).map((j) => ({
-      id: j.id,
-      name: j.name,
-      score: partie.scores[j.id] ?? 0,
-      isHost: j.isHost || false,
-    })),
+    players: serialiserJoueurs(partie),
   });
 
   envoyerQuestionATous(codePartie);
@@ -364,6 +527,7 @@ function demarrerPartieInterne(codePartie, parametresBruts = null) {
 function envoyerQuestionATous(codePartie) {
   const partie = parties[codePartie];
   if (!partie || partie.state !== "playing") return;
+  partie._advancePending = false;
 
   if (partie.currentQuestionIndex >= partie.questions.length) {
     terminerPartie(codePartie);
@@ -527,14 +691,21 @@ function finaliserQuestion(codePartie) {
 
 function questionSuivante(codePartie) {
   const partie = parties[codePartie];
-  if (!partie) return;
+  if (!partie || partie.state !== "playing") return;
+  if (partie._advancePending) return;
+  if (partie.questionOpen) {
+    finaliserQuestion(codePartie);
+    return;
+  }
 
+  partie._advancePending = true;
   partie.currentQuestionIndex++;
 
   if (partie.currentQuestionIndex >= partie.questions.length) {
     terminerPartie(codePartie);
   } else {
     setTimeout(() => {
+      if (!parties[codePartie]) return;
       envoyerQuestionATous(codePartie);
     }, 2000);
   }
@@ -543,8 +714,11 @@ function questionSuivante(codePartie) {
 function terminerPartie(codePartie) {
   const partie = parties[codePartie];
   if (!partie) return;
+  if (partie.state === "finished") return;
 
   partie.state = "finished";
+  partie._advancePending = false;
+  annulerTimersPartie(partie);
 
   const classement = obtenirClassement(partie.players, partie.scores, partie.streaks);
 
@@ -574,18 +748,37 @@ io.on("connection", (socket) => {
   console.log("Nouveau joueur connecte:", socket.id);
 
   // Creer une partie
-  socket.on("create-game", ({ playerName, settings, mode, questions }) => {
+  socket.on("create-game", async (payload = {}) => {
+    const validation = validerPayload(schemaCreerPartie, payload);
+    if (!validation.valide) {
+      socket.emit("erreur-validation", { message: validation.erreur });
+      return;
+    }
+
+    const adresseIp = socket.handshake.address || "inconnu";
+    const { autorise, attente } = await verifierLimite(limiteurCreerPartie, adresseIp);
+    if (!autorise) {
+      socket.emit("erreur-limite", { message: `Trop de creations de partie. Reessayez dans ${attente}s.` });
+      return;
+    }
+
+    const { playerName, settings, mode, questions } = validation.donnees;
     const codePartie = genererCodePartie();
     const parametres = normaliserParametres(settings || {});
     const modeJeu = mode || "spectator";
     const questionsAI = Array.isArray(questions) ? questions : null;
+    const hostToken = genererTokenSession();
+    const playerToken = genererTokenSession();
 
     parties[codePartie] = {
       code: codePartie,
       hostId: socket.id,
       hostName: playerName,
+      hostToken,
+      hostPlayerToken: playerToken,
       mode: modeJeu,
       players: {},
+      playerSessions: {},
       state: "waiting",
       settings: parametres,
       currentQuestionIndex: 0,
@@ -610,16 +803,20 @@ io.on("connection", (socket) => {
       score: 0,
       isHost: modeJeu === "spectator",
       hasAnswered: false,
+      playerToken,
     };
 
     parties[codePartie].players[socket.id] = joueurs[socket.id];
     parties[codePartie].scores[socket.id] = 0;
+    parties[codePartie].playerSessions[playerToken] = { ...joueurs[socket.id] };
 
     socket.join(codePartie);
 
     socket.emit("game-created", {
       success: true,
       gameCode: codePartie,
+      hostToken,
+      playerToken,
       mode: modeJeu,
       message: "Partie creee avec succes",
     });
@@ -628,11 +825,21 @@ io.on("connection", (socket) => {
   });
 
   // Rejoindre en tant qu'hote (reconnexion apres navigation)
-  socket.on("rejoin-as-host", ({ gameCode, playerName }) => {
+  socket.on("rejoin-as-host", (payload = {}) => {
+    const validation = validerPayload(schemaReconnecterHote, payload);
+    if (!validation.valide) {
+      socket.emit("rejoin-error", { message: validation.erreur });
+      return;
+    }
+    const { gameCode, playerName, hostToken } = validation.donnees;
     const partie = parties[gameCode];
 
     if (!partie) {
       socket.emit("rejoin-error", { message: "Partie introuvable" });
+      return;
+    }
+    if (!hoteAutorise(partie, socket, hostToken)) {
+      socket.emit("rejoin-error", { message: "Token hote invalide" });
       return;
     }
 
@@ -641,35 +848,52 @@ io.on("connection", (socket) => {
     delete partie.hostDisconnectedAt;
 
     const estHoteJoueur = partie.mode === "spectator";
+    const sessionHote = partie.hostPlayerToken ? partie.playerSessions?.[partie.hostPlayerToken] : null;
 
     if (ancienIdHote && partie.players[ancienIdHote]) {
       const ancienJoueur = partie.players[ancienIdHote];
+      const playerToken = ancienJoueur.playerToken || partie.hostPlayerToken || genererTokenSession();
       joueurs[socket.id] = {
         id: socket.id,
         gameCode,
         name: playerName || ancienJoueur.name,
-        score: ancienJoueur.score || 0,
+        score: partie.scores[ancienIdHote] ?? ancienJoueur.score ?? 0,
         isHost: estHoteJoueur,
         hasAnswered: ancienJoueur.hasAnswered || false,
+        playerToken,
       };
       partie.players[socket.id] = joueurs[socket.id];
-      partie.scores[socket.id] = ancienJoueur.score || 0;
+      partie.scores[socket.id] = joueurs[socket.id].score;
+      partie.hostPlayerToken = playerToken;
+      memoriserSessionJoueur(partie, joueurs[socket.id]);
       delete partie.players[ancienIdHote];
       delete partie.scores[ancienIdHote];
       delete joueurs[ancienIdHote];
+    } else if (sessionHote) {
+      sessionHote.name = playerName || sessionHote.name;
+      sessionHote.isHost = estHoteJoueur;
+      attacherJoueur(partie, socket.id, sessionHote);
     } else {
-      joueurs[socket.id] = { id: socket.id, gameCode, name: playerName, score: 0, isHost: estHoteJoueur, hasAnswered: false };
-      partie.players[socket.id] = joueurs[socket.id];
-      partie.scores[socket.id] = 0;
+      const playerToken = partie.hostPlayerToken || genererTokenSession();
+      partie.hostPlayerToken = playerToken;
+      attacherJoueur(partie, socket.id, {
+        name: playerName,
+        score: 0,
+        isHost: estHoteJoueur,
+        hasAnswered: false,
+        playerToken,
+      });
     }
 
     socket.join(gameCode);
 
     socket.emit("rejoin-success", {
       gameCode,
+      hostToken: partie.hostToken,
+      playerToken: joueurs[socket.id]?.playerToken,
       hostName: partie.hostName,
       mode: partie.mode || "spectator",
-      players: Object.values(partie.players).map((j) => ({ id: j.id, name: j.name, score: j.score || 0, isHost: j.isHost || false })),
+      players: serialiserJoueurs(partie),
       settings: partie.settings,
     });
 
@@ -712,6 +936,7 @@ io.on("connection", (socket) => {
       socket.emit("join-error", { message: "Code de partie invalide" });
       return;
     }
+    if (!partie.playerSessions) partie.playerSessions = {};
     if (partie.state !== "waiting") {
       socket.emit("join-error", { message: "La partie a deja commence" });
       return;
@@ -731,23 +956,26 @@ io.on("connection", (socket) => {
       return;
     }
 
-    joueurs[socket.id] = { id: socket.id, gameCode, name: playerName, score: 0, isHost: false, hasAnswered: false };
+    const playerToken = genererTokenSession();
+    joueurs[socket.id] = { id: socket.id, gameCode, name: playerName, score: 0, isHost: false, hasAnswered: false, playerToken };
     partie.players[socket.id] = joueurs[socket.id];
     partie.scores[socket.id] = 0;
+    partie.playerSessions[playerToken] = { ...joueurs[socket.id] };
 
     socket.join(gameCode);
 
     io.to(gameCode).emit("player-joined", {
       playerId: socket.id,
       playerName,
-      players: Object.values(partie.players).map((j) => ({ id: j.id, name: j.name, score: j.score, isHost: j.isHost })),
+      players: serialiserJoueurs(partie),
     });
 
     socket.emit("join-success", {
       gameCode,
+      playerToken,
       hostName: partie.hostName,
       mode: partie.mode || "spectator",
-      players: Object.values(partie.players).map((j) => ({ id: j.id, name: j.name, score: j.score, isHost: j.isHost })),
+      players: serialiserJoueurs(partie),
       settings: partie.settings,
     });
 
@@ -759,41 +987,63 @@ io.on("connection", (socket) => {
   });
 
   // Reconnexion en cours de partie
-  socket.on("rejoin-game", ({ gameCode, playerName }) => {
+  socket.on("rejoin-game", (payload = {}) => {
+    const validation = validerPayload(schemaReconnecterJoueur, payload);
+    if (!validation.valide) {
+      socket.emit("rejoin-error", { message: validation.erreur });
+      return;
+    }
+    const { gameCode, playerName, playerToken } = validation.donnees;
     const partie = parties[gameCode];
 
     if (!partie) {
       socket.emit("rejoin-error", { message: "Partie introuvable" });
       return;
     }
+    if (!partie.playerSessions) partie.playerSessions = {};
 
-    const entreeExistante = Object.entries(partie.players).find(
-      ([, j]) => j.name.toLowerCase() === playerName.toLowerCase()
-    );
+    const sessionParToken = playerToken ? partie.playerSessions[playerToken] : null;
+    const entreeExistante = Object.entries(partie.players).find(([, j]) => {
+      if (playerToken && comparerTokens(playerToken, j.playerToken)) return true;
+      return !j.playerToken && j.name.toLowerCase() === playerName.toLowerCase();
+    });
+
+    if (!sessionParToken && !entreeExistante) {
+      socket.emit("rejoin-error", { message: "Token joueur invalide" });
+      return;
+    }
 
     if (entreeExistante) {
       const [ancienId, ancienJoueur] = entreeExistante;
-      joueurs[socket.id] = { id: socket.id, gameCode, name: playerName, score: ancienJoueur.score || 0, isHost: false, hasAnswered: ancienJoueur.hasAnswered || false };
-      partie.players[socket.id] = joueurs[socket.id];
-      partie.scores[socket.id] = ancienJoueur.score || 0;
+      const session = {
+        name: ancienJoueur.name || playerName,
+        score: partie.scores[ancienId] ?? ancienJoueur.score ?? 0,
+        isHost: ancienJoueur.isHost || false,
+        hasAnswered: ancienJoueur.hasAnswered || false,
+        playerToken: ancienJoueur.playerToken || playerToken,
+      };
+      attacherJoueur(partie, socket.id, session);
       if (ancienId !== socket.id) {
         delete partie.players[ancienId];
         delete partie.scores[ancienId];
         delete joueurs[ancienId];
       }
     } else {
-      joueurs[socket.id] = { id: socket.id, gameCode, name: playerName, score: 0, isHost: false, hasAnswered: false };
-      partie.players[socket.id] = joueurs[socket.id];
-      partie.scores[socket.id] = 0;
+      attacherJoueur(partie, socket.id, {
+        ...sessionParToken,
+        name: sessionParToken.name || playerName,
+        playerToken,
+      });
     }
 
     socket.join(gameCode);
 
     socket.emit("rejoin-success", {
       gameCode,
+      playerToken: joueurs[socket.id]?.playerToken,
       hostName: partie.hostName,
       mode: partie.mode || "spectator",
-      players: Object.values(partie.players).map((j) => ({ id: j.id, name: j.name, score: partie.scores[j.id] || j.score || 0, isHost: j.isHost || false })),
+      players: serialiserJoueurs(partie),
       settings: partie.settings,
       gameState: partie.state,
       currentQuestionIndex: partie.currentQuestionIndex,
@@ -816,12 +1066,13 @@ io.on("connection", (socket) => {
   });
 
   // Demarrer la partie (hote)
-  socket.on("start-game", async ({ gameCode, settings }) => {
-    const { valide, erreur } = validerPayload(schemaDemarrerPartie, { gameCode, settings });
+  socket.on("start-game", async (payload = {}) => {
+    const { valide, erreur, donnees } = validerPayload(schemaDemarrerPartie, payload);
     if (!valide) {
       socket.emit("erreur-validation", { message: erreur });
       return;
     }
+    const { gameCode, settings, hostToken } = donnees;
 
     const { autorise, attente } = await verifierLimite(limiteurDemarrer, socket.id);
     if (!autorise) {
@@ -834,7 +1085,7 @@ io.on("connection", (socket) => {
       socket.emit("error", { message: "Code de partie invalide" });
       return;
     }
-    if (socket.id !== partie.hostId) {
+    if (!hoteAutorise(partie, socket, hostToken)) {
       socket.emit("erreur-validation", { message: "Seul l'hote peut demarrer la partie" });
       return;
     }
@@ -854,11 +1105,13 @@ io.on("connection", (socket) => {
 
   // Soumettre une reponse
   socket.on("submit-answer", async ({ gameCode, answer }) => {
-    const { valide, erreur } = validerPayload(schemaSoumettreReponse, { gameCode, answer });
+    const { valide, erreur, donnees } = validerPayload(schemaSoumettreReponse, { gameCode, answer });
     if (!valide) {
       socket.emit("erreur-validation", { message: erreur });
       return;
     }
+    gameCode = donnees.gameCode;
+    answer = donnees.answer;
 
     const { autorise, attente } = await verifierLimite(limiteurReponse, socket.id);
     if (!autorise) {
@@ -869,22 +1122,28 @@ io.on("connection", (socket) => {
     const partie = parties[gameCode];
     const joueur = joueurs[socket.id];
 
-    if (!partie || !joueur || !partie.questionOpen) return;
+    if (!joueurAppartientPartie(partie, joueur, socket.id, gameCode) || !partie.questionOpen) return;
+    if (partie.mode === "spectator" && joueur.isHost) return;
     if (joueur.hasAnswered) return;
 
     joueur.hasAnswered = true;
+    partie.players[socket.id].hasAnswered = true;
     partie.answers.push({ playerId: socket.id, playerName: joueur.name, answer, timestamp: Date.now() });
-
-    io.to(gameCode).emit("player-answered", {
-      playerId: socket.id,
-      playerName: joueur.name,
-      totalAnswered: partie.answers.length,
-      totalPlayers: Object.keys(partie.players).filter((id) => !partie.players[id].isHost).length,
-    });
 
     const joueursActifs = Object.values(partie.players).filter(
       (j) => partie.mode !== "spectator" || !j.isHost
     );
+    const evenementReponse = {
+      playerId: socket.id,
+      playerName: joueur.name,
+      totalAnswered: partie.answers.length,
+      totalPlayers: joueursActifs.length,
+    };
+    if (partie.mode === "spectator") {
+      evenementReponse.answer = answer;
+    }
+    io.to(gameCode).emit("player-answered", evenementReponse);
+
     const tousOntRepondu = joueursActifs.every((j) => j.hasAnswered);
     if (tousOntRepondu) {
       annulerTimersPartie(partie);
@@ -893,14 +1152,26 @@ io.on("connection", (socket) => {
   });
 
   // Question suivante (hote)
-  socket.on("next-question", ({ gameCode }) => {
+  socket.on("next-question", (payload = {}) => {
+    const { valide, erreur, donnees } = validerPayload(schemaCommandeHote, payload);
+    if (!valide) {
+      socket.emit("erreur-validation", { message: erreur });
+      return;
+    }
+    const { gameCode, hostToken } = donnees;
     const partie = parties[gameCode];
-    if (!partie || socket.id !== partie.hostId) return;
+    if (!partie || !hoteAutorise(partie, socket, hostToken)) return;
     questionSuivante(gameCode);
   });
 
   // Rejoindre en tant que spectateur TV (lecture seule)
-  socket.on("spectate-join", ({ gameCode }) => {
+  socket.on("spectate-join", (payload = {}) => {
+    const { valide, erreur, donnees } = validerPayload(schemaSpectateur, payload);
+    if (!valide) {
+      socket.emit("erreur-validation", { message: erreur });
+      return;
+    }
+    const { gameCode } = donnees;
     const partie = parties[gameCode];
     if (!partie) {
       socket.emit("error", { message: "Partie introuvable" });
@@ -938,16 +1209,28 @@ io.on("connection", (socket) => {
   });
 
   // Terminer la partie (hote)
-  socket.on("end-game", ({ gameCode }) => {
+  socket.on("end-game", (payload = {}) => {
+    const { valide, erreur, donnees } = validerPayload(schemaCommandeHote, payload);
+    if (!valide) {
+      socket.emit("erreur-validation", { message: erreur });
+      return;
+    }
+    const { gameCode, hostToken } = donnees;
     const partie = parties[gameCode];
-    if (!partie || socket.id !== partie.hostId) return;
+    if (!partie || !hoteAutorise(partie, socket, hostToken)) return;
     terminerPartie(gameCode);
   });
 
   // Lancer le vote du theme (hote, mode IA)
-  socket.on("start-theme-vote", async ({ gameCode }) => {
+  socket.on("start-theme-vote", async (payload = {}) => {
+    const { valide, erreur, donnees } = validerPayload(schemaCommandeHote, payload);
+    if (!valide) {
+      socket.emit("erreur-validation", { message: erreur });
+      return;
+    }
+    const { gameCode, hostToken } = donnees;
     const partie = parties[gameCode];
-    if (!partie || partie.state !== "waiting" || socket.id !== partie.hostId) return;
+    if (!partie || partie.state !== "waiting" || !hoteAutorise(partie, socket, hostToken)) return;
 
     const themes = melangerTableau([...THEMES_PREDEFINIS]).slice(0, 3);
 
@@ -985,11 +1268,13 @@ io.on("connection", (socket) => {
 
   // Voter pour un theme
   socket.on("vote-theme", async ({ gameCode, theme }) => {
-    const { valide, erreur } = validerPayload(schemaVoteTheme, { gameCode, theme });
+    const { valide, erreur, donnees } = validerPayload(schemaVoteTheme, { gameCode, theme });
     if (!valide) {
       socket.emit("erreur-validation", { message: erreur });
       return;
     }
+    gameCode = donnees.gameCode;
+    theme = donnees.theme;
 
     const { autorise, attente } = await verifierLimite(limiteurVote, socket.id);
     if (!autorise) {
@@ -999,6 +1284,9 @@ io.on("connection", (socket) => {
 
     const partie = parties[gameCode];
     if (!partie || !partie.themeVoteActive) return;
+    const joueur = joueurs[socket.id];
+    if (!joueurAppartientPartie(partie, joueur, socket.id, gameCode)) return;
+    if (partie.mode === "spectator" && joueur.isHost) return;
 
     if (!partie.themeVoteOptions || !partie.themeVoteOptions.includes(theme)) {
       socket.emit("erreur-validation", { message: "Theme invalide : ne fait pas partie des options proposees" });
@@ -1026,10 +1314,12 @@ io.on("connection", (socket) => {
       const partie = parties[codePartie];
 
       if (partie) {
+        memoriserSessionJoueur(partie, joueur);
+        const estHoteSocket = socket.id === partie.hostId;
         delete partie.players[socket.id];
         delete partie.scores[socket.id];
 
-        if (joueur.isHost) {
+        if (estHoteSocket || joueur.isHost) {
           console.log(`Hote deconnecte de ${codePartie}, attente de reconnexion...`);
           partie.hostDisconnectedAt = Date.now();
 
@@ -1044,7 +1334,7 @@ io.on("connection", (socket) => {
           io.to(codePartie).emit("player-left", {
             playerId: socket.id,
             playerName: joueur.name,
-            players: Object.values(partie.players).map((j) => ({ id: j.id, name: j.name, score: j.score })),
+            players: serialiserJoueurs(partie),
           });
         }
       }

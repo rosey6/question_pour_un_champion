@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#000000" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;" />
   <title>Rejoindre une partie - Question pour un Champion</title>
@@ -496,6 +496,34 @@
     let gameCode = '';
     let gameData = null;
 
+    function sauvegarderTokens(data) {
+      if (!data || !gameData) return;
+      if (data.hostToken) gameData.hostToken = data.hostToken;
+      if (data.playerToken) gameData.playerToken = data.playerToken;
+      sessionStorage.setItem('multiGameData', JSON.stringify(gameData));
+    }
+
+    function payloadJoueur() {
+      const payload = { gameCode: gameCode };
+      if (gameData?.playerToken) payload.playerToken = gameData.playerToken;
+      return payload;
+    }
+
+    function appendIcon(parent, className) {
+      const icon = document.createElement('i');
+      icon.className = className;
+      icon.setAttribute('aria-hidden', 'true');
+      parent.appendChild(icon);
+      return icon;
+    }
+
+    function appendTextSpan(parent, text) {
+      const span = document.createElement('span');
+      span.textContent = text;
+      parent.appendChild(span);
+      return span;
+    }
+
     // Initialisation
     document.addEventListener('DOMContentLoaded', () => {
       checkAutoJoin();
@@ -586,7 +614,9 @@
           hostName: data.hostName,
           mode: data.mode || 'spectator',
           players: data.players,
-          isHost: false
+          isHost: false,
+          hostToken: data.hostToken,
+          playerToken: data.playerToken
         };
 
         sessionStorage.setItem('multiGameData', JSON.stringify(gameData));
@@ -595,8 +625,19 @@
       });
 
       socket.on('join-error', (data) => {
-        console.error('Erreur:', data);
-        showNotification(data.message || 'Impossible de rejoindre', 'error');
+        gererErreurSocket(data, 'Impossible de rejoindre');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-door-open"></i> Rejoindre la partie';
+      });
+
+      socket.on('erreur-validation', (data) => {
+        gererErreurSocket(data, 'Impossible de rejoindre');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-door-open"></i> Rejoindre la partie';
+      });
+
+      socket.on('erreur-limite', (data) => {
+        gererErreurSocket(data, 'Trop de tentatives');
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-door-open"></i> Rejoindre la partie';
       });
@@ -619,6 +660,7 @@
 
       socket.on('game-started', (data) => {
         console.log('Partie demarree:', data);
+        sauvegarderTokens(data);
         gameData.players = data.players;
         gameData.settings = data.settings;
         sessionStorage.setItem('multiGameData', JSON.stringify(gameData));
@@ -665,7 +707,8 @@
       players.forEach(player => {
         const chip = document.createElement('div');
         chip.className = 'waiting-player-chip' + (player.name === playerName ? ' me' : '');
-        chip.innerHTML = `<i class="fas fa-user"></i><span>${player.name}</span>`;
+        appendIcon(chip, 'fas fa-user');
+        appendTextSpan(chip, player.name);
         container.appendChild(chip);
       });
     }
@@ -676,7 +719,7 @@
         btn.addEventListener('click', () => {
           if (confirm('Voulez-vous vraiment quitter la partie ?')) {
             if (socket) {
-              socket.emit('leave-game', { gameCode: gameCode });
+              socket.emit('leave-game', payloadJoueur());
               socket.disconnect();
             }
             sessionStorage.removeItem('multiGameData');
@@ -686,8 +729,16 @@
       }
     }
 
+    function gererErreurSocket(data, fallback) {
+      console.error('Erreur:', data);
+      showNotification(data?.message || data || fallback || 'Une erreur est survenue', 'error');
+    }
+
     function showNotification(message, type = 'info') {
       const notif = document.createElement('div');
+      notif.setAttribute('role', 'status');
+      notif.setAttribute('aria-live', 'polite');
+      notif.setAttribute('aria-atomic', 'true');
       notif.style.cssText = `
         position: fixed;
         top: 20px;

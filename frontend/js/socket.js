@@ -10,6 +10,27 @@ import { jouerSon } from './sons.js';
 /** Instance Socket.IO partagée */
 export let socket = null;
 
+function _payloadPartie(extra = {}) {
+  const payload = {
+    gameCode: etat.donneesPartie?.gameCode || etat.idPartie,
+    ...extra,
+  };
+  if (etat.estHote && etat.donneesPartie?.hostToken) {
+    payload.hostToken = etat.donneesPartie.hostToken;
+  }
+  if (!etat.estHote && etat.donneesPartie?.playerToken) {
+    payload.playerToken = etat.donneesPartie.playerToken;
+  }
+  return payload;
+}
+
+function _sauvegarderTokens(donnees) {
+  if (!donnees || !etat.donneesPartie) return;
+  if (donnees.hostToken) etat.donneesPartie.hostToken = donnees.hostToken;
+  if (donnees.playerToken) etat.donneesPartie.playerToken = donnees.playerToken;
+  sessionStorage.setItem('multiGameData', JSON.stringify(etat.donneesPartie));
+}
+
 // ─── Connexion ─────────────────────────────────────────────────────────────────
 
 /**
@@ -38,6 +59,8 @@ export function connecter(urlBackend) {
   socket.on('game-finished',         _surPartieTerminee);
   socket.on('host-disconnected',     _surHoteDeconnecte);
   socket.on('player-joined',         _surJoueurRejoint);
+  socket.on('erreur-validation',     _surErreurValidation);
+  socket.on('erreur-limite',         _surErreurLimite);
   socket.on('theme-vote-started',    _surVoteThemeDemarre);
   socket.on('theme-vote-update',     _surMiseAJourVote);
   socket.on('theme-vote-result',     _surResultatVote);
@@ -47,7 +70,7 @@ export function connecter(urlBackend) {
   // Écouter l'événement DOM émis par interface.js (bouton suivant de l'hôte)
   document.addEventListener('ui:questionSuivante', () => {
     if (socket && etat.donneesPartie?.gameCode) {
-      socket.emit('next-question', { gameCode: etat.donneesPartie.gameCode });
+      socket.emit('next-question', _payloadPartie());
     }
   });
 }
@@ -66,12 +89,12 @@ export function gererReconnexion() {
 
   if (etat.estHote) {
     socket.emit('rejoin-as-host', {
-      gameCode:   idPartie,
+      ..._payloadPartie({ gameCode: idPartie }),
       playerName: pseudo,
     });
   } else {
     socket.emit('rejoin-game', {
-      gameCode:   idPartie,
+      ..._payloadPartie({ gameCode: idPartie }),
       playerName: pseudo,
     });
   }
@@ -95,6 +118,7 @@ function _gererDeconnexion() {
 /** Rejoindre la partie avec succès */
 function _surRejoindreSucces(donnees) {
   console.log('[socket] Rejoint avec succès');
+  _sauvegarderTokens(donnees);
   const joueursFiltres = donnees.players || [];
   mettreAJourEtat('joueurs', joueursFiltres);
   ui.mettreAJourListeJoueurs(joueursFiltres);
@@ -132,7 +156,7 @@ function _soumettreReponse(optionChoisie) {
 
   if (socket && etat.donneesPartie?.gameCode) {
     socket.emit('submit-answer', {
-      gameCode: etat.donneesPartie.gameCode,
+      ..._payloadPartie(),
       answer:   optionChoisie,
     });
   }
@@ -249,6 +273,20 @@ function _surErreur(donnees) {
   }
 }
 
+function _surErreurValidation(donnees) {
+  console.error('[socket] Erreur validation :', donnees);
+  ui.afficherErreur(donnees?.message || 'Données invalides');
+}
+
+function _surErreurLimite(donnees) {
+  console.error('[socket] Erreur limite :', donnees);
+  if (donnees?.message && !donnees?.attente && !donnees?.retryAfter) {
+    ui.afficherNotification(donnees.message, 'warning');
+  } else {
+    ui.afficherErreurLimite(donnees?.attente || donnees?.retryAfter || 30);
+  }
+}
+
 /**
  * Émet l'événement 'vote-theme' pour voter pour un thème.
  * @param {string} theme - Le thème choisi
@@ -256,7 +294,7 @@ function _surErreur(donnees) {
 export function voterTheme(theme) {
   if (socket && etat.donneesPartie?.gameCode) {
     socket.emit('vote-theme', {
-      gameCode: etat.donneesPartie.gameCode,
+      ..._payloadPartie(),
       theme,
     });
   }
@@ -272,5 +310,6 @@ export function sauvegarderDonneesPartie(donnees) {
   mettreAJourEtat('pseudo',   donnees.playerName || donnees.hostName);
   mettreAJourEtat('estHote',  donnees.isHost || false);
   mettreAJourEtat('mode',     donnees.mode || 'spectator');
+  _sauvegarderTokens(donnees);
   sauvegarderSession();
 }
