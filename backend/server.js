@@ -19,6 +19,12 @@ const { RateLimiterMemory } = require("rate-limiter-flexible");
 // Modules internes
 const { calculerScore, obtenirClassement, POINTS_PAR_RANG } = require("./logique/jeu");
 const { melangerTableau, piocherQuestion, genererQuestionsViaGroq } = require("./logique/questions");
+const {
+  MANCHES,
+  initialiserManche,
+  obtenirJoueursActifs,
+  appliquerResultatsManche,
+} = require("./logique/manches");
 const { sauvegarderPartie, recupererPartie, supprimerPartie } = require("./stockage/redis");
 // Le minuteur serveur est disponible mais non utilise dans ce flux (le timer est gere via setTimeout existant)
 // const { gererMinuteur, arreterMinuteur } = require("./logique/minuteur");
@@ -514,11 +520,14 @@ function demarrerPartieInterne(codePartie, parametresBruts = null) {
     partie.streaks[idJoueur] = 0;
   });
 
+  initialiserManche(partie);
+
   io.to(codePartie).emit("game-started", {
     gameCode: codePartie,
     mode: partie.mode || "spectator",
     settings: partie.settings,
     players: serialiserJoueurs(partie),
+    manche: partie.manche,
   });
 
   envoyerQuestionATous(codePartie);
@@ -554,6 +563,7 @@ function envoyerQuestionATous(codePartie) {
   partie.questionStartedAt = Date.now();
 
   Object.keys(partie.players).forEach((idJoueur) => {
+    partie.players[idJoueur].hasAnswered = false;
     if (joueurs[idJoueur]) {
       joueurs[idJoueur].hasAnswered = false;
     }
@@ -569,6 +579,7 @@ function envoyerQuestionATous(codePartie) {
     totalQuestions: partie.questions.length,
     imageUrl: donneesQuestion.imageUrl || null,
     illustrationTexte: donneesQuestion.illustrationTexte || null,
+    manche: partie.manche,
   });
 
   console.log(`Question ${partie.currentQuestionIndex + 1}/${partie.questions.length} envoyee`);
@@ -649,7 +660,7 @@ function finaliserQuestion(codePartie) {
   });
 
   // Pas de reponse
-  Object.values(partie.players).forEach((j) => {
+  obtenirJoueursActifs(partie).forEach((j) => {
     if (!idsAyantRepondu.has(j.id)) {
       partie.streaks[j.id] = 0;
       resultatsReponses.push({
@@ -664,12 +675,15 @@ function finaliserQuestion(codePartie) {
     }
   });
 
+  appliquerResultatsManche(partie, resultatsReponses);
+
   const classement = obtenirClassement(partie.players, partie.scores, partie.streaks);
 
   partie.questionHistory.push({
     question: partie.currentQuestion.question,
     correctAnswer: reponseCorrecte,
     answers: resultatsReponses,
+    manche: partie.manche,
   });
 
   io.to(codePartie).emit("question-results", {
@@ -679,7 +693,13 @@ function finaliserQuestion(codePartie) {
     illustrationTexte: partie.currentQuestion.illustrationTexte || null,
     answers: resultatsReponses,
     rankings: classement,
+    manche: partie.manche,
   });
+
+  if (partie.manche?.nom === MANCHES.TERMINE) {
+    terminerPartie(codePartie);
+    return;
+  }
 
   // Mode classique : avancer automatiquement apres 5s
   if (partie.mode === "classic") {
@@ -725,6 +745,7 @@ function terminerPartie(codePartie) {
   io.to(codePartie).emit("game-finished", {
     rankings: classement,
     history: partie.questionHistory || [],
+    manche: partie.manche || null,
   });
 
   console.log(`Partie ${codePartie} terminee. Gagnant: ${classement[0]?.name || "Aucun"}`);
@@ -897,7 +918,7 @@ io.on("connection", (socket) => {
       settings: partie.settings,
     });
 
-    if (partie.state === "playing" && partie.currentQuestion) {
+      if (partie.state === "playing" && partie.currentQuestion) {
       const optionsMelangees = melangerTableau([...partie.currentQuestion.options]);
       socket.emit("new-question", {
         question: partie.currentQuestion.question,
@@ -907,6 +928,7 @@ io.on("connection", (socket) => {
         totalQuestions: partie.questions.length,
         imageUrl: partie.currentQuestion.imageUrl || null,
         illustrationTexte: partie.currentQuestion.illustrationTexte || null,
+        manche: partie.manche,
       });
     }
 
@@ -1059,6 +1081,7 @@ io.on("connection", (socket) => {
         totalQuestions: partie.questions.length,
         imageUrl: partie.currentQuestion.imageUrl || null,
         illustrationTexte: partie.currentQuestion.illustrationTexte || null,
+        manche: partie.manche,
       });
     }
 
@@ -1124,15 +1147,18 @@ io.on("connection", (socket) => {
 
     if (!joueurAppartientPartie(partie, joueur, socket.id, gameCode) || !partie.questionOpen) return;
     if (partie.mode === "spectator" && joueur.isHost) return;
+    const joueursActifs = obtenirJoueursActifs(partie);
+    const joueurActif = joueursActifs.some((j) => j.id === socket.id);
+    if (!joueurActif) {
+      socket.emit("error", { message: "Tu n'es pas actif dans cette manche." });
+      return;
+    }
     if (joueur.hasAnswered) return;
 
     joueur.hasAnswered = true;
     partie.players[socket.id].hasAnswered = true;
     partie.answers.push({ playerId: socket.id, playerName: joueur.name, answer, timestamp: Date.now() });
 
-    const joueursActifs = Object.values(partie.players).filter(
-      (j) => partie.mode !== "spectator" || !j.isHost
-    );
     const evenementReponse = {
       playerId: socket.id,
       playerName: joueur.name,
@@ -1202,6 +1228,7 @@ io.on("connection", (socket) => {
         totalQuestions: partie.questions.length,
         imageUrl: partie.currentQuestion.imageUrl || null,
         illustrationTexte: partie.currentQuestion.illustrationTexte || null,
+        manche: partie.manche,
       });
     }
 

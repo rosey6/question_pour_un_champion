@@ -167,6 +167,7 @@ function _surResultatsQuestion(donnees) {
   console.log('[socket] Résultats question :', donnees);
 
   arreterMinuteur();
+  ui.afficherManche(donnees.manche);
 
   // Mettre à jour la liste des joueurs depuis les classements
   if (donnees.rankings) {
@@ -210,6 +211,7 @@ function _surPartieDemarree(donnees) {
     mettreAJourEtat('joueurs', donnees.players);
     ui.mettreAJourListeJoueurs(donnees.players);
   }
+  ui.afficherManche(donnees.manche);
   ui.afficherEcranJeu();
 }
 

@@ -100,6 +100,20 @@ function stopAllSounds() {
   });
 }
 
+function displayRound(manche) {
+  if (!manche) return;
+  const zoneManche = document.getElementById('zone-manche');
+  if (!zoneManche) return;
+  const labels = {
+    NEUF_POINTS: 'Manche 1 - Neuf points gagnants',
+    QUATRE_A_LA_SUITE: 'Manche 2 - Quatre a la suite',
+    FACE_A_FACE: 'Manche 3 - Face-a-face',
+    TERMINE: 'Champion designe',
+  };
+  const label = labels[manche.nom] || manche.titre || `Manche ${manche.numero || ''}`;
+  zoneManche.textContent = manche.objectif ? `${label} | Objectif ${manche.objectif}` : label;
+}
+
 // ============================================
 // INITIALISATION
 // ============================================
@@ -215,6 +229,7 @@ function connectToGame() {
     gameState.currentQuestionIndex = data.questionNumber - 1;
     gameState.hasAnsweredCurrentQuestion = false;
 
+    displayRound(data.manche);
     displayQuestion(data);
     startQuestionTimer(data.timeLimit);
   });
@@ -223,6 +238,7 @@ function connectToGame() {
   socket.on('question-results', (data) => {
     console.log('Resultats question:', data);
     stopAllSounds();
+    displayRound(data.manche);
 
     if (data.rankings) {
       gameState.players = data.rankings.map(r => ({

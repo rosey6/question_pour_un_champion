@@ -97,6 +97,7 @@ export function afficherQuestion(donneesQuestion, callbackReponse) {
   masquerElement('result-zone');
   masquerElement('player-result');
   masquerElement('answer-zone');
+  afficherManche(donneesQuestion.manche);
 
   const infoQuestion = document.getElementById('info-question');
   if (infoQuestion) {
@@ -113,6 +114,24 @@ export function afficherQuestion(donneesQuestion, callbackReponse) {
   }
 
   mettreAJourScores();
+}
+
+export function afficherManche(manche) {
+  if (!manche) return;
+
+  const zoneManche = document.getElementById('zone-manche');
+  if (!zoneManche) return;
+
+  const titres = {
+    NEUF_POINTS: 'Manche 1 - Neuf points gagnants',
+    QUATRE_A_LA_SUITE: 'Manche 2 - Quatre a la suite',
+    FACE_A_FACE: 'Manche 3 - Face-a-face',
+    TERMINE: 'Champion designe',
+  };
+
+  const titre = titres[manche.nom] || manche.titre || `Manche ${manche.numero || ''}`;
+  const objectif = manche.objectif ? `Objectif ${manche.objectif}` : '';
+  zoneManche.textContent = objectif ? `${titre} | ${objectif}` : titre;
 }
 
 /**

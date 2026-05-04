@@ -200,6 +200,17 @@
       padding: 0.3rem 0.9rem;
     }
 
+    #round-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #00D4FF;
+      white-space: nowrap;
+      background: rgba(0, 212, 255, 0.08);
+      border: 1px solid rgba(0, 212, 255, 0.25);
+      border-radius: 100px;
+      padding: 0.28rem 0.8rem;
+    }
+
     /* Timer SVG */
     .timer-svg-wrap {
       position: relative;
@@ -997,6 +1008,7 @@
 
       <div class="header-center">
         <div id="question-counter">Q ? / ?</div>
+        <div id="round-label" aria-live="polite">Manche en attente</div>
         <div class="timer-svg-wrap">
           <svg id="timer-svg" viewBox="0 0 100 100">
             <circle id="timer-track" cx="50" cy="50" r="42" />
@@ -1387,8 +1399,9 @@
     });
 
     // Game started
-    socket.on('game-started', function () {
+    socket.on('game-started', function (data) {
       showScreen('screen-game');
+      updateRoundLabel(data && data.manche);
       resetQuestion();
     });
 
@@ -1429,11 +1442,26 @@
   // GAME HANDLERS
   // ======================================================
 
+  function updateRoundLabel(manche) {
+    if (!manche) return;
+    var el = document.getElementById('round-label');
+    if (!el) return;
+    var labels = {
+      NEUF_POINTS: 'Manche 1 - Neuf points',
+      QUATRE_A_LA_SUITE: 'Manche 2 - 4 a la suite',
+      FACE_A_FACE: 'Manche 3 - Face-a-face',
+      TERMINE: 'Champion designe'
+    };
+    var label = labels[manche.nom] || manche.titre || ('Manche ' + (manche.numero || ''));
+    el.textContent = manche.objectif ? label + ' | Objectif ' + manche.objectif : label;
+  }
+
   function handleNewQuestion(data) {
     showScreen('screen-game');
     hideNextBtn();
     stopTimer();
     resetQuestion();
+    updateRoundLabel(data.manche);
 
     // Counter
     var counter = document.getElementById('question-counter');
@@ -1478,6 +1506,7 @@
 
   function handleQuestionResults(data) {
     stopTimer();
+    updateRoundLabel(data.manche);
 
     var correct    = data.correctAnswer || '';
     var correctIdx = optionTextToIdx[correct];
