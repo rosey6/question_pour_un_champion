@@ -17,8 +17,28 @@ export const etat = {
   joueurs: [],
   indexQuestionCourante: 0,
   totalQuestions: 10,
-  streakActuel: 0,       // streak de la manche courante (réinitialisé à chaque manche)
-  donneesPartie: null,   // objet complet depuis sessionStorage (gameData)
+  streakActuel: 0,
+  donneesPartie: null,
+
+  // === Buzzer (Neuf Points) ===
+  buzzOuvert: false,
+  jAiBuze: false,
+  jAiLaMain: false,
+  joueurAvecLaMain: null,
+
+  // === Quatre à la Suite ===
+  phaseChoixTheme: false,
+  monTheme: null,
+  themesRestants: [],
+  joueurActifPassage: null,
+  jePasseEnCeMoment: false,
+  streakPassage: 0,
+
+  // === Face à Face ===
+  jAiLaMainFaceAFace: false,
+  indiceActuel: null,
+  niveauIndice: 0,
+  pointsDisponibles: 4,
 };
 
 /**
@@ -47,6 +67,23 @@ export function reinitialiserEtat() {
   etat.joueurs = [];
   etat.indexQuestionCourante = 0;
   etat.streakActuel = 0;
+  // Buzzer
+  etat.buzzOuvert        = false;
+  etat.jAiBuze           = false;
+  etat.jAiLaMain         = false;
+  etat.joueurAvecLaMain  = null;
+  // Quatre à la Suite
+  etat.phaseChoixTheme      = false;
+  etat.monTheme             = null;
+  etat.themesRestants       = [];
+  etat.joueurActifPassage   = null;
+  etat.jePasseEnCeMoment    = false;
+  etat.streakPassage        = 0;
+  // Face à Face
+  etat.jAiLaMainFaceAFace = false;
+  etat.indiceActuel        = null;
+  etat.niveauIndice        = 0;
+  etat.pointsDisponibles   = 4;
 }
 
 // ─── Persistance sessionStorage ───────────────────────────────────────────────

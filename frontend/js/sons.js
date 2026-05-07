@@ -60,6 +60,27 @@ const CONFIG_SONS = {
       _note(ctx, 740, t, 0.07, 'sine', vol * 0.32);
     },
   },
+  buzzerGagne: {
+    fichier: null,
+    synthese(ctx, t, vol) {
+      _note(ctx, 523, t,        0.12, 'sine', vol * 0.7);
+      _note(ctx, 659, t + 0.13, 0.12, 'sine', vol * 0.8);
+      _note(ctx, 784, t + 0.26, 0.18, 'sine', vol);
+    },
+  },
+  buzzerPris: {
+    fichier: null,
+    synthese(ctx, t, vol) {
+      _note(ctx, 440, t, 0.15, 'square', vol * 0.4);
+    },
+  },
+  indiceRevele: {
+    fichier: null,
+    synthese(ctx, t, vol) {
+      _note(ctx, 392, t,        0.10, 'sine', vol * 0.5);
+      _note(ctx, 440, t + 0.12, 0.15, 'sine', vol * 0.6);
+    },
+  },
   mancheDebut: {
     fichier: null,
     synthese(ctx, t, vol) {
@@ -91,6 +112,19 @@ const CONFIG_SONS = {
       _note(ctx, 523,  t,       0.18, 'sine', vol);
       _note(ctx, 784,  t + 0.2, 0.18, 'sine', vol);
       _note(ctx, 1046, t + 0.4, 0.50, 'sine', vol);
+    },
+  },
+  quatreASuite: {
+    fichier: null,
+    synthese(ctx, t, vol) {
+      [523, 659, 784, 1046].forEach((freq, i) => _note(ctx, freq, t + i * 0.11, 0.16, 'triangle', vol * 0.8));
+    },
+  },
+  mainChange: {
+    fichier: null,
+    synthese(ctx, t, vol) {
+      _note(ctx, 330, t, 0.10, 'sawtooth', vol * 0.35);
+      _note(ctx, 660, t + 0.11, 0.12, 'sawtooth', vol * 0.35);
     },
   },
   streakMonte: {

@@ -80,8 +80,22 @@ export function connecter(urlBackend) {
   socket.on('theme-vote-update',     _surMiseAJourVote);
   socket.on('theme-vote-result',     _surResultatVote);
   socket.on('questions-ready',       _surQuestionsPretes);
+  socket.on('buzzer-gagne',          _surBuzzerGagne);
+  socket.on('buzzer-pris',           _surBuzzerPris);
+  socket.on('buzzer-reouvre',        _surBuzzerReouvre);
+  socket.on('prochain-choix-theme',  _surProchainChoixTheme);
+  socket.on('theme-choisi',          _surThemeChoisi);
+  socket.on('debut-passage',         _surDebutPassage);
+  socket.on('resultat-reponse-passage', _surResultatReponsePassage);
+  socket.on('passage-termine',       _surPassageTermine);
+  socket.on('choix-main',            _surChoixMain);
+  socket.on('indice-revele',         _surIndiceRevele);
+  socket.on('main-change',           _surMainChange);
+  socket.on('resultat-face-a-face',  _surResultatFaceAFace);
   socket.on('error',                 _surErreur);
   socket.on('server-pong',           _surServerPong);
+
+  _exposerActionsManches();
 
   // Mission 7 — Mesure de latence (ping toutes les 5s)
   _demarrerMesurePing();
@@ -166,10 +180,15 @@ function _surNouvelleQuestion(donnees) {
     demarrerMinuteur(donnees.timeLimit / 1000);
   }
 
-  // Afficher la question avec un callback de soumission de réponse
-  ui.afficherQuestion(donnees, (optionChoisie) => {
-    _soumettreReponse(optionChoisie);
-  });
+  const estQuestionBuzzer = donnees.manche?.nom === 'NEUF_POINTS' || donnees.mancheType === 'BUZZER';
+  if (estQuestionBuzzer && !(etat.estHote && etat.mode === 'spectator')) {
+    ui.afficherQuestion(donnees, () => {});
+    ui.afficherZoneBuzzer(donnees.question, donnees.points || donnees.valeurPts || 1);
+  } else {
+    ui.afficherQuestion(donnees, (optionChoisie) => {
+      _soumettreReponse(optionChoisie);
+    });
+  }
 }
 
 /**
@@ -325,6 +344,84 @@ function _surQuestionsPretes() {
   ui.activerBoutonDemarrer();
 }
 
+function _surBuzzerGagne(donnees) {
+  ui.afficherBuzzerGagne(donnees.options || [], donnees.duree || 8, donnees.points || 1, (option) => {
+    _soumettreReponse(option);
+  });
+}
+
+function _surBuzzerPris(donnees) {
+  ui.afficherBuzzerPris(donnees.pseudo || donnees.playerName || 'Un joueur', donnees.points || 1);
+}
+
+function _surBuzzerReouvre(donnees) {
+  ui.rouvrirBuzzer(donnees.points || 1);
+}
+
+function _surProchainChoixTheme(donnees) {
+  const pseudo = donnees.pseudo || donnees.playerName;
+  const themes = donnees.themesRestants || donnees.themes || [];
+  if (pseudo === etat.pseudo) ui.afficherChoixTheme(themes);
+  else ui.afficherAttenteChoixTheme(pseudo, themes);
+}
+
+function _surThemeChoisi(donnees) {
+  ui.afficherThemeChoisi(donnees.pseudo || donnees.playerName || 'Joueur', donnees.theme);
+}
+
+function _surDebutPassage(donnees) {
+  const pseudo = donnees.pseudo || donnees.playerName;
+  const options = donnees.options || donnees.reponses || [];
+  if (pseudo === etat.pseudo) {
+    ui.afficherVuePassageActif(donnees.theme, donnees.duree || 40, donnees.question || '', options, (reponse) => {
+      repondrePassage(reponse);
+    });
+  } else {
+    ui.afficherVuePassageSpectateur(pseudo, donnees.theme, donnees.duree || 40, donnees.question || '', options);
+  }
+}
+
+function _surResultatReponsePassage(donnees) {
+  ui.mettreAJourStreakPassage(donnees.streak || 0, Boolean(donnees.correct), Boolean(donnees.quatreASuite), donnees.pseudo || donnees.playerName);
+}
+
+function _surPassageTermine(donnees) {
+  const message = donnees.tousOntJoue
+    ? `${donnees.pseudo || 'Joueur'} termine son passage avec ${donnees.score || 0}`
+    : `Prochain passage : ${donnees.prochainJoueur || 'joueur suivant'}`;
+  ui.afficherNotification(message, 'info');
+}
+
+function _surChoixMain(donnees) {
+  const pseudo = donnees.pseudo || donnees.playerName;
+  const joueurs = donnees.joueurs || donnees.finalistes || [];
+  if (joueurs.length || donnees.scores) ui.initialiserFaceAFace(joueurs, donnees.scores || {});
+  if (pseudo === etat.pseudo) ui.afficherChoixGarderPasser();
+  else ui.afficherAttenteChoixMain(pseudo);
+}
+
+function _surIndiceRevele(donnees) {
+  const joueurActif = donnees.joueurActif || donnees.pseudo;
+  const jaiLaMain = joueurActif === etat.pseudo;
+  ui.afficherIndice(donnees.numero || 1, donnees.texte || '', donnees.points || 1, jaiLaMain, donnees.options || [], (reponse) => {
+    repondreFaceAFace(reponse);
+  });
+}
+
+function _surMainChange(donnees) {
+  ui.afficherChangementMain(donnees.ancienneMain, donnees.nouvelleMain);
+}
+
+function _surResultatFaceAFace(donnees) {
+  ui.afficherResultatFaceAFace(
+    Boolean(donnees.correct),
+    donnees.points || 0,
+    donnees.pseudo || donnees.playerName,
+    donnees.bonneReponse,
+    donnees.scores || {}
+  );
+}
+
 /** Erreur serveur */
 function _surErreur(donnees) {
   console.error('[socket] Erreur serveur :', donnees);
@@ -363,6 +460,67 @@ export function voterTheme(theme) {
       theme,
     });
   }
+}
+
+export function appuyerBuzzer() {
+  if (!socket) return;
+  socket.emit('buzzer-appuye', {
+    ..._payloadPartie(),
+    pseudo: etat.pseudo,
+    timestamp: Date.now(),
+  });
+}
+
+export function choisirTheme(theme) {
+  if (!socket) return;
+  socket.emit('choisir-theme', {
+    ..._payloadPartie(),
+    pseudo: etat.pseudo,
+    theme,
+  });
+}
+
+export function repondrePassage(reponse) {
+  if (!socket) return;
+  socket.emit('reponse-passage', {
+    ..._payloadPartie(),
+    pseudo: etat.pseudo,
+    reponse,
+  });
+}
+
+export function garderMain() {
+  if (!socket) return;
+  socket.emit('garder-main', {
+    ..._payloadPartie(),
+    pseudo: etat.pseudo,
+  });
+}
+
+export function passerMain() {
+  if (!socket) return;
+  socket.emit('passer-main', {
+    ..._payloadPartie(),
+    pseudo: etat.pseudo,
+  });
+}
+
+export function repondreFaceAFace(reponse) {
+  if (!socket) return;
+  socket.emit('reponse-face-a-face', {
+    ..._payloadPartie(),
+    pseudo: etat.pseudo,
+    reponse,
+  });
+}
+
+function _exposerActionsManches() {
+  window.appuyerBuzzer = appuyerBuzzer;
+  window.choisirTheme = choisirTheme;
+  window.repondrePassage = repondrePassage;
+  window.garderMain = garderMain;
+  window.passerMain = passerMain;
+  window.repondreFaceAFace = repondreFaceAFace;
 }
 
 /**

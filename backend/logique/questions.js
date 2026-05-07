@@ -221,6 +221,99 @@ async function enrichirQuestion(questionObj) {
 }
 
 // ============================================
+// THÈMES ET INDICES
+// ============================================
+
+const THEMES_DISPONIBLES = [
+  "Histoire",
+  "Géographie",
+  "Sciences",
+  "Littérature",
+  "Cinéma & Séries",
+  "Sport",
+  "Musique",
+  "Art & Culture",
+  "Gastronomie",
+  "Thème mystère",
+];
+
+/**
+ * genererIndicesFallback — Génère 4 indices sans IA (fallback synchrone).
+ * @param {Object} questionObj
+ * @returns {string[]}
+ */
+function genererIndicesFallback(questionObj) {
+  const q  = questionObj.question    || "";
+  const r  = questionObj.reponseCorrecte || questionObj.bonneReponse || "?";
+  const cat = questionObj.categorie   || questionObj.theme || "Général";
+  return [
+    `Premier indice : thème — ${cat}`,
+    `Deuxième indice : ${q.substring(0, 30)}…`,
+    `Troisième indice : la réponse commence par « ${r[0] || "?"} »`,
+    `Quatrième indice : ${q}`,
+  ];
+}
+
+/**
+ * genererIndicesDepuisQuestion — Génère 4 indices via Groq pour le Face à Face.
+ * Fallback automatique si la clé API est absente ou si Groq échoue.
+ * @param {Object} questionObj - Objet question (doit avoir .question et .reponseCorrecte)
+ * @returns {Promise<string[]>}
+ */
+async function genererIndicesDepuisQuestion(questionObj) {
+  const question    = questionObj.question        || "";
+  const bonneReponse = questionObj.reponseCorrecte || questionObj.bonneReponse || "";
+
+  if (!GROQ_API_KEY || !question || !bonneReponse) {
+    return genererIndicesFallback(questionObj);
+  }
+
+  const prompt = `Pour le jeu "Questions pour un Champion", génère exactement 4 indices progressifs pour cette question.
+
+Question : "${question}"
+Réponse : "${bonneReponse}"
+
+Règles :
+- L'indice 1 est le plus difficile (vague, indirect) — vaut 4 points
+- L'indice 2 est un peu plus précis — vaut 3 points
+- L'indice 3 donne plus d'informations — vaut 2 points
+- L'indice 4 est quasi-révélateur — vaut 1 point
+- Chaque indice doit être une phrase courte en français
+- Ne révèle pas directement la réponse avant l'indice 4
+
+Réponds UNIQUEMENT avec un tableau JSON de 4 chaînes, sans texte autour :
+["indice 1", "indice 2", "indice 3", "indice 4"]`;
+
+  try {
+    const rep = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 512,
+        temperature: 0.6,
+      }),
+    });
+
+    if (!rep.ok) return genererIndicesFallback(questionObj);
+
+    let texte = (await rep.json()).choices?.[0]?.message?.content?.trim() || "";
+    // Nettoyer les éventuels blocs markdown
+    texte = texte.replace(/^```[^\n]*\n?/, "").replace(/```$/, "").trim();
+
+    const indices = JSON.parse(texte);
+    if (Array.isArray(indices) && indices.length === 4) return indices;
+    return genererIndicesFallback(questionObj);
+  } catch {
+    return genererIndicesFallback(questionObj);
+  }
+}
+
+// ============================================
 // GENERATION VIA GROQ
 // ============================================
 
@@ -322,9 +415,12 @@ async function genererQuestionsViaGroq(theme, nombre) {
 }
 
 module.exports = {
+  THEMES_DISPONIBLES,
   melangerTableau,
   piocherQuestion,
   genererQuestionsViaGroq,
   enrichirQuestion,
   creerPlaceholderSvg,
+  genererIndicesDepuisQuestion,
+  genererIndicesFallback,
 };

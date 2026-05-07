@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#000000" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://localhost:* http://localhost:* ws://127.0.0.1:* http://127.0.0.1:* ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org https://cdnjs.cloudflare.com;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://localhost:* http://localhost:* ws://127.0.0.1:* http://127.0.0.1:* ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org https://cdnjs.cloudflare.com;" />
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="./css/animations.css" />
   <title>Partie en cours - Question pour un Champion</title>
@@ -285,6 +285,104 @@
         <!-- Options de reponse (apres avoir buzze) -->
         <div id="player-options" class="player-options hidden">
           <!-- Options ici -->
+        </div>
+
+        <!-- Buzzer - Manche 1 -->
+        <div id="zone-buzzer" class="zone-buzzer-tv hidden" aria-live="polite">
+          <div id="question-texte-buzz" class="question-buzz-texte"></div>
+          <div id="valeur-question-badge" class="valeur-badge">* 1 point</div>
+          <button id="btn-buzzer" class="btn-buzzer" type="button" data-sound="selectionReponse">
+            <span class="buzzer-cercle-outer"></span>
+            <span class="buzzer-cercle-inner"></span>
+            <span class="buzzer-label">BUZZER</span>
+          </button>
+          <div id="buzzer-status-tv" class="buzzer-status-tv"></div>
+        </div>
+
+        <!-- Choix theme - Manche 2 -->
+        <div id="vue-choix-theme" class="vue-plein-ecran hidden" aria-live="polite">
+          <div class="choix-theme-header">
+            <div id="choix-theme-titre" class="choix-titre"></div>
+            <div id="choix-theme-sous-titre" class="choix-sous-titre"></div>
+            <div id="choix-theme-countdown" class="countdown-badge">15</div>
+          </div>
+          <div id="grille-themes" class="grille-themes-tv"></div>
+          <div id="choix-theme-attente" class="attente-choix hidden">
+            <div class="attente-spinner"></div>
+            <span id="attente-pseudo-choix"></span>
+          </div>
+        </div>
+
+        <!-- Passage individuel - Manche 2 -->
+        <div id="vue-passage-actif" class="vue-plein-ecran hidden" aria-live="polite">
+          <div class="passage-header">
+            <div id="passage-theme-badge" class="passage-theme-badge"></div>
+            <div class="passage-timer-barre">
+              <div id="passage-barre-progress" class="passage-barre-inner"></div>
+            </div>
+            <div id="passage-temps-restant" class="passage-temps">40s</div>
+          </div>
+          <div class="streak-compteur">
+            <div class="streak-case" data-n="1"></div>
+            <div class="streak-case" data-n="2"></div>
+            <div class="streak-case" data-n="3"></div>
+            <div class="streak-case" data-n="4"></div>
+          </div>
+          <div id="passage-question" class="question-texte"></div>
+          <div id="passage-options" class="grille-options"></div>
+        </div>
+
+        <div id="vue-passage-spectateur" class="vue-plein-ecran hidden" aria-live="polite">
+          <div class="spectateur-header">
+            <div id="spec-pseudo-badge" class="spec-pseudo"></div>
+            <div id="spec-theme-badge" class="spec-theme"></div>
+            <div id="spec-streak-display" class="spec-streak">* 0</div>
+          </div>
+          <div id="spec-question" class="spec-question-texte"></div>
+          <div id="spec-options" class="spec-options-grid"></div>
+          <div id="spec-barre-temps" class="spec-barre-conteneur">
+            <div id="spec-barre-inner" class="spec-barre-inner"></div>
+          </div>
+        </div>
+
+        <!-- Face a face - Manche 3 -->
+        <div id="vue-face-a-face" class="vue-plein-ecran hidden" aria-live="polite">
+          <div id="bandeau-main" class="bandeau-main">
+            <div id="main-indicateur-gauche" class="main-joueur"></div>
+            <div class="main-vs">VS</div>
+            <div id="main-indicateur-droite" class="main-joueur"></div>
+          </div>
+          <div id="scores-face-a-face" class="scores-faf"></div>
+          <div id="zone-indices" class="zone-indices">
+            <div id="indice-numero" class="indice-numero">Indice 1</div>
+            <div id="indice-valeur" class="indice-valeur-badge">**** 4 pts</div>
+            <div id="indice-texte" class="indice-texte"></div>
+            <svg id="timer-indice" width="70" height="70" viewBox="0 0 70 70" aria-hidden="true">
+              <circle cx="35" cy="35" r="30" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="5"></circle>
+              <circle id="arc-indice" cx="35" cy="35" r="30" fill="none"
+                stroke="#8093F1" stroke-width="5" stroke-linecap="round"
+                stroke-dasharray="188" stroke-dashoffset="0"
+                transform="rotate(-90 35 35)"></circle>
+              <text x="35" y="40" text-anchor="middle" font-size="16"
+                font-weight="700" fill="#E8E8F0" id="txt-timer-indice">15</text>
+            </svg>
+          </div>
+          <div id="choix-main" class="choix-main-zone hidden">
+            <div class="choix-main-label">Tu as la main - que fais-tu ?</div>
+            <div class="choix-main-boutons">
+              <button class="btn-garder" type="button" data-sound="clic">
+                <span>Garder</span>
+                <small>Tenter avec cet indice</small>
+              </button>
+              <button class="btn-passer" type="button" data-sound="clic">
+                <span>Passer</span>
+                <small>Donner a l'adversaire</small>
+              </button>
+            </div>
+          </div>
+          <div id="zone-reponse-faf" class="zone-reponse-faf hidden">
+            <div id="options-faf" class="grille-options-faf"></div>
+          </div>
         </div>
 
         <!-- Attente après réponse -->

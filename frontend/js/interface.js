@@ -7,6 +7,23 @@ import { etat } from './etat.js';
 
 const joueursRepondusQuestion = new Set();
 let minuterieTransitionManche = null;
+let minuterieBuzzerPris = null;
+let minuterieChoixTheme = null;
+let minuteriePassage = null;
+let minuterieIndice = null;
+
+export const ICONES_THEMES = {
+  Histoire: '📜',
+  'Géographie': '🌍',
+  Sciences: '🔬',
+  'Littérature': '📚',
+  'Cinéma & Séries': '🎬',
+  Sport: '⚽',
+  Musique: '🎵',
+  'Art & Culture': '🎨',
+  Gastronomie: '🍽️',
+  'Thème mystère': '?',
+};
 
 // ─── Utilitaires internes ──────────────────────────────────────────────────────
 
@@ -26,6 +43,37 @@ function afficherElement(identifiant) {
 function masquerElement(identifiant) {
   const el = document.getElementById(identifiant);
   if (el) el.classList.add('hidden');
+}
+
+function definirTexte(identifiant, texte = '') {
+  const el = document.getElementById(identifiant);
+  if (el) el.textContent = texte;
+  return el;
+}
+
+function afficherBloc(identifiant, display = 'flex') {
+  const el = document.getElementById(identifiant);
+  if (!el) return null;
+  el.classList.remove('hidden');
+  el.style.display = display;
+  return el;
+}
+
+function masquerBloc(identifiant) {
+  const el = document.getElementById(identifiant);
+  if (!el) return;
+  el.classList.add('hidden');
+  el.style.display = '';
+}
+
+function masquerVuesManches() {
+  [
+    'zone-buzzer',
+    'vue-choix-theme',
+    'vue-passage-actif',
+    'vue-passage-spectateur',
+    'vue-face-a-face',
+  ].forEach(masquerBloc);
 }
 
 function appendIcon(parent, className) {
@@ -101,6 +149,7 @@ export function afficherQuestion(donneesQuestion, callbackReponse) {
   masquerElement('player-result');
   masquerElement('answer-zone');
   masquerElement('player-wait-zone');
+  masquerVuesManches();
   joueursRepondusQuestion.clear();
   afficherManche(donneesQuestion.manche);
 
@@ -220,6 +269,475 @@ function _afficherQuestionJoueur(donneesQuestion, callbackReponse) {
     statutBuzzer.textContent = 'Choisissez votre réponse !';
     statutBuzzer.classList.remove('success');
   }
+}
+
+// ─── Manches TV : Buzzer ──────────────────────────────────────────────────────
+
+export function afficherZoneBuzzer(question, valeurPts = 1) {
+  masquerVuesManches();
+  masquerElement('player-options');
+  masquerElement('player-wait-zone');
+  afficherElement('player-question-zone');
+  afficherBloc('zone-buzzer');
+  definirTexte('question-texte-buzz', question || etat.questionActuelle?.question || '');
+  definirTexte('valeur-question-badge', `* ${valeurPts} point${valeurPts > 1 ? 's' : ''}`);
+  definirTexte('buzzer-status-tv', '');
+
+  const bouton = document.getElementById('btn-buzzer');
+  if (bouton) {
+    bouton.classList.remove('desactive');
+    bouton.disabled = false;
+    bouton.onclick = () => window.appuyerBuzzer?.();
+  }
+}
+
+export function afficherBuzzerGagne(options = [], duree = 8, points = 1, callbackReponse = null) {
+  clearInterval(minuterieBuzzerPris);
+  const bouton = document.getElementById('btn-buzzer');
+  bouton?.classList.add('desactive');
+  if (bouton) bouton.disabled = true;
+
+  const statut = document.getElementById('buzzer-status-tv');
+  if (statut) {
+    statut.innerHTML = `<span style="color:#64DC78;font-size:18px;font-weight:800">✓ À toi de jouer ! ${points} pt${points > 1 ? 's' : ''}</span>`;
+  }
+  window.Sons?.jouer?.('buzzerGagne');
+
+  setTimeout(() => {
+    masquerBloc('zone-buzzer');
+    afficherElement('player-options');
+    const conteneur = document.getElementById('player-options');
+    if (!conteneur) return;
+    conteneur.innerHTML = '';
+    options.forEach((option) => {
+      const btn = document.createElement('button');
+      btn.className = 'player-option btn-reponse';
+      btn.dataset.sound = 'selectionReponse';
+      btn.textContent = option;
+      btn.addEventListener('click', () => {
+        if (btn.dataset.clique === 'oui') return;
+        btn.dataset.clique = 'oui';
+        conteneur.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+        btn.classList.add('selected');
+        callbackReponse?.(option);
+      });
+      conteneur.appendChild(btn);
+    });
+
+    if (window.anime) {
+      window.anime({
+        targets: '.btn-reponse',
+        translateY: [30, 0],
+        opacity: [0, 1],
+        delay: window.anime.stagger(100),
+        duration: 300,
+        easing: 'easeOutQuad',
+      });
+    }
+    definirTexte('buzzer-status', `Réponse attendue (${duree}s)`);
+  }, 500);
+}
+
+export function afficherBuzzerPris(pseudo, points = 1) {
+  clearInterval(minuterieBuzzerPris);
+  const bouton = document.getElementById('btn-buzzer');
+  bouton?.classList.add('desactive');
+  if (bouton) bouton.disabled = true;
+  const statut = document.getElementById('buzzer-status-tv');
+  let restant = 8;
+
+  const rendre = () => {
+    if (!statut) return;
+    statut.innerHTML = `<span style="color:#FFB400;font-size:15px">> <strong>${pseudo}</strong> a la main - ${points} pt${points > 1 ? 's' : ''} (${restant}s)</span>`;
+  };
+  rendre();
+  minuterieBuzzerPris = setInterval(() => {
+    restant -= 1;
+    rendre();
+    if (restant <= 0) clearInterval(minuterieBuzzerPris);
+  }, 1000);
+}
+
+export function rouvrirBuzzer(points = 1) {
+  clearInterval(minuterieBuzzerPris);
+  const bouton = document.getElementById('btn-buzzer');
+  bouton?.classList.remove('desactive');
+  if (bouton) {
+    bouton.disabled = false;
+    bouton.style.background = 'radial-gradient(circle, #E74C3C 0%, #C0392B 70%)';
+  }
+  const statut = document.getElementById('buzzer-status-tv');
+  if (statut) {
+    statut.innerHTML = `<span style="color:#FF6B6B;font-size:13px">✗ Mauvaise réponse - buzzer rouvert (${points} pt${points > 1 ? 's' : ''})</span>`;
+  }
+  setTimeout(() => {
+    if (bouton) bouton.style.background = '';
+    if (statut) statut.textContent = '';
+  }, 800);
+}
+
+// ─── Manches TV : Choix de thème ──────────────────────────────────────────────
+
+export function afficherChoixTheme(themesRestants = []) {
+  masquerVuesManches();
+  afficherBloc('vue-choix-theme');
+  masquerBloc('choix-theme-attente');
+  definirTexte('choix-theme-titre', 'Choisis ton thème');
+  definirTexte('choix-theme-sous-titre', 'Tu réponds pendant 40 secondes sur ce sujet');
+  definirTexte('choix-theme-countdown', '15');
+
+  const grille = document.getElementById('grille-themes');
+  if (!grille) return;
+  grille.style.opacity = '1';
+  grille.innerHTML = '';
+  themesRestants.forEach((theme) => {
+    const carte = document.createElement('button');
+    carte.type = 'button';
+    carte.className = `carte-theme${theme === 'Thème mystère' ? ' mystere' : ''}`;
+    carte.dataset.sound = 'clic';
+    carte.innerHTML = `<span class="theme-icone">${ICONES_THEMES[theme] || '?'}</span><span class="theme-nom"></span>`;
+    carte.querySelector('.theme-nom').textContent = theme;
+    carte.addEventListener('click', () => window.choisirTheme?.(theme));
+    grille.appendChild(carte);
+  });
+
+  if (window.anime) {
+    window.anime({
+      targets: '.carte-theme',
+      scale: [0.8, 1],
+      opacity: [0, 1],
+      delay: window.anime.stagger(80),
+      duration: 300,
+      easing: 'easeOutBack',
+    });
+  }
+
+  clearInterval(minuterieChoixTheme);
+  let restant = 15;
+  minuterieChoixTheme = setInterval(() => {
+    restant -= 1;
+    const badge = document.getElementById('choix-theme-countdown');
+    if (badge) {
+      badge.textContent = String(restant);
+      badge.style.color = restant <= 5 ? '#FF6B6B' : '';
+    }
+    if (restant <= 0) {
+      clearInterval(minuterieChoixTheme);
+      window.choisirTheme?.(themesRestants[0]);
+    }
+  }, 1000);
+}
+
+export function afficherAttenteChoixTheme(pseudo, themesRestants = []) {
+  afficherChoixTheme(themesRestants);
+  const grille = document.getElementById('grille-themes');
+  if (grille) {
+    grille.style.opacity = '0.3';
+    grille.querySelectorAll('button').forEach((btn) => { btn.disabled = true; });
+  }
+  afficherBloc('choix-theme-attente');
+  definirTexte('attente-pseudo-choix', `${pseudo} choisit son thème...`);
+}
+
+export function afficherThemeChoisi(pseudo, theme) {
+  clearInterval(minuterieChoixTheme);
+  definirTexte('choix-theme-titre', `${pseudo} a choisi`);
+  definirTexte('choix-theme-sous-titre', theme);
+  document.querySelectorAll('.carte-theme').forEach((carte) => {
+    const nom = carte.querySelector('.theme-nom')?.textContent;
+    const choisie = nom === theme;
+    carte.classList.toggle('choisie', choisie);
+    carte.style.opacity = choisie ? '1' : '0.4';
+    carte.style.pointerEvents = 'none';
+    if (choisie && window.anime) {
+      window.anime({ targets: carte, scale: [1, 1.05, 1], duration: 400, easing: 'easeOutQuad' });
+    }
+  });
+}
+
+// ─── Manches TV : Passage individuel ──────────────────────────────────────────
+
+export function afficherVuePassageActif(theme, duree = 40, question = '', options = [], callbackReponse = null) {
+  masquerVuesManches();
+  afficherBloc('vue-passage-actif');
+  definirTexte('passage-theme-badge', `${ICONES_THEMES[theme] || '?'} ${theme || 'Thème'}`);
+  definirTexte('passage-temps-restant', `${duree}s`);
+  definirTexte('passage-question', question || 'En attente de la question...');
+  _rendreOptionsPassage('passage-options', options, callbackReponse);
+  _demarrerBarrePassage('passage-barre-progress', 'passage-temps-restant', duree);
+  document.querySelectorAll('#vue-passage-actif .streak-case').forEach((c) => { c.className = 'streak-case'; });
+}
+
+export function afficherVuePassageSpectateur(pseudo, theme, duree = 40, question = '', options = []) {
+  masquerVuesManches();
+  afficherBloc('vue-passage-spectateur');
+  definirTexte('spec-pseudo-badge', pseudo || 'Joueur');
+  definirTexte('spec-theme-badge', `${ICONES_THEMES[theme] || '?'} ${theme || 'Thème'}`);
+  definirTexte('spec-streak-display', '* 0');
+  definirTexte('spec-question', question || `${pseudo || 'Le joueur'} répond...`);
+  _rendreOptionsPassage('spec-options', options, null);
+  _demarrerBarrePassage('spec-barre-inner', null, duree);
+}
+
+function _rendreOptionsPassage(idConteneur, options, callbackReponse) {
+  const conteneur = document.getElementById(idConteneur);
+  if (!conteneur) return;
+  conteneur.innerHTML = '';
+  (options || []).forEach((option) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'option-passage';
+    btn.dataset.sound = 'selectionReponse';
+    btn.textContent = option;
+    if (callbackReponse) {
+      btn.addEventListener('click', () => {
+        conteneur.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+        btn.classList.add('selected');
+        callbackReponse(option);
+      });
+    } else {
+      btn.disabled = true;
+    }
+    conteneur.appendChild(btn);
+  });
+}
+
+function _demarrerBarrePassage(idBarre, idTemps, duree) {
+  clearInterval(minuteriePassage);
+  const barre = document.getElementById(idBarre);
+  if (barre) barre.style.width = '100%';
+  const total = Math.max(1, Number(duree) || 40) * 1000;
+  const debut = Date.now();
+  minuteriePassage = setInterval(() => {
+    const ecoule = Date.now() - debut;
+    const ratio = Math.max(0, 1 - ecoule / total);
+    if (barre) barre.style.width = `${Math.round(ratio * 100)}%`;
+    if (idTemps) definirTexte(idTemps, `${Math.max(0, Math.ceil((total - ecoule) / 1000))}s`);
+    if (ecoule >= total) clearInterval(minuteriePassage);
+  }, 100);
+}
+
+export function mettreAJourStreakPassage(streak = 0, correct = true, quatreASuite = false, pseudo = '') {
+  const cases = document.querySelectorAll('#vue-passage-actif .streak-case');
+  const streakN = Math.max(0, Number(streak) || 0);
+  definirTexte('spec-streak-display', `* ${streakN}`);
+
+  if (!correct) {
+    const cible = cases[Math.min(streakN, cases.length - 1)];
+    cible?.classList.add('erreur');
+    setTimeout(() => cases.forEach((c) => { c.className = 'streak-case'; }), 600);
+    return;
+  }
+
+  cases.forEach((c, i) => {
+    c.className = `streak-case${i < streakN ? (quatreASuite ? ' complete' : ' active') : ''}`;
+  });
+  if (quatreASuite) celebrerQuatreASuite(pseudo || etat.pseudo || 'Joueur');
+}
+
+export function celebrerQuatreASuite(pseudo) {
+  document.getElementById('overlay-quatre-a-la-suite')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'overlay-quatre-a-la-suite';
+  overlay.innerHTML = `
+    <div class="qals-contenu">
+      <div class="qals-titre">QUATRE À LA SUITE !</div>
+      <div class="qals-pseudo"></div>
+      <div class="qals-cases">${'<div class="qals-case">✓</div>'.repeat(4)}</div>
+    </div>
+  `;
+  overlay.querySelector('.qals-pseudo').textContent = pseudo;
+  document.body.appendChild(overlay);
+  window.Sons?.jouer?.('quatreASuite');
+  if (window.anime) {
+    window.anime.timeline()
+      .add({ targets: '.qals-titre', translateY: [-40, 0], opacity: [0, 1], duration: 500, easing: 'easeOutQuad' })
+      .add({ targets: '.qals-case', scale: [0, 1.2, 1], delay: window.anime.stagger(100), duration: 400, easing: 'easeOutBack' }, '-=200')
+      .add({ targets: '.qals-pseudo', opacity: [0, 1], duration: 300 });
+  }
+  if (window.confetti) {
+    window.confetti({ particleCount: 150, spread: 80, colors: ['#8093F1', '#72DDF7', '#FFD700', '#64DC78'], disableForReducedMotion: true });
+  }
+  setTimeout(() => overlay.remove(), 3000);
+}
+
+// ─── Manches TV : Face-à-face ─────────────────────────────────────────────────
+
+export function initialiserFaceAFace(joueurs = [], scores = {}) {
+  masquerVuesManches();
+  afficherBloc('vue-face-a-face');
+  const noms = joueurs.length ? joueurs.map((j) => typeof j === 'string' ? j : (j.name || j.pseudo || j.id)).filter(Boolean) : Object.keys(scores);
+  _configurerBadgeMain('main-indicateur-gauche', noms[0] || 'Joueur 1');
+  _configurerBadgeMain('main-indicateur-droite', noms[1] || 'Joueur 2');
+  mettreAJourScoresFAF(scores);
+}
+
+function _configurerBadgeMain(id, pseudo) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = pseudo;
+  el.dataset.pseudo = pseudo;
+}
+
+export function afficherChoixGarderPasser() {
+  afficherBloc('choix-main');
+  const optionsFaf = document.getElementById('options-faf');
+  if (!optionsFaf || !optionsFaf.children.length) masquerBloc('zone-reponse-faf');
+  document.querySelector('.btn-garder')?.addEventListener('click', () => window.garderMain?.(), { once: true });
+  document.querySelector('.btn-passer')?.addEventListener('click', () => window.passerMain?.(), { once: true });
+  if (window.anime) {
+    window.anime({
+      targets: '.btn-garder, .btn-passer',
+      translateY: [20, 0],
+      opacity: [0, 1],
+      delay: window.anime.stagger(100),
+      duration: 300,
+      easing: 'easeOutQuad',
+    });
+  }
+}
+
+export function afficherAttenteChoixMain(pseudo) {
+  masquerBloc('choix-main');
+  definirTexte('indice-texte', `${pseudo} choisit de garder ou passer la main...`);
+}
+
+export function afficherIndice(numero, texte, points = 1, jAiLaMain = false, options = [], callbackReponse = null) {
+  afficherBloc('vue-face-a-face');
+  definirTexte('indice-numero', `Indice ${numero}`);
+  const etoiles = '*'.repeat(points) + '-'.repeat(Math.max(0, 4 - points));
+  const valeur = document.getElementById('indice-valeur');
+  if (valeur) valeur.innerHTML = `<span class="etoile-pts">${etoiles}</span> ${points} pt${points > 1 ? 's' : ''}`;
+  _ecrireMachine('indice-texte', texte || '');
+  demarrerTimerIndice(15);
+
+  const delai = Math.min(1800, Math.max(300, String(texte || '').length * 30 + 300));
+  if (jAiLaMain) setTimeout(() => afficherChoixGarderPasser(), delai);
+  else afficherAttenteChoixMain('');
+  _rendreOptionsFaceAFace(options, callbackReponse);
+}
+
+function _ecrireMachine(id, texte) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = '';
+  let i = 0;
+  const interval = setInterval(() => {
+    el.textContent += texte[i] || '';
+    i += 1;
+    if (i >= texte.length) clearInterval(interval);
+  }, 30);
+}
+
+export function demarrerTimerIndice(dureeSecondes = 15) {
+  clearInterval(minuterieIndice);
+  const arc = document.getElementById('arc-indice');
+  const txt = document.getElementById('txt-timer-indice');
+  const total = 188;
+  if (arc) {
+    arc.style.strokeDashoffset = '0';
+    arc.style.stroke = '#8093F1';
+  }
+  const totalMs = dureeSecondes * 1000;
+  const debut = Date.now();
+  minuterieIndice = setInterval(() => {
+    const ecoule = Date.now() - debut;
+    const ratio = Math.min(1, ecoule / totalMs);
+    const restant = Math.max(0, Math.ceil((totalMs - ecoule) / 1000));
+    if (arc) {
+      arc.style.strokeDashoffset = String(total * ratio);
+      if (restant <= 5) arc.style.stroke = '#FF6B6B';
+    }
+    if (txt) txt.textContent = String(restant);
+    if (ecoule >= totalMs) clearInterval(minuterieIndice);
+  }, 100);
+}
+
+export function afficherChangementMain(ancienneMain, nouvelleMain) {
+  document.querySelectorAll('.main-joueur').forEach((el) => {
+    el.classList.toggle('a-la-main', el.dataset.pseudo === nouvelleMain);
+  });
+  if (window.anime) {
+    window.anime({
+      targets: '#bandeau-main',
+      backgroundColor: ['rgba(255,107,107,0.12)', 'rgba(255,107,107,0)'],
+      duration: 600,
+      easing: 'easeOutQuad',
+    });
+  }
+  window.Sons?.jouer?.('mainChange');
+}
+
+export function afficherResultatFaceAFace(correct, points, pseudo, bonneReponse, scores = {}) {
+  const indiceTexte = document.getElementById('indice-texte');
+  if (correct) {
+    _afficherPointsFlottants(`+${points} pts`, '#64DC78');
+    if (window.anime) {
+      window.anime({ targets: '#zone-indices', backgroundColor: ['rgba(100,220,120,0.10)', 'rgba(100,220,120,0)'], duration: 800 });
+    }
+  } else if (indiceTexte) {
+    const erreur = document.createElement('div');
+    erreur.innerHTML = `<span style="color:#FF6B6B;font-size:14px">✗ Mauvaise réponse</span><br><span style="color:#64DC78;font-size:15px"></span>`;
+    erreur.querySelector('span:last-child').textContent = `Réponse : ${bonneReponse || ''}`;
+    indiceTexte.appendChild(erreur);
+    if (window.anime) window.anime({ targets: '#zone-indices', translateX: [-6, 6, -4, 4, 0], duration: 400 });
+  }
+  mettreAJourScoresFAF(scores);
+}
+
+function _afficherPointsFlottants(texte, couleur) {
+  const floatPts = document.createElement('div');
+  floatPts.textContent = texte;
+  floatPts.style.cssText = `position:fixed;font-size:28px;font-weight:900;color:${couleur};text-shadow:0 0 20px ${couleur}66;top:40%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:999;`;
+  document.body.appendChild(floatPts);
+  if (window.anime) {
+    window.anime({ targets: floatPts, translateY: [-20, -80], opacity: [1, 0], duration: 1200, easing: 'easeOutQuad', complete: () => floatPts.remove() });
+  } else {
+    setTimeout(() => floatPts.remove(), 1200);
+  }
+}
+
+export function mettreAJourScoresFAF(scores = {}) {
+  const zone = document.getElementById('scores-face-a-face');
+  if (!zone) return;
+  zone.innerHTML = '';
+  Object.entries(scores || {}).forEach(([pseudo, pts]) => {
+    const item = document.createElement('div');
+    item.className = 'score-faf-item';
+    item.innerHTML = `
+      <span class="score-faf-pseudo"></span>
+      <span class="score-faf-pts"></span>
+      <div class="score-faf-barre"><div class="score-faf-fill"></div></div>
+      <span class="score-faf-objectif">/12</span>
+    `;
+    item.querySelector('.score-faf-pseudo').textContent = pseudo;
+    item.querySelector('.score-faf-pts').textContent = String(pts);
+    item.querySelector('.score-faf-fill').style.width = `${Math.min(100, (Number(pts) || 0) / 12 * 100)}%`;
+    zone.appendChild(item);
+  });
+}
+
+function _rendreOptionsFaceAFace(options = [], callbackReponse = null) {
+  const conteneur = document.getElementById('options-faf');
+  if (!conteneur) return;
+  conteneur.innerHTML = '';
+  if (!options.length) {
+    masquerBloc('zone-reponse-faf');
+    return;
+  }
+  afficherBloc('zone-reponse-faf', 'block');
+  options.forEach((option) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'option-faf';
+    btn.dataset.sound = 'selectionReponse';
+    btn.textContent = option;
+    btn.addEventListener('click', () => {
+      conteneur.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+      callbackReponse?.(option);
+    });
+    conteneur.appendChild(btn);
+  });
 }
 
 // ─── Résultats de question ─────────────────────────────────────────────────────

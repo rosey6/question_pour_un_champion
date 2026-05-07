@@ -409,6 +409,25 @@
   to   { transform: translateX(100%); opacity: 0; }
 }
 
+@keyframes buzzer-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 8px rgba(192, 57, 43, 0.3), 0 0 0 20px rgba(192, 57, 43, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(192, 57, 43, 0.4), 0 0 0 30px rgba(192, 57, 43, 0.15);
+  }
+}
+
+@keyframes etoile-in {
+  from { transform: scale(0) rotate(-20deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.etoile-pts {
+  display: inline-block;
+  animation: etoile-in .2s ease-out forwards;
+}
+
 
 /* ─────────────────────────────────────────────────────────────────────────────
    § ACCESSIBILITÉ — prefers-reduced-motion

@@ -7,6 +7,7 @@
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
     script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
+    worker-src 'self' blob:;
     style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
     font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com;
     connect-src 'self'
@@ -577,6 +578,71 @@
 
     .indicateur-joueur.repondu .indicateur-statut {
       color: #64DC78;
+    }
+
+    .spectate-tv-zone {
+      flex-shrink: 0;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      min-height: 42px;
+      padding: 0.4rem 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      color: #E8E8F0;
+    }
+
+    .spectate-tv-zone.actif {
+      display: flex;
+    }
+
+    .buzzer-joueur-indicator,
+    .spectate-passage,
+    .spectate-faf-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.42rem 0.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.045);
+      font-weight: 800;
+    }
+
+    .buzzer-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #64DC78;
+      box-shadow: 0 0 12px rgba(100, 220, 120, 0.55);
+    }
+
+    .sp-pseudo,
+    .faf-main {
+      color: #72DDF7;
+    }
+
+    .sp-theme {
+      color: #FFD700;
+    }
+
+    .sp-streak {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .sp-case {
+      width: 18px;
+      height: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .sp-case.ok {
+      background: rgba(100, 220, 120, 0.28);
+      border-color: #64DC78;
     }
 
     /* ===================================================
@@ -1234,6 +1300,10 @@
 
     <div id="joueurs-reponses" aria-live="polite"></div>
 
+    <div id="zone-buzzer-spectate" class="spectate-tv-zone"></div>
+    <div id="spectate-passage-info" class="spectate-tv-zone"></div>
+    <div id="spectate-face-a-face" class="spectate-tv-zone"></div>
+
     <!-- LEADERBOARD BAR -->
     <div id="leaderboard-bar"></div>
 
@@ -1734,6 +1804,46 @@
     socket.on('manche-started', function (data) {
       handleMancheStarted(data);
     });
+
+    socket.on('buzzer-pris', function (data) {
+      afficherBuzzerSpectate(data.points || 1, players.map(function (p) { return p.name; }), data.pseudo || data.playerName);
+    });
+
+    socket.on('buzzer-reouvre', function (data) {
+      afficherBuzzerSpectate(data.points || 1, players.map(function (p) { return p.name; }), null);
+    });
+
+    socket.on('prochain-choix-theme', function (data) {
+      afficherChoixThemeSpectate(data.pseudo || data.playerName, data.themesRestants || data.themes || []);
+    });
+
+    socket.on('theme-choisi', function (data) {
+      afficherThemeChoisiSpectate(data.pseudo || data.playerName, data.theme);
+    });
+
+    socket.on('debut-passage', function (data) {
+      afficherPassageSpectate(data.pseudo || data.playerName, data.theme, 0);
+    });
+
+    socket.on('resultat-reponse-passage', function (data) {
+      afficherPassageSpectate(data.pseudo || data.playerName, data.theme || '', data.streak || 0);
+    });
+
+    socket.on('choix-main', function (data) {
+      afficherFaceAFaceSpectate(data.pseudo || data.playerName, data.scores || {});
+    });
+
+    socket.on('indice-revele', function (data) {
+      afficherIndiceSpectate(data);
+    });
+
+    socket.on('main-change', function (data) {
+      afficherFaceAFaceSpectate(data.nouvelleMain, data.scores || {});
+    });
+
+    socket.on('resultat-face-a-face', function (data) {
+      afficherFaceAFaceSpectate(data.pseudo || data.playerName, data.scores || {});
+    });
   }
 
   // ======================================================
@@ -2078,6 +2188,107 @@
     renderFinalScreen(rankings);
     showScreen('screen-final');
     animerPodiumFinalSpectate();
+  }
+
+  function iconeThemeSpectate(theme) {
+    var icones = {
+      Histoire: 'H',
+      'Géographie': 'G',
+      Sciences: 'S',
+      'Littérature': 'L',
+      'Cinéma & Séries': 'C',
+      Sport: 'Sp',
+      Musique: 'M',
+      'Art & Culture': 'A',
+      Gastronomie: 'Ga',
+      'Thème mystère': '?'
+    };
+    return icones[theme] || '?';
+  }
+
+  function afficherZoneSpectate(id) {
+    ['zone-buzzer-spectate', 'spectate-passage-info', 'spectate-face-a-face'].forEach(function (zoneId) {
+      var zone = document.getElementById(zoneId);
+      if (zone) zone.classList.toggle('actif', zoneId === id);
+    });
+    return document.getElementById(id);
+  }
+
+  function afficherBuzzerSpectate(valeurPts, joueursEnAttente, joueurMain) {
+    var zone = afficherZoneSpectate('zone-buzzer-spectate');
+    if (!zone) return;
+    var joueurs = joueursEnAttente && joueursEnAttente.length ? joueursEnAttente : players.map(function (p) { return p.name; });
+    zone.innerHTML = '';
+    var titre = document.createElement('div');
+    titre.className = 'buzzer-joueur-indicator';
+    titre.textContent = joueurMain ? joueurMain + ' a la main - ' + valeurPts + ' pt' + (valeurPts > 1 ? 's' : '') : 'Buzzer ouvert - ' + valeurPts + ' pt' + (valeurPts > 1 ? 's' : '');
+    zone.appendChild(titre);
+    joueurs.forEach(function (pseudo) {
+      var item = document.createElement('div');
+      item.className = 'buzzer-joueur-indicator';
+      item.innerHTML = '<span class="buzzer-dot"></span><span></span>';
+      item.querySelector('span:last-child').textContent = pseudo;
+      zone.appendChild(item);
+    });
+  }
+
+  function afficherChoixThemeSpectate(pseudo, themesRestants) {
+    var zone = afficherZoneSpectate('spectate-passage-info');
+    if (!zone) return;
+    zone.innerHTML = '<div class="spectate-passage"><span class="sp-pseudo"></span><span>choisit son thème...</span></div>';
+    zone.querySelector('.sp-pseudo').textContent = pseudo || 'Joueur';
+    (themesRestants || []).forEach(function (theme) {
+      var item = document.createElement('div');
+      item.className = 'spectate-passage';
+      item.textContent = iconeThemeSpectate(theme) + ' ' + theme;
+      zone.appendChild(item);
+    });
+  }
+
+  function afficherThemeChoisiSpectate(pseudo, theme) {
+    var zone = afficherZoneSpectate('spectate-passage-info');
+    if (!zone) return;
+    zone.innerHTML = '<div class="spectate-passage"><span class="sp-pseudo"></span><span>a choisi</span><span class="sp-theme"></span></div>';
+    zone.querySelector('.sp-pseudo').textContent = pseudo || 'Joueur';
+    zone.querySelector('.sp-theme').textContent = iconeThemeSpectate(theme) + ' ' + theme;
+  }
+
+  function afficherPassageSpectate(pseudo, theme, streak) {
+    var zone = afficherZoneSpectate('spectate-passage-info');
+    if (!zone) return;
+    var streakN = Number(streak) || 0;
+    zone.innerHTML = '<div class="spectate-passage"><span class="sp-pseudo"></span><span class="sp-theme"></span><div class="sp-streak"></div></div>';
+    zone.querySelector('.sp-pseudo').textContent = pseudo || 'Joueur';
+    zone.querySelector('.sp-theme').textContent = theme ? iconeThemeSpectate(theme) + ' ' + theme : 'Passage individuel';
+    var cases = zone.querySelector('.sp-streak');
+    [1, 2, 3, 4].forEach(function (n) {
+      var c = document.createElement('div');
+      c.className = 'sp-case' + (n <= streakN ? ' ok' : '');
+      cases.appendChild(c);
+    });
+  }
+
+  function afficherFaceAFaceSpectate(joueurMain, scores) {
+    var zone = afficherZoneSpectate('spectate-face-a-face');
+    if (!zone) return;
+    zone.innerHTML = '<div class="spectate-faf-item"><span>Face-à-face</span><span class="faf-main"></span></div>';
+    zone.querySelector('.faf-main').textContent = joueurMain ? joueurMain + ' a la main' : 'En attente de la main';
+    Object.entries(scores || {}).forEach(function (entry) {
+      var item = document.createElement('div');
+      item.className = 'spectate-faf-item';
+      item.textContent = entry[0] + ' : ' + entry[1] + ' / 12';
+      zone.appendChild(item);
+    });
+  }
+
+  function afficherIndiceSpectate(data) {
+    afficherFaceAFaceSpectate(data.joueurActif || data.pseudo, data.scores || {});
+    var zone = document.getElementById('spectate-face-a-face');
+    if (!zone) return;
+    var item = document.createElement('div');
+    item.className = 'spectate-faf-item';
+    item.textContent = 'Indice ' + (data.numero || 1) + ' - ' + (data.points || 1) + ' pts : ' + (data.texte || '');
+    zone.appendChild(item);
   }
 
   // ======================================================

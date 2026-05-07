@@ -18,13 +18,31 @@ const { RateLimiterMemory } = require("rate-limiter-flexible");
 
 // Modules internes
 const { calculerScore, obtenirClassement, POINTS_PAR_RANG } = require("./logique/jeu");
-const { melangerTableau, piocherQuestion, genererQuestionsViaGroq } = require("./logique/questions");
+const { melangerTableau, piocherQuestion, genererQuestionsViaGroq, genererIndicesFallback } = require("./logique/questions");
 const {
   MANCHES,
+  creerEtatManche,
   initialiserManche,
   obtenirJoueursActifs,
   remplacerIdJoueurManche,
   appliquerResultatsManche,
+  // Buzzer
+  gererBuzzer,
+  gererReponseApressBuzz,
+  reinitialiserBuzzQuestion,
+  ajusterCyclePtsSelon,
+  // Quatre à la Suite
+  initialiserChoixThemes,
+  enregistrerChoixTheme,
+  demarrerPassageJoueur,
+  gererReponsePassage,
+  terminerPassageJoueur,
+  determinerQualifiesQuatreASuite,
+  // Face à Face
+  initialiserFaceAFace,
+  revelerIndice,
+  gererChoixMain,
+  gererReponseFaceAFace,
 } = require("./logique/manches");
 const {
   SCENARIOS,
@@ -592,11 +610,12 @@ function envoyerQuestionATous(codePartie) {
   }
 
   partie.currentQuestion = {
-    question: donneesQuestion.question,
-    options: donneesQuestion.options,
-    correctAnswer: donneesQuestion.reponseCorrecte,
-    imageUrl: donneesQuestion.imageUrl || null,
+    question:          donneesQuestion.question,
+    options:           donneesQuestion.options,
+    correctAnswer:     donneesQuestion.reponseCorrecte,
+    imageUrl:          donneesQuestion.imageUrl || null,
     illustrationTexte: donneesQuestion.illustrationTexte || null,
+    indices:           donneesQuestion.indices || genererIndicesFallback(donneesQuestion),
   };
   annulerTimersPartie(partie);
 
@@ -613,19 +632,29 @@ function envoyerQuestionATous(codePartie) {
 
   const optionsMelangees = melangerTableau([...donneesQuestion.options]);
 
+  const estFaceAFace = partie.manche?.nom === MANCHES.FACE_A_FACE;
+
   io.to(codePartie).emit("new-question", {
-    question: donneesQuestion.question,
-    options: optionsMelangees,
-    timeLimit: partie.settings.timePerQuestion * 1000,
-    questionNumber: partie.currentQuestionIndex + 1,
-    totalQuestions: partie.questions.length,
-    imageUrl: donneesQuestion.imageUrl || null,
+    question:         donneesQuestion.question,
+    options:          estFaceAFace ? [] : optionsMelangees,
+    timeLimit:        estFaceAFace ? 0 : partie.settings.timePerQuestion * 1000,
+    questionNumber:   partie.currentQuestionIndex + 1,
+    totalQuestions:   partie.questions.length,
+    imageUrl:         donneesQuestion.imageUrl || null,
     illustrationTexte: donneesQuestion.illustrationTexte || null,
-    manche: partie.manche,
-    totalPlayers: obtenirJoueursActifs(partie).length,
+    manche:           partie.manche,
+    totalPlayers:     obtenirJoueursActifs(partie).length,
+    // Points du buzzer pour NEUF_POINTS
+    valeurPts:        partie.manche?.nom === MANCHES.NEUF_POINTS
+                        ? partie.manche.valeurQuestionActuelle
+                        : undefined,
+    modeFaceAFace:    estFaceAFace || undefined,
   });
 
   console.log(`Question ${partie.currentQuestionIndex + 1}/${partie.questions.length} envoyee`);
+
+  // Ouvrir le buzzer ou lancer le choix-main selon la manche
+  _postEnvoyerQuestion(codePartie);
 
   partie._buzzerTimer = setTimeout(() => {
     if (parties[codePartie] && partie.questionOpen) {
@@ -842,6 +871,254 @@ function terminerPartie(codePartie) {
       delete parties[codePartie];
     }
   }, 5 * 60 * 1000);
+}
+
+// ============================================
+// HELPERS — MANCHES TV (Buzzer / 4àLS / Face à Face)
+// ============================================
+
+// Charge la question courante et ouvre le buzzer pour NEUF_POINTS,
+// ou envoie choix-main pour FACE_A_FACE.
+// Appelé depuis envoyerQuestionATous après l'emit new-question.
+function _postEnvoyerQuestion(codePartie) {
+  const partie = parties[codePartie];
+  if (!partie) return;
+
+  if (partie.manche?.nom === MANCHES.NEUF_POINTS) {
+    reinitialiserBuzzQuestion(partie.manche);
+    // Émettre la valeur des points pour le buzzer
+    io.to(codePartie).emit("buzzer-ouvert", {
+      points: partie.manche.valeurQuestionActuelle,
+    });
+  }
+
+  if (partie.manche?.nom === MANCHES.FACE_A_FACE) {
+    // Donner le choix garder/passer au joueur ayant la main
+    setTimeout(() => {
+      if (!parties[codePartie]) return;
+      io.to(codePartie).emit("choix-main", {
+        pseudo:      partie.manche.mainActuelle,
+        indiceActuel: 0,
+      });
+    }, 500);
+  }
+}
+
+// Démarre le passage individuel du prochain joueur en Quatre à la Suite.
+function _demarrerPassageIndividuel(codePartie) {
+  const partie = parties[codePartie];
+  if (!partie) return;
+
+  const info = demarrerPassageJoueur(partie.manche);
+  if (!info?.pseudo) return;
+
+  // Piocher une question (on avance l'index principal)
+  const idx = partie.currentQuestionIndex;
+  if (idx >= partie.questions.length) {
+    _terminerMancheQuatreASuite(codePartie);
+    return;
+  }
+  const q = partie.questions[idx];
+
+  partie.currentQuestion = {
+    question:          q.question,
+    options:           q.options,
+    correctAnswer:     q.reponseCorrecte,
+    imageUrl:          q.imageUrl  || null,
+    illustrationTexte: q.illustrationTexte || null,
+  };
+
+  io.to(codePartie).emit("debut-passage", {
+    pseudo:   info.pseudo,
+    theme:    info.theme || "Général",
+    question: q.question,
+    options:  melangerTableau([...q.options]),
+    duree:    30,
+  });
+}
+
+// Appelé après chaque réponse correcte ou après le timeout d'un passage.
+function _avancerQuestionPassage(codePartie) {
+  const partie = parties[codePartie];
+  if (!partie) return;
+
+  partie.currentQuestionIndex++;
+  const idx = partie.currentQuestionIndex;
+
+  if (idx >= partie.questions.length) {
+    _terminerPassageJoueurActuel(codePartie);
+    return;
+  }
+
+  const q = partie.questions[idx];
+  partie.currentQuestion = {
+    question:          q.question,
+    options:           q.options,
+    correctAnswer:     q.reponseCorrecte,
+    imageUrl:          q.imageUrl  || null,
+    illustrationTexte: q.illustrationTexte || null,
+  };
+
+  io.to(codePartie).emit("debut-passage", {
+    pseudo:   partie.manche.joueurActif,
+    theme:    partie.manche.themesChoisis[partie.manche.joueurActif] || "Général",
+    question: q.question,
+    options:  melangerTableau([...q.options]),
+    duree:    30,
+  });
+}
+
+// Termine le passage du joueur actif et démarre le suivant (ou conclut la manche).
+function _terminerPassageJoueurActuel(codePartie) {
+  const partie = parties[codePartie];
+  if (!partie) return;
+
+  const info = terminerPassageJoueur(partie.manche);
+  io.to(codePartie).emit("passage-termine", info);
+
+  if (!info.tousOntJoue) {
+    setTimeout(() => {
+      if (parties[codePartie]) _demarrerPassageIndividuel(codePartie);
+    }, 2000);
+  } else {
+    _terminerMancheQuatreASuite(codePartie);
+  }
+}
+
+// Détermine les qualifiés et enchaîne vers Face à Face.
+function _terminerMancheQuatreASuite(codePartie) {
+  const partie = parties[codePartie];
+  if (!partie) return;
+
+  const res = determinerQualifiesQuatreASuite(partie.manche);
+  let qualifies, elimine;
+
+  if (res.egalite) {
+    // Égalité : les deux candidats sont qualifiés (simplification TV)
+    qualifies = res.candidatsEgalite.slice(0, 2);
+    elimine   = null;
+    io.to(codePartie).emit("egalite-quatre-suite", res);
+  } else {
+    qualifies = res.qualifies.filter(Boolean);
+    elimine   = res.elimine || null;
+  }
+
+  partie.manche.qualifies = qualifies;
+  if (elimine) partie.manche.elimines = [elimine];
+
+  const classement = obtenirClassement(partie.players, partie.scores, partie.streaks);
+
+  io.to(codePartie).emit("manche-ended", {
+    manchePrecedente: MANCHES.QUATRE_A_LA_SUITE,
+    mancheSuivante:   MANCHES.FACE_A_FACE,
+    qualifies: qualifies.map((id) => {
+      const j = partie.players[id];
+      return j ? { id, name: j.name } : null;
+    }).filter(Boolean),
+    elimines: partie.manche.elimines.map((id) => {
+      const j = partie.players[id];
+      return j ? { id, name: j.name } : { id, name: id };
+    }),
+    rankings: classement,
+    scenario: partie.scenario,
+  });
+
+  setTimeout(() => {
+    if (!parties[codePartie]) return;
+
+    const scoresPassage = partie.manche.scorePassage || {};
+    const nouvelleManche = creerEtatManche(MANCHES.FACE_A_FACE, 3, qualifies, 12);
+    initialiserFaceAFace(nouvelleManche, qualifies, scoresPassage);
+    partie.manche = nouvelleManche;
+
+    io.to(codePartie).emit("manche-started", {
+      manche:   partie.manche,
+      scenario: partie.scenario,
+    });
+
+    // Charger la première question du Face à Face
+    setTimeout(() => {
+      if (parties[codePartie]) _chargerQuestionFaceAFace(codePartie);
+    }, 2000);
+  }, 8000);
+}
+
+// Charge la prochaine question pour le Face à Face (avec indices).
+function _chargerQuestionFaceAFace(codePartie) {
+  const partie = parties[codePartie];
+  if (!partie) return;
+
+  partie.currentQuestionIndex++;
+  const idx = partie.currentQuestionIndex;
+
+  if (idx >= partie.questions.length) {
+    terminerPartie(codePartie);
+    return;
+  }
+
+  const q = partie.questions[idx];
+  const indices = q.indices || genererIndicesFallback(q);
+
+  partie.currentQuestion = {
+    question:          q.question,
+    options:           q.options,
+    correctAnswer:     q.reponseCorrecte,
+    imageUrl:          q.imageUrl  || null,
+    illustrationTexte: q.illustrationTexte || null,
+    indices,
+  };
+  // Réinitialiser l'indice courant pour la nouvelle question
+  partie.manche.indiceActuel      = 0;
+  partie.manche.joueurExcluIndice = null;
+
+  io.to(codePartie).emit("new-question", {
+    question:         q.question,
+    options:          [],              // révélés indice par indice
+    timeLimit:        0,
+    questionNumber:   idx + 1,
+    totalQuestions:   partie.questions.length,
+    imageUrl:         q.imageUrl || null,
+    manche:           partie.manche,
+    totalPlayers:     partie.manche.joueursActifs.length,
+    modeFaceAFace:    true,
+  });
+
+  setTimeout(() => {
+    if (!parties[codePartie]) return;
+    io.to(codePartie).emit("choix-main", {
+      pseudo:      partie.manche.mainActuelle,
+      indiceActuel: 0,
+    });
+  }, 800);
+}
+
+// Timeout de réponse pendant un Face à Face : traité comme mauvaise réponse
+function _gererTimeoutIndice(codePartie, pseudo) {
+  const partie = parties[codePartie];
+  if (!partie || partie.state !== "playing") return;
+
+  const bonneReponse = partie.currentQuestion?.correctAnswer;
+  const res = gererReponseFaceAFace(partie.manche, pseudo, "__timeout__", bonneReponse);
+
+  io.to(codePartie).emit("resultat-face-a-face", {
+    ...res,
+    pseudo,
+    bonneReponse,
+    scores:  partie.manche.scoresManche,
+    timeout: true,
+  });
+
+  if (res.correct || res.tousIndicesEpuises) {
+    setTimeout(() => { if (parties[codePartie]) _chargerQuestionFaceAFace(codePartie); }, 2000);
+  } else if (res.mainChange) {
+    setTimeout(() => {
+      if (!parties[codePartie]) return;
+      io.to(codePartie).emit("choix-main", {
+        pseudo:      res.nouvelleMain,
+        indiceActuel: res.nouvelIndice,
+      });
+    }, 1500);
+  }
 }
 
 // ============================================
@@ -1257,6 +1534,105 @@ io.on("connection", (socket) => {
     }
     if (joueur.hasAnswered) return;
 
+    // ── Mode buzzer NEUF_POINTS ────────────────────────────────────────────────
+    if (partie.manche?.nom === MANCHES.NEUF_POINTS) {
+      const pseudo = joueur.name;
+      const manche = partie.manche;
+
+      // Seul le joueur qui a buzzé (et dont le buzz est enregistré) peut répondre
+      if (manche.buzzOuvert || !manche.joueursBuzzes[pseudo]) return;
+
+      joueur.hasAnswered = true;
+      partie.players[socket.id].hasAnswered = true;
+
+      const bonneReponse = partie.currentQuestion.correctAnswer;
+      const res = gererReponseApressBuzz(manche, pseudo, answer, bonneReponse);
+
+      if (res.correct) {
+        // Mettre à jour le score global
+        partie.scores[socket.id] = (partie.scores[socket.id] || 0) + res.points;
+        joueur.score = partie.scores[socket.id];
+
+        // Vérifier qualification
+        let transitionManche = false;
+        const mancheAvant = manche.nom;
+        if (!manche.qualifies.includes(pseudo) && manche.scoresManche[pseudo] >= manche.objectif) {
+          manche.qualifies.push(pseudo);
+          manche.joueursActifs = manche.joueursActifs.filter((id) => id !== socket.id);
+          ajusterCyclePtsSelon(manche.joueursActifs.length, manche);
+
+          const nbReels = Object.values(partie.players).filter(
+            (j) => !(partie.mode === "spectator" && j.isHost)
+          ).length;
+          const cible = Math.min(3, Math.max(1, nbReels - 1));
+
+          if (manche.qualifies.length >= cible) {
+            manche.elimines.push(...manche.joueursActifs);
+            const qualifies = manche.qualifies.slice(0, 3);
+            const nouvelleManche = creerEtatManche(MANCHES.QUATRE_A_LA_SUITE, 2, qualifies, 4);
+            initialiserChoixThemes(nouvelleManche, qualifies);
+            partie.manche = nouvelleManche;
+            transitionManche = true;
+          }
+        }
+
+        partie.questionOpen = false;
+        annulerTimersPartie(partie);
+
+        const classement = obtenirClassement(partie.players, partie.scores, partie.streaks);
+        io.to(gameCode).emit("question-results", {
+          correctAnswer:  bonneReponse,
+          question:       partie.currentQuestion.question,
+          imageUrl:       partie.currentQuestion.imageUrl || null,
+          answers: [{ playerId: socket.id, playerName: pseudo, answer, isCorrect: true, pointsEarned: res.points, rank: 1 }],
+          rankings:       classement,
+          manche:         partie.manche,
+          transitionManche,
+        });
+
+        if (transitionManche) {
+          io.to(gameCode).emit("manche-ended", {
+            manchePrecedente: mancheAvant,
+            mancheSuivante:   MANCHES.QUATRE_A_LA_SUITE,
+            qualifies: partie.manche.joueursActifs.map((id) => {
+              const j = partie.players[id]; return j ? { id, name: j.name } : null;
+            }).filter(Boolean),
+            elimines:  partie.manche.elimines.map((id) => {
+              const j = partie.players[id]; return j ? { id, name: j.name } : { id, name: id };
+            }),
+            rankings: classement,
+            scenario: partie.scenario,
+          });
+          setTimeout(() => {
+            if (!parties[gameCode]) return;
+            io.to(gameCode).emit("manche-started", { manche: partie.manche, scenario: partie.scenario });
+            // Lancer la sélection des thèmes
+            const premier = partie.manche.ordrePassage[0];
+            setTimeout(() => {
+              if (parties[gameCode]) {
+                io.to(gameCode).emit("prochain-choix-theme", {
+                  pseudo:        premier,
+                  themesRestants: partie.manche.themesRestants,
+                });
+              }
+            }, 2000);
+          }, 8000);
+        } else {
+          setTimeout(() => { if (parties[gameCode]) questionSuivante(gameCode); }, 3000);
+        }
+      } else {
+        // Mauvaise réponse → buzzer rouvert
+        joueur.hasAnswered = false;
+        partie.players[socket.id].hasAnswered = false;
+        io.to(gameCode).emit("buzzer-reouvre", {
+          joueurExclu: pseudo,
+          points:      manche.valeurQuestionActuelle,
+        });
+      }
+      return;
+    }
+    // ── Fin mode buzzer ────────────────────────────────────────────────────────
+
     joueur.hasAnswered = true;
     partie.players[socket.id].hasAnswered = true;
     partie.answers.push({ playerId: socket.id, playerName: joueur.name, answer, timestamp: Date.now() });
@@ -1437,6 +1813,236 @@ io.on("connection", (socket) => {
   // Ping / mesure de latence (Mission 7)
   socket.on("client-ping", (timestamp) => {
     socket.emit("server-pong", timestamp);
+  });
+
+  // ============================================================
+  // BUZZER — Manche 1 (Neuf Points)
+  // ============================================================
+
+  socket.on("buzzer-appuye", ({ codePartie, timestamp } = {}) => {
+    const partie = parties[codePartie];
+    if (!partie || partie.state !== "playing") return;
+
+    const joueur = joueurs[socket.id];
+    if (!joueur) return;
+    const pseudo = joueur.name;
+
+    const res = gererBuzzer(partie.manche, pseudo, timestamp || Date.now());
+
+    if (res.succes && res.gagne) {
+      annulerTimersPartie(partie);
+
+      // Envoyer les options uniquement au gagnant
+      socket.emit("buzzer-gagne", {
+        options: melangerTableau([...(partie.currentQuestion?.options || [])]),
+        duree:   8,
+        points:  partie.manche.valeurQuestionActuelle,
+      });
+
+      // Notifier les autres
+      socket.to(codePartie).emit("buzzer-pris", {
+        pseudo,
+        points: partie.manche.valeurQuestionActuelle,
+      });
+
+      // Timer de 8 s : si le gagnant ne répond pas, rouvrir le buzzer
+      partie._buzzerTimer = setTimeout(() => {
+        const p = parties[codePartie];
+        if (!p || !p.manche) return;
+        gererReponseApressBuzz(p.manche, pseudo, "__timeout__", p.currentQuestion?.correctAnswer);
+        io.to(codePartie).emit("buzzer-reouvre", {
+          joueurExclu: pseudo,
+          points:      p.manche.valeurQuestionActuelle,
+        });
+        // Remettre le timer de question
+        p._buzzerTimer = setTimeout(() => {
+          if (parties[codePartie] && p.questionOpen) finaliserQuestion(codePartie);
+        }, p.settings.timePerQuestion * 1000);
+      }, 8000);
+
+    } else if (!res.succes) {
+      socket.emit("buzzer-refuse", { raison: res.raison });
+    }
+  });
+
+  // ============================================================
+  // QUATRE À LA SUITE — Sélection des thèmes
+  // ============================================================
+
+  socket.on("choisir-theme", ({ codePartie, theme } = {}) => {
+    const partie = parties[codePartie];
+    if (!partie || partie.state !== "playing") return;
+
+    const joueur = joueurs[socket.id];
+    if (!joueur) return;
+    const pseudo = joueur.name;
+
+    const res = enregistrerChoixTheme(partie.manche, pseudo, theme);
+    if (!res.succes) {
+      socket.emit("erreur-validation", { message: res.raison });
+      return;
+    }
+
+    io.to(codePartie).emit("theme-choisi", {
+      pseudo,
+      theme,
+      themesRestants: partie.manche.themesRestants,
+    });
+
+    if (res.prochainJoueur) {
+      io.to(codePartie).emit("prochain-choix-theme", {
+        pseudo:         res.prochainJoueur,
+        themesRestants: partie.manche.themesRestants,
+      });
+    } else {
+      // Tous ont choisi → démarrer les passages
+      setTimeout(() => {
+        if (parties[codePartie]) _demarrerPassageIndividuel(codePartie);
+      }, 1500);
+    }
+  });
+
+  // ============================================================
+  // QUATRE À LA SUITE — Réponse pendant le passage
+  // ============================================================
+
+  socket.on("reponse-passage", ({ codePartie, reponse } = {}) => {
+    const partie = parties[codePartie];
+    if (!partie || partie.state !== "playing") return;
+
+    const joueur = joueurs[socket.id];
+    if (!joueur) return;
+    if (partie.manche.joueurActif !== joueur.name) return;
+
+    const bonneReponse = partie.currentQuestion?.correctAnswer;
+    const res = gererReponsePassage(partie.manche, reponse, bonneReponse);
+
+    io.to(codePartie).emit("resultat-reponse-passage", {
+      pseudo:       joueur.name,
+      correct:      res.correct,
+      streak:       res.streak,
+      quatreASuite: res.quatreASuite,
+      bonneReponse,
+    });
+
+    if (res.quatreASuite) {
+      // Passage terminé (succès)
+      setTimeout(() => {
+        if (parties[codePartie]) _terminerPassageJoueurActuel(codePartie);
+      }, 2000);
+    } else {
+      // Question suivante du passage
+      setTimeout(() => {
+        if (parties[codePartie]) _avancerQuestionPassage(codePartie);
+      }, 1500);
+    }
+  });
+
+  // ============================================================
+  // FACE À FACE — Garder la main
+  // ============================================================
+
+  socket.on("garder-main", ({ codePartie } = {}) => {
+    const partie = parties[codePartie];
+    if (!partie || partie.state !== "playing") return;
+
+    const joueur = joueurs[socket.id];
+    if (!joueur || joueur.name !== partie.manche.mainActuelle) return;
+
+    const indice = revelerIndice(partie.manche, partie.currentQuestion || {});
+    if (!indice) return;
+
+    io.to(codePartie).emit("indice-revele", indice);
+
+    // Timer 15 s pour répondre
+    clearTimeout(partie.timerIndice);
+    partie.timerIndice = setTimeout(() => {
+      if (!parties[codePartie]) return;
+      _gererTimeoutIndice(codePartie, joueur.name);
+    }, 15000);
+  });
+
+  // ============================================================
+  // FACE À FACE — Passer la main
+  // ============================================================
+
+  socket.on("passer-main", ({ codePartie } = {}) => {
+    const partie = parties[codePartie];
+    if (!partie || partie.state !== "playing") return;
+
+    const joueur = joueurs[socket.id];
+    if (!joueur || joueur.name !== partie.manche.mainActuelle) return;
+
+    const res = gererChoixMain(partie.manche, joueur.name, "passer");
+    if (!res.succes) return;
+
+    io.to(codePartie).emit("main-change", {
+      ancienneMain: joueur.name,
+      nouvelleMain: res.nouvelleMain,
+    });
+
+    const indice = revelerIndice(partie.manche, partie.currentQuestion || {});
+    if (indice) {
+      io.to(codePartie).emit("indice-revele", indice);
+      clearTimeout(partie.timerIndice);
+      partie.timerIndice = setTimeout(() => {
+        if (!parties[codePartie]) return;
+        _gererTimeoutIndice(codePartie, res.nouvelleMain);
+      }, 15000);
+    } else {
+      // Plus d'indices → question suivante
+      setTimeout(() => {
+        if (parties[codePartie]) _chargerQuestionFaceAFace(codePartie);
+      }, 2000);
+    }
+  });
+
+  // ============================================================
+  // FACE À FACE — Réponse
+  // ============================================================
+
+  socket.on("reponse-face-a-face", ({ codePartie, reponse } = {}) => {
+    const partie = parties[codePartie];
+    if (!partie || partie.state !== "playing") return;
+
+    const joueur = joueurs[socket.id];
+    if (!joueur) return;
+
+    clearTimeout(partie.timerIndice);
+
+    const bonneReponse = partie.currentQuestion?.correctAnswer;
+    const res = gererReponseFaceAFace(partie.manche, joueur.name, reponse, bonneReponse);
+
+    if (res.ignore) return;
+
+    // Mettre à jour les scores globaux si bonne réponse
+    if (res.correct && res.points) {
+      partie.scores[socket.id] = (partie.scores[socket.id] || 0) + res.points;
+      joueur.score = partie.scores[socket.id];
+    }
+
+    io.to(codePartie).emit("resultat-face-a-face", {
+      ...res,
+      pseudo:       joueur.name,
+      bonneReponse,
+      scores:       partie.manche.scoresManche,
+    });
+
+    if (res.champion) {
+      terminerPartie(codePartie);
+    } else if (res.correct || res.tousIndicesEpuises) {
+      setTimeout(() => {
+        if (parties[codePartie]) _chargerQuestionFaceAFace(codePartie);
+      }, 2000);
+    } else if (res.mainChange) {
+      setTimeout(() => {
+        if (!parties[codePartie]) return;
+        io.to(codePartie).emit("choix-main", {
+          pseudo:      res.nouvelleMain,
+          indiceActuel: res.nouvelIndice,
+        });
+      }, 1500);
+    }
   });
 
   // Deconnexion
