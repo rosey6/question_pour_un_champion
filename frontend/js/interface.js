@@ -376,6 +376,16 @@ export function rouvrirBuzzer(points = 1) {
   }, 800);
 }
 
+export function desactiverBuzzer() {
+  const bouton = document.getElementById('btn-buzzer');
+  if (bouton) {
+    bouton.classList.add('desactive');
+    bouton.disabled = true;
+  }
+  const statut = document.getElementById('buzzer-status-tv');
+  if (statut) statut.innerHTML = '<span style="color:#888;font-size:13px">En attente du joueur actif…</span>';
+}
+
 // ─── Manches TV : Choix de thème ──────────────────────────────────────────────
 
 export function afficherChoixTheme(themesRestants = []) {

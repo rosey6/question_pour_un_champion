@@ -877,31 +877,28 @@ function terminerPartie(codePartie) {
 // HELPERS — MANCHES TV (Buzzer / 4àLS / Face à Face)
 // ============================================
 
-// Charge la question courante et ouvre le buzzer pour NEUF_POINTS,
-// ou envoie choix-main pour FACE_A_FACE.
+// Ouvre le buzzer pour tous les modes. Pour QAS et FAF, inclut pseudoAutorise.
 // Appelé depuis envoyerQuestionATous après l'emit new-question.
 function _postEnvoyerQuestion(codePartie) {
   const partie = parties[codePartie];
   if (!partie) return;
 
-  if (partie.manche?.nom === MANCHES.NEUF_POINTS) {
+  partie._buzzerGagnant = null;
+  const nomManche = partie.manche?.nom;
+  let pseudoAutorise = null;
+
+  if (nomManche === MANCHES.NEUF_POINTS) {
     reinitialiserBuzzQuestion(partie.manche);
-    // Émettre la valeur des points pour le buzzer
-    io.to(codePartie).emit("buzzer-ouvert", {
-      points: partie.manche.valeurQuestionActuelle,
-    });
+  } else if (nomManche === MANCHES.QUATRE_A_LA_SUITE) {
+    pseudoAutorise = partie.manche.joueurActif || null;
+  } else if (nomManche === MANCHES.FACE_A_FACE) {
+    pseudoAutorise = partie.manche.mainActuelle || null;
   }
 
-  if (partie.manche?.nom === MANCHES.FACE_A_FACE) {
-    // Donner le choix garder/passer au joueur ayant la main
-    setTimeout(() => {
-      if (!parties[codePartie]) return;
-      io.to(codePartie).emit("choix-main", {
-        pseudo:      partie.manche.mainActuelle,
-        indiceActuel: 0,
-      });
-    }, 500);
-  }
+  io.to(codePartie).emit("buzzer-ouvert", {
+    points: partie.manche?.valeurQuestionActuelle || 1,
+    pseudoAutorise,
+  });
 }
 
 // Démarre le passage individuel du prochain joueur en Quatre à la Suite.
@@ -1633,6 +1630,45 @@ io.on("connection", (socket) => {
     }
     // ── Fin mode buzzer ────────────────────────────────────────────────────────
 
+    // ── QUATRE_A_LA_SUITE après buzz ─────────────────────────────────────────
+    if (partie.manche?.nom === MANCHES.QUATRE_A_LA_SUITE) {
+      if (partie._buzzerGagnant !== joueur.name) return;
+      joueur.hasAnswered = true;
+      partie.players[socket.id].hasAnswered = true;
+      partie._buzzerGagnant = null;
+      annulerTimersPartie(partie);
+
+      const bonneReponseQas = partie.currentQuestion?.correctAnswer;
+      const resQas = gererReponsePassage(partie.manche, answer, bonneReponseQas);
+
+      io.to(gameCode).emit("resultat-reponse-passage", {
+        pseudo:       joueur.name,
+        correct:      resQas.correct,
+        streak:       resQas.streak,
+        quatreASuite: resQas.quatreASuite,
+        bonneReponse: bonneReponseQas,
+      });
+
+      if (resQas.quatreASuite) {
+        setTimeout(() => { if (parties[gameCode]) _terminerPassageJoueurActuel(gameCode); }, 2000);
+      } else {
+        setTimeout(() => { if (parties[gameCode]) _avancerQuestionPassage(gameCode); }, 1500);
+      }
+      return;
+    }
+
+    // ── ENTRAINEMENT après buzz ───────────────────────────────────────────────
+    if (partie.manche?.nom === MANCHES.ENTRAINEMENT) {
+      if (partie._buzzerGagnant !== joueur.name) return;
+      joueur.hasAnswered = true;
+      partie.players[socket.id].hasAnswered = true;
+      partie._buzzerGagnant = null;
+      partie.answers.push({ playerId: socket.id, playerName: joueur.name, answer, timestamp: Date.now() });
+      annulerTimersPartie(partie);
+      finaliserQuestion(gameCode);
+      return;
+    }
+
     joueur.hasAnswered = true;
     partie.players[socket.id].hasAnswered = true;
     partie.answers.push({ playerId: socket.id, playerName: joueur.name, answer, timestamp: Date.now() });
@@ -1826,43 +1862,90 @@ io.on("connection", (socket) => {
     const joueur = joueurs[socket.id];
     if (!joueur) return;
     const pseudo = joueur.name;
+    const nomManche = partie.manche?.nom;
 
-    const res = gererBuzzer(partie.manche, pseudo, timestamp || Date.now());
+    // Autorisation selon la manche
+    if (nomManche === MANCHES.NEUF_POINTS) {
+      const res = gererBuzzer(partie.manche, pseudo, timestamp || Date.now());
+      if (!res.succes) {
+        socket.emit("buzzer-refuse", { raison: res.raison });
+        return;
+      }
+      if (!res.gagne) return;
+    } else if (nomManche === MANCHES.QUATRE_A_LA_SUITE) {
+      if (partie.manche.joueurActif !== pseudo) {
+        socket.emit("buzzer-refuse", { raison: "pas_autorise" });
+        return;
+      }
+      if (partie._buzzerGagnant) {
+        socket.emit("buzzer-refuse", { raison: "buzz_ferme" });
+        return;
+      }
+      partie._buzzerGagnant = pseudo;
+    } else if (nomManche === MANCHES.FACE_A_FACE) {
+      if (partie.manche.mainActuelle !== pseudo) {
+        socket.emit("buzzer-refuse", { raison: "pas_autorise" });
+        return;
+      }
+      if (partie._buzzerGagnant) {
+        socket.emit("buzzer-refuse", { raison: "buzz_ferme" });
+        return;
+      }
+      partie._buzzerGagnant = pseudo;
+    } else {
+      // ENTRAINEMENT et autres : premier arrivé
+      if (partie._buzzerGagnant) {
+        socket.emit("buzzer-refuse", { raison: "buzz_ferme" });
+        return;
+      }
+      partie._buzzerGagnant = pseudo;
+    }
 
-    if (res.succes && res.gagne) {
-      annulerTimersPartie(partie);
+    annulerTimersPartie(partie);
 
-      // Envoyer les options uniquement au gagnant
-      socket.emit("buzzer-gagne", {
-        options: melangerTableau([...(partie.currentQuestion?.options || [])]),
-        duree:   8,
-        points:  partie.manche.valeurQuestionActuelle,
+    if (nomManche === MANCHES.FACE_A_FACE) {
+      // FAF : accès au flux garder-main / passer-main / réponse (pas d'options QCM)
+      socket.emit("choix-main", {
+        pseudo:      partie.manche.mainActuelle,
+        indiceActuel: partie.manche.indiceActuel || 0,
       });
+      socket.to(codePartie).emit("buzzer-pris", { pseudo, points: 1 });
+      return;
+    }
 
-      // Notifier les autres
-      socket.to(codePartie).emit("buzzer-pris", {
-        pseudo,
-        points: partie.manche.valeurQuestionActuelle,
-      });
+    // Tous les autres modes : options après buzz
+    socket.emit("buzzer-gagne", {
+      options: melangerTableau([...(partie.currentQuestion?.options || [])]),
+      duree:   8,
+      points:  partie.manche?.valeurQuestionActuelle || 1,
+    });
+    socket.to(codePartie).emit("buzzer-pris", {
+      pseudo,
+      points: partie.manche?.valeurQuestionActuelle || 1,
+    });
 
-      // Timer de 8 s : si le gagnant ne répond pas, rouvrir le buzzer
-      partie._buzzerTimer = setTimeout(() => {
-        const p = parties[codePartie];
-        if (!p || !p.manche) return;
+    // Timer 8 s : si le gagnant ne répond pas
+    partie._buzzerTimer = setTimeout(() => {
+      const p = parties[codePartie];
+      if (!p || !p.manche) return;
+      p._buzzerGagnant = null;
+
+      if (nomManche === MANCHES.NEUF_POINTS) {
         gererReponseApressBuzz(p.manche, pseudo, "__timeout__", p.currentQuestion?.correctAnswer);
         io.to(codePartie).emit("buzzer-reouvre", {
           joueurExclu: pseudo,
           points:      p.manche.valeurQuestionActuelle,
         });
-        // Remettre le timer de question
         p._buzzerTimer = setTimeout(() => {
           if (parties[codePartie] && p.questionOpen) finaliserQuestion(codePartie);
         }, p.settings.timePerQuestion * 1000);
-      }, 8000);
-
-    } else if (!res.succes) {
-      socket.emit("buzzer-refuse", { raison: res.raison });
-    }
+      } else if (nomManche === MANCHES.QUATRE_A_LA_SUITE) {
+        if (parties[codePartie]) _avancerQuestionPassage(codePartie);
+      } else {
+        // ENTRAINEMENT : finaliser sans réponse
+        if (parties[codePartie] && p.questionOpen) finaliserQuestion(codePartie);
+      }
+    }, 8000);
   });
 
   // ============================================================

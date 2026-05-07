@@ -80,6 +80,7 @@ export function connecter(urlBackend) {
   socket.on('theme-vote-update',     _surMiseAJourVote);
   socket.on('theme-vote-result',     _surResultatVote);
   socket.on('questions-ready',       _surQuestionsPretes);
+  socket.on('buzzer-ouvert',         _surBuzzerOuvert);
   socket.on('buzzer-gagne',          _surBuzzerGagne);
   socket.on('buzzer-pris',           _surBuzzerPris);
   socket.on('buzzer-reouvre',        _surBuzzerReouvre);
@@ -180,14 +181,12 @@ function _surNouvelleQuestion(donnees) {
     demarrerMinuteur(donnees.timeLimit / 1000);
   }
 
-  const estQuestionBuzzer = donnees.manche?.nom === 'NEUF_POINTS' || donnees.mancheType === 'BUZZER';
-  if (estQuestionBuzzer && !(etat.estHote && etat.mode === 'spectator')) {
+  // Le buzzer est obligatoire pour tous les modes — les options s'ouvrent après buzzer-gagne
+  if (etat.estHote && etat.mode === 'spectator') {
+    ui.afficherQuestion(donnees, () => {});
+  } else {
     ui.afficherQuestion(donnees, () => {});
     ui.afficherZoneBuzzer(donnees.question, donnees.points || donnees.valeurPts || 1);
-  } else {
-    ui.afficherQuestion(donnees, (optionChoisie) => {
-      _soumettreReponse(optionChoisie);
-    });
   }
 }
 
@@ -341,6 +340,14 @@ function _surResultatVote(donnees) {
 function _surQuestionsPretes() {
   console.log('[socket] Questions prêtes');
   ui.activerBoutonDemarrer();
+}
+
+function _surBuzzerOuvert(donnees) {
+  // Si un pseudoAutorise est spécifié et que ce n'est pas ce joueur, désactiver le buzzer
+  const pseudoAutorise = donnees?.pseudoAutorise;
+  if (pseudoAutorise && pseudoAutorise !== etat.pseudo) {
+    ui.desactiverBuzzer();
+  }
 }
 
 function _surBuzzerGagne(donnees) {
