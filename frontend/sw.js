@@ -47,8 +47,12 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        if (response.ok) {
+      // redirect:'follow' évite l'erreur "redirected response / redirect mode not follow"
+      return fetch(event.request, { redirect: 'follow' }).then((response) => {
+        // Ne cacher que les réponses complètes (status 200) :
+        // - les réponses partielles 206 (audio Range) ne peuvent pas être mises en cache
+        // - les réponses opaques (CDN cross-origin) sont déjà filtrées plus haut
+        if (response.status === 200) {
           const clone = response.clone();
           caches.open(CACHE_NOM).then((cache) => cache.put(event.request, clone));
         }
