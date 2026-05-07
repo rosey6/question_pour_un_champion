@@ -1,5 +1,5 @@
 // Service Worker — cache-first pour les assets statiques (Mission 8)
-const CACHE_NOM = 'qpuc-v1';
+const CACHE_NOM = 'qpuc-v2';
 const ASSETS_STATIQUES = [
   '/index.html',
   '/multijoueur.html',
@@ -47,8 +47,9 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
-      // redirect:'follow' évite l'erreur "redirected response / redirect mode not follow"
-      return fetch(event.request, { redirect: 'follow' }).then((response) => {
+      // new Request(..., {redirect:'follow'}) est plus fiable que fetch(req, init)
+      // car certains navigateurs n'écrasent pas le mode du Request original
+      return fetch(new Request(event.request, { redirect: 'follow' })).then((response) => {
         // Ne cacher que les réponses complètes (status 200) :
         // - les réponses partielles 206 (audio Range) ne peuvent pas être mises en cache
         // - les réponses opaques (CDN cross-origin) sont déjà filtrées plus haut
