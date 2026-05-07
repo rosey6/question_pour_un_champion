@@ -17,7 +17,8 @@ export const etat = {
   joueurs: [],
   indexQuestionCourante: 0,
   totalQuestions: 10,
-  donneesPartie: null, // objet complet depuis sessionStorage (gameData)
+  streakActuel: 0,       // streak de la manche courante (réinitialisé à chaque manche)
+  donneesPartie: null,   // objet complet depuis sessionStorage (gameData)
 };
 
 /**
@@ -45,6 +46,7 @@ export function reinitialiserEtat() {
   etat.joueursAyantRepondu = 0;
   etat.joueurs = [];
   etat.indexQuestionCourante = 0;
+  etat.streakActuel = 0;
 }
 
 // ─── Persistance sessionStorage ───────────────────────────────────────────────
@@ -74,7 +76,7 @@ export function restaurerSession() {
   if (idPartie) etat.idPartie = idPartie;
   if (pseudo)   etat.pseudo   = pseudo;
 
-  // Compatibilité avec l'ancienne clé multiGameData (multijoueur-game.js legacy)
+  // Compatibilité avec l'ancienne clé multiGameData.
   const donneesBrutes = sessionStorage.getItem('multiGameData');
   if (donneesBrutes) {
     try {

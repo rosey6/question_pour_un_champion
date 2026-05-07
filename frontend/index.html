@@ -11,9 +11,10 @@
       content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;"
     />
     <title>Une Question pour un Champion</title>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
+    <button type="button" class="btn-theme btn-theme-fixe" data-theme-toggle data-sound="toggle" title="Changer le thème" aria-label="Changer le thème">☾</button>
     <section id="accueil" class="ecran actif">
       <div class="contenu">
         <header>
@@ -48,13 +49,13 @@
         <div class="separateur"></div>
 
         <div class="actions actions-accueil">
-          <button id="btn-commencer" class="bouton bouton-principal bouton-large">
+          <button id="btn-commencer" class="bouton bouton-principal bouton-large" data-sound="clic">
             Mode Solo / Local
           </button>
           <a href="multijoueur.html" class="bouton bouton-principal bouton-large">
             Mode Multijoueur en ligne
           </a>
-          <button id="btn-historique" class="bouton bouton-secondaire bouton-large">
+          <button id="btn-historique" class="bouton bouton-secondaire bouton-large" data-sound="clic">
             Voir l'historique
           </button>
         </div>
@@ -71,19 +72,19 @@
         <div class="parametres-joueurs">
           <h2>Nombre de joueurs</h2>
           <div class="options-joueurs options-joueurs-4">
-            <button class="option-joueur" data-joueurs="1">
+            <button class="option-joueur" data-joueurs="1" data-sound="toggle">
               <span class="nombre-joueurs">1</span>
               <span class="texte-joueurs">joueur</span>
             </button>
-            <button class="option-joueur" data-joueurs="2">
+            <button class="option-joueur" data-joueurs="2" data-sound="toggle">
               <span class="nombre-joueurs">2</span>
               <span class="texte-joueurs">joueurs</span>
             </button>
-            <button class="option-joueur" data-joueurs="3">
+            <button class="option-joueur" data-joueurs="3" data-sound="toggle">
               <span class="nombre-joueurs">3</span>
               <span class="texte-joueurs">joueurs</span>
             </button>
-            <button class="option-joueur" data-joueurs="4">
+            <button class="option-joueur" data-joueurs="4" data-sound="toggle">
               <span class="nombre-joueurs">4</span>
               <span class="texte-joueurs">joueurs</span>
             </button>
@@ -95,10 +96,10 @@
         <div class="formulaire-noms" id="formulaire-noms"></div>
 
         <div class="actions">
-          <button id="btn-valider-joueurs" class="bouton bouton-principal">
+          <button id="btn-valider-joueurs" class="bouton bouton-principal" data-sound="clic">
             Valider
           </button>
-          <button id="btn-retour-joueurs" class="bouton bouton-secondaire">
+          <button id="btn-retour-joueurs" class="bouton bouton-secondaire" data-sound="clic">
             Retour
           </button>
         </div>
@@ -114,12 +115,12 @@
 
         <div class="parametres-theme">
           <div class="options-source">
-            <button class="option-source actif" data-source="existantes" id="btn-source-existantes">
+            <button class="option-source actif" data-source="existantes" id="btn-source-existantes" data-sound="toggle">
               <span class="icon-source">📚</span>
               <span class="texte-source">Questions existantes</span>
               <span class="desc-source">Utiliser la banque de questions actuelle (<span id="nombre-questions-locales">1000+</span> questions)</span>
             </button>
-            <button class="option-source" data-source="ia" id="btn-source-ia">
+            <button class="option-source" data-source="ia" id="btn-source-ia" data-sound="toggle">
               <span class="icon-source">🤖</span>
               <span class="texte-source">Générer avec l'IA</span>
               <span class="desc-source">Créer de nouvelles questions sur un thème</span>
@@ -130,25 +131,25 @@
             <h2>Choisissez un thème</h2>
 
             <div class="grille-themes" id="grille-themes">
-              <button class="bouton-theme" data-theme="Histoire"><span class="theme-emoji">🏛️</span> Histoire</button>
-              <button class="bouton-theme" data-theme="Géographie"><span class="theme-emoji">🌍</span> Géographie</button>
-              <button class="bouton-theme" data-theme="Sciences"><span class="theme-emoji">🔬</span> Sciences</button>
-              <button class="bouton-theme" data-theme="Littérature"><span class="theme-emoji">📖</span> Littérature</button>
-              <button class="bouton-theme" data-theme="Cinéma"><span class="theme-emoji">🎬</span> Cinéma</button>
-              <button class="bouton-theme" data-theme="Sport"><span class="theme-emoji">⚽</span> Sport</button>
-              <button class="bouton-theme" data-theme="Musique"><span class="theme-emoji">🎵</span> Musique</button>
-              <button class="bouton-theme" data-theme="Gastronomie"><span class="theme-emoji">🍽️</span> Gastronomie</button>
-              <button class="bouton-theme" data-theme="Animaux"><span class="theme-emoji">🦁</span> Animaux</button>
-              <button class="bouton-theme" data-theme="Technologie"><span class="theme-emoji">💻</span> Technologie</button>
-              <button class="bouton-theme" data-theme="Art"><span class="theme-emoji">🎨</span> Art</button>
-              <button class="bouton-theme" data-theme="Jeux vidéo"><span class="theme-emoji">🎮</span> Jeux vidéo</button>
+              <button class="bouton-theme" data-theme="Histoire" data-sound="clic"><span class="theme-emoji">🏛️</span> Histoire</button>
+              <button class="bouton-theme" data-theme="Géographie" data-sound="clic"><span class="theme-emoji">🌍</span> Géographie</button>
+              <button class="bouton-theme" data-theme="Sciences" data-sound="clic"><span class="theme-emoji">🔬</span> Sciences</button>
+              <button class="bouton-theme" data-theme="Littérature" data-sound="clic"><span class="theme-emoji">📖</span> Littérature</button>
+              <button class="bouton-theme" data-theme="Cinéma" data-sound="clic"><span class="theme-emoji">🎬</span> Cinéma</button>
+              <button class="bouton-theme" data-theme="Sport" data-sound="clic"><span class="theme-emoji">⚽</span> Sport</button>
+              <button class="bouton-theme" data-theme="Musique" data-sound="clic"><span class="theme-emoji">🎵</span> Musique</button>
+              <button class="bouton-theme" data-theme="Gastronomie" data-sound="clic"><span class="theme-emoji">🍽️</span> Gastronomie</button>
+              <button class="bouton-theme" data-theme="Animaux" data-sound="clic"><span class="theme-emoji">🦁</span> Animaux</button>
+              <button class="bouton-theme" data-theme="Technologie" data-sound="clic"><span class="theme-emoji">💻</span> Technologie</button>
+              <button class="bouton-theme" data-theme="Art" data-sound="clic"><span class="theme-emoji">🎨</span> Art</button>
+              <button class="bouton-theme" data-theme="Jeux vidéo" data-sound="clic"><span class="theme-emoji">🎮</span> Jeux vidéo</button>
             </div>
 
             <div class="theme-personnalise">
               <label for="input-theme-personnalise">Ou entrez un thème personnalisé :</label>
               <div class="input-theme-container">
                 <input type="text" id="input-theme-personnalise" placeholder="Ex: Animaux d'Afrique, Astronomie...">
-                <button id="btn-theme-personnalise" class="bouton bouton-principal">Valider</button>
+                <button id="btn-theme-personnalise" class="bouton bouton-principal" data-sound="clic">Valider</button>
               </div>
             </div>
 
@@ -165,15 +166,15 @@
 
           <div id="erreur-ia" class="erreur-ia hidden">
             <p class="message-erreur"></p>
-            <button id="btn-reessayer" class="bouton bouton-secondaire">Réessayer</button>
+            <button id="btn-reessayer" class="bouton bouton-secondaire" data-sound="clic">Réessayer</button>
           </div>
         </div>
 
         <div class="actions">
-          <button id="btn-valider-theme" class="bouton bouton-principal">
+          <button id="btn-valider-theme" class="bouton bouton-principal" data-sound="clic">
             Continuer
           </button>
-          <button id="btn-retour-theme" class="bouton bouton-secondaire">
+          <button id="btn-retour-theme" class="bouton bouton-secondaire" data-sound="clic">
             Retour
           </button>
         </div>
@@ -222,10 +223,10 @@
         </div>
 
         <div class="actions">
-          <button id="btn-demarrer-jeu" class="bouton bouton-principal">
+          <button id="btn-demarrer-jeu" class="bouton bouton-principal" data-sound="mancheDebut">
             Démarrer la partie
           </button>
-          <button id="btn-retour-parametres" class="bouton bouton-secondaire">
+          <button id="btn-retour-parametres" class="bouton bouton-secondaire" data-sound="clic">
             Retour
           </button>
         </div>
@@ -305,10 +306,10 @@
         <div class="scores" id="grille-scores-resultat"></div>
 
         <div class="actions">
-          <button id="btn-question-suivante" class="bouton bouton-principal">
+          <button id="btn-question-suivante" class="bouton bouton-principal" data-sound="clic">
             Question suivante
           </button>
-          <button id="btn-menu-principal" class="bouton bouton-secondaire">
+          <button id="btn-menu-principal" class="bouton bouton-secondaire" data-sound="clic">
             Menu principal
           </button>
         </div>
@@ -324,13 +325,14 @@
         <div id="liste-historique" class="liste-historique"></div>
 
         <div class="actions">
-          <button id="btn-retour-historique" class="bouton bouton-secondaire">
+          <button id="btn-retour-historique" class="bouton bouton-secondaire" data-sound="clic">
             Retour
           </button>
         </div>
       </div>
     </section>
 
-    <script src="script.js"></script>
+    <script type="module" src="js/micro-sons.js"></script>
+    <script src="js/local-game.js"></script>
   </body>
 </html>

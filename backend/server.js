@@ -23,11 +23,16 @@ const {
   MANCHES,
   initialiserManche,
   obtenirJoueursActifs,
+  remplacerIdJoueurManche,
   appliquerResultatsManche,
 } = require("./logique/manches");
+const {
+  SCENARIOS,
+  choisirScenario,
+  getScenarioInitialManche,
+  getTitreScenario,
+} = require("./logique/scenarios");
 const { sauvegarderPartie, recupererPartie, supprimerPartie } = require("./stockage/redis");
-// Le minuteur serveur est disponible mais non utilise dans ce flux (le timer est gere via setTimeout existant)
-// const { gererMinuteur, arreterMinuteur } = require("./logique/minuteur");
 
 const app = express();
 const server = http.createServer(app);
@@ -49,7 +54,11 @@ function obtenirOriginesAutorisees() {
     "https://questionpourunchampion.netlify.app",
     "http://localhost:3000",
     "http://localhost:5173",
+    "http://localhost:8080",
     "http://127.0.0.1:5500",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8080",
+    "null", // origin envoyée par les navigateurs pour file://
   ];
 }
 
@@ -58,7 +67,14 @@ const originesAutorisees = obtenirOriginesAutorisees();
 // Configuration Socket.IO
 const io = socketIo(server, {
   cors: {
-    origin: originesAutorisees,
+    origin: (origin, callback) => {
+      // Autoriser les origines connues + file:// (origin === null ou "null")
+      if (!origin || origin === "null" || originesAutorisees.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Origine non autorisée par CORS"));
+      }
+    },
     methods: ["GET", "POST"],
   },
   transports: ["websocket", "polling"],
@@ -72,7 +88,7 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "https://commons.wikimedia.org", "https://cdnjs.cloudflare.com"],
         connectSrc: ["'self'", ...originesAutorisees],
@@ -85,7 +101,13 @@ app.use(
 
 app.use(
   cors({
-    origin: originesAutorisees,
+    origin: (origin, callback) => {
+      if (!origin || origin === "null" || originesAutorisees.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Origine non autorisée par CORS"));
+      }
+    },
     methods: ["GET", "POST"],
   })
 );
@@ -357,13 +379,13 @@ let toutesLesQuestions = [];
 
 function chargerQuestions() {
   try {
-    const cheminQuestions = path.join(__dirname, "questions.json");
+    const cheminQuestions = path.join(__dirname, "data", "questions.json");
     if (fs.existsSync(cheminQuestions)) {
       const donnees = fs.readFileSync(cheminQuestions, "utf8");
       toutesLesQuestions = JSON.parse(donnees);
-      console.log(`${toutesLesQuestions.length} questions chargees depuis questions.json`);
+      console.log(`${toutesLesQuestions.length} questions chargees depuis data/questions.json`);
     } else {
-      console.log("Aucun fichier questions.json trouve dans le backend");
+      console.log("Aucun fichier data/questions.json trouve dans le backend");
       toutesLesQuestions = [];
     }
   } catch (erreur) {
@@ -510,6 +532,7 @@ function demarrerPartieInterne(codePartie, parametresBruts = null) {
   partie.state = "playing";
   partie.questionOpen = false;
   partie._advancePending = false;
+  partie._mancheTransitionPending = false;
   partie.answers = [];
   partie.questionHistory = [];
   partie.streaks = {};
@@ -520,6 +543,12 @@ function demarrerPartieInterne(codePartie, parametresBruts = null) {
     partie.streaks[idJoueur] = 0;
   });
 
+  // Choix du scénario selon le nombre de joueurs réels
+  const joueursReels = Object.values(partie.players).filter(
+    (j) => !(partie.mode === "spectator" && j.isHost)
+  );
+  partie.scenario = choisirScenario(partie.mode, joueursReels.length);
+
   initialiserManche(partie);
 
   io.to(codePartie).emit("game-started", {
@@ -528,6 +557,19 @@ function demarrerPartieInterne(codePartie, parametresBruts = null) {
     settings: partie.settings,
     players: serialiserJoueurs(partie),
     manche: partie.manche,
+    scenario: partie.scenario,
+    scenarioTitre: getTitreScenario(partie.scenario),
+  });
+
+  io.to(codePartie).emit("scenario-selected", {
+    scenario: partie.scenario,
+    titre: getTitreScenario(partie.scenario),
+    manche: partie.manche,
+  });
+
+  io.to(codePartie).emit("manche-started", {
+    manche: partie.manche,
+    scenario: partie.scenario,
   });
 
   envoyerQuestionATous(codePartie);
@@ -580,6 +622,7 @@ function envoyerQuestionATous(codePartie) {
     imageUrl: donneesQuestion.imageUrl || null,
     illustrationTexte: donneesQuestion.illustrationTexte || null,
     manche: partie.manche,
+    totalPlayers: obtenirJoueursActifs(partie).length,
   });
 
   console.log(`Question ${partie.currentQuestionIndex + 1}/${partie.questions.length} envoyee`);
@@ -675,7 +718,13 @@ function finaliserQuestion(codePartie) {
     }
   });
 
+  // Capturer le nom de la manche AVANT la transition pour détecter un changement
+  const mancheAvant = partie.manche?.nom;
+
   appliquerResultatsManche(partie, resultatsReponses);
+
+  const mancheApres = partie.manche?.nom;
+  const transitionManche = mancheAvant && mancheApres && mancheAvant !== mancheApres;
 
   const classement = obtenirClassement(partie.players, partie.scores, partie.streaks);
 
@@ -683,7 +732,7 @@ function finaliserQuestion(codePartie) {
     question: partie.currentQuestion.question,
     correctAnswer: reponseCorrecte,
     answers: resultatsReponses,
-    manche: partie.manche,
+    manche: { nom: mancheAvant },
   });
 
   io.to(codePartie).emit("question-results", {
@@ -694,10 +743,44 @@ function finaliserQuestion(codePartie) {
     answers: resultatsReponses,
     rankings: classement,
     manche: partie.manche,
+    transitionManche,
   });
 
   if (partie.manche?.nom === MANCHES.TERMINE) {
     terminerPartie(codePartie);
+    return;
+  }
+
+  if (transitionManche) {
+    // Annoncer la fin de la manche précédente
+    io.to(codePartie).emit("manche-ended", {
+      manchePrecedente: mancheAvant,
+      mancheSuivante: mancheApres,
+      qualifies: partie.manche.joueursActifs.map((id) => {
+        const j = partie.players[id];
+        return j ? { id, name: j.name } : null;
+      }).filter(Boolean),
+      elimines: (partie.manche.elimines || []).map((id) => {
+        // Les éliminés appartiennent encore à partie.players
+        const j = partie.players[id];
+        return j ? { id, name: j.name } : { id, name: id };
+      }),
+      rankings: classement,
+      scenario: partie.scenario,
+    });
+
+    // Pause de 8 secondes entre deux manches, puis annoncer la nouvelle
+    setTimeout(() => {
+      if (!parties[codePartie]) return;
+      io.to(codePartie).emit("manche-started", {
+        manche: partie.manche,
+        scenario: partie.scenario,
+      });
+      // Repartir sur la question suivante après 2 secondes d'affichage du titre
+      setTimeout(() => {
+        if (parties[codePartie]) questionSuivante(codePartie);
+      }, 2000);
+    }, 8000);
     return;
   }
 
@@ -887,13 +970,16 @@ io.on("connection", (socket) => {
       partie.scores[socket.id] = joueurs[socket.id].score;
       partie.hostPlayerToken = playerToken;
       memoriserSessionJoueur(partie, joueurs[socket.id]);
+      remplacerIdJoueurManche(partie, ancienIdHote, socket.id);
       delete partie.players[ancienIdHote];
       delete partie.scores[ancienIdHote];
       delete joueurs[ancienIdHote];
     } else if (sessionHote) {
+      const ancienIdSession = sessionHote.id;
       sessionHote.name = playerName || sessionHote.name;
       sessionHote.isHost = estHoteJoueur;
       attacherJoueur(partie, socket.id, sessionHote);
+      remplacerIdJoueurManche(partie, ancienIdSession, socket.id);
     } else {
       const playerToken = partie.hostPlayerToken || genererTokenSession();
       partie.hostPlayerToken = playerToken;
@@ -918,7 +1004,17 @@ io.on("connection", (socket) => {
       settings: partie.settings,
     });
 
-      if (partie.state === "playing" && partie.currentQuestion) {
+    // Ré-émettre le scénario pour que la bannière s'affiche sur spectate.html
+    if (partie.scenario) {
+      socket.emit("scenario-selected", {
+        scenario: partie.scenario,
+        titre: getTitreScenario(partie.scenario),
+        scenarioTitre: getTitreScenario(partie.scenario),
+        manche: partie.manche,
+      });
+    }
+
+    if (partie.state === "playing" && partie.currentQuestion) {
       const optionsMelangees = melangerTableau([...partie.currentQuestion.options]);
       socket.emit("new-question", {
         question: partie.currentQuestion.question,
@@ -929,6 +1025,7 @@ io.on("connection", (socket) => {
         imageUrl: partie.currentQuestion.imageUrl || null,
         illustrationTexte: partie.currentQuestion.illustrationTexte || null,
         manche: partie.manche,
+        totalPlayers: obtenirJoueursActifs(partie).length,
       });
     }
 
@@ -965,7 +1062,8 @@ io.on("connection", (socket) => {
     }
 
     const maxJoueurs = Number(partie.settings?.maxPlayers ?? 4);
-    if (Object.keys(partie.players).length >= maxJoueurs) {
+    // Ne pas compter le spectateur-hôte dans la limite (obtenirJoueursActifs filtre isHost)
+    if (obtenirJoueursActifs(partie).length >= maxJoueurs) {
       socket.emit("join-error", { message: `La partie est complete (max ${maxJoueurs} joueurs)` });
       return;
     }
@@ -1003,7 +1101,7 @@ io.on("connection", (socket) => {
 
     console.log(`${playerName} a rejoint ${gameCode}`);
 
-    if (Object.keys(partie.players).length >= maxJoueurs) {
+    if (obtenirJoueursActifs(partie).length >= maxJoueurs) {
       demarrerPartieInterne(gameCode);
     }
   });
@@ -1046,16 +1144,19 @@ io.on("connection", (socket) => {
       };
       attacherJoueur(partie, socket.id, session);
       if (ancienId !== socket.id) {
+        remplacerIdJoueurManche(partie, ancienId, socket.id);
         delete partie.players[ancienId];
         delete partie.scores[ancienId];
         delete joueurs[ancienId];
       }
     } else {
+      const ancienIdSession = sessionParToken.id;
       attacherJoueur(partie, socket.id, {
         ...sessionParToken,
         name: sessionParToken.name || playerName,
         playerToken,
       });
+      remplacerIdJoueurManche(partie, ancienIdSession, socket.id);
     }
 
     socket.join(gameCode);
@@ -1082,6 +1183,7 @@ io.on("connection", (socket) => {
         imageUrl: partie.currentQuestion.imageUrl || null,
         illustrationTexte: partie.currentQuestion.illustrationTexte || null,
         manche: partie.manche,
+        totalPlayers: obtenirJoueursActifs(partie).length,
       });
     }
 
@@ -1229,6 +1331,7 @@ io.on("connection", (socket) => {
         imageUrl: partie.currentQuestion.imageUrl || null,
         illustrationTexte: partie.currentQuestion.illustrationTexte || null,
         manche: partie.manche,
+        totalPlayers: obtenirJoueursActifs(partie).length,
       });
     }
 
@@ -1329,6 +1432,11 @@ io.on("connection", (socket) => {
       votes: partie.themeVotes,
       total: Object.keys(partie.themeVotedBy).length,
     });
+  });
+
+  // Ping / mesure de latence (Mission 7)
+  socket.on("client-ping", (timestamp) => {
+    socket.emit("server-pong", timestamp);
   });
 
   // Deconnexion

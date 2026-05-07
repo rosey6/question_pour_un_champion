@@ -6,17 +6,20 @@
   <meta name="theme-color" content="#1A1A2E" />
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com;
+    script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
     style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
     font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com;
     connect-src 'self'
+      ws://localhost:* http://localhost:*
+      ws://127.0.0.1:* http://127.0.0.1:*
       ws://questionpourunchampion-backend.onrender.com
       wss://questionpourunchampion-backend.onrender.com
       https://questionpourunchampion-backend.onrender.com
       https://cdn.socket.io;
-    img-src 'self' data: https://cdnjs.cloudflare.com;
+    img-src 'self' data: https://cdnjs.cloudflare.com https://upload.wikimedia.org https://commons.wikimedia.org;
   " />
   <title>Vue Spectateur - Question pour un Champion</title>
+  <link rel="stylesheet" href="css/animations.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <style>
     /* ===================================================
@@ -33,9 +36,22 @@
       height: 100%;
       overflow: hidden;
       background: #1A1A2E;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       color: #fff;
       -webkit-font-smoothing: antialiased;
+      transition: background-image 0.45s ease-out;
+    }
+
+    #fond-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background: rgba(26, 26, 46, 0);
+      transition: background 0.45s ease-out;
     }
 
     /* On mobile allow scroll */
@@ -52,6 +68,8 @@
       display: none;
       width: 100%;
       height: 100%;
+      position: relative;
+      z-index: 1;
     }
     .screen.active {
       display: flex;
@@ -138,7 +156,7 @@
       flex-direction: column;
       height: 100vh;
       overflow: hidden;
-      background: #1A1A2E;
+      background: rgba(26, 26, 46, 0.82);
     }
 
     @media (max-width: 767px) {
@@ -255,6 +273,8 @@
 
     .header-spacer {
       flex: 1;
+      display: flex;
+      justify-content: flex-end;
     }
 
     /* ===================================================
@@ -504,6 +524,61 @@
       font-weight: 600;
     }
 
+    #joueurs-reponses {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding: 0.65rem 1rem;
+      background: rgba(0, 0, 0, 0.34);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(8px);
+    }
+
+    .indicateur-joueur {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.42rem;
+      min-width: max-content;
+      padding: 0.35rem 0.68rem;
+      border-radius: 999px;
+      color: rgba(232, 232, 240, 0.72);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+
+    .indicateur-joueur.repondu {
+      color: #64DC78;
+      background: rgba(100, 220, 120, 0.1);
+      border-color: rgba(100, 220, 120, 0.32);
+    }
+
+    .indicateur-point {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #3a3f5c;
+      box-shadow: 0 0 0 3px rgba(58, 63, 92, 0.16);
+    }
+
+    .indicateur-joueur.repondu .indicateur-point {
+      background: #64DC78;
+      box-shadow: 0 0 0 3px rgba(100, 220, 120, 0.18);
+      animation: pop-in 200ms ease-out both;
+    }
+
+    .indicateur-statut {
+      color: rgba(232, 232, 240, 0.52);
+    }
+
+    .indicateur-joueur.repondu .indicateur-statut {
+      color: #64DC78;
+    }
+
     /* ===================================================
        LEADERBOARD BAR (bottom)
        =================================================== */
@@ -709,10 +784,6 @@
       max-width: 170px;
     }
 
-    .podium-slot:nth-child(1) { animation: podRise 0.7s 0.3s ease both; }  /* 2nd */
-    .podium-slot:nth-child(2) { animation: podRise 0.7s 0.05s ease both; } /* 1st */
-    .podium-slot:nth-child(3) { animation: podRise 0.7s 0.5s ease both; }  /* 3rd */
-
     @keyframes podRise {
       from { transform: translateY(50px); opacity: 0; }
       to   { transform: translateY(0);    opacity: 1; }
@@ -788,6 +859,7 @@
       align-items: center;
       justify-content: center;
       font-size: 1.5rem;
+      overflow: hidden;
     }
 
     /* 2nd */
@@ -972,12 +1044,132 @@
         padding: 0.55rem 1rem;
       }
     }
+
+    /* ===================================================
+       SCENARIO BANNER
+       =================================================== */
+    #scenario-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 500;
+      text-align: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #00D4FF;
+      padding: 0.75rem 1rem;
+      background: rgba(0, 212, 255, 0.12);
+      border-bottom: 2px solid rgba(0, 212, 255, 0.4);
+      text-shadow: 0 0 20px rgba(0, 212, 255, 0.7);
+    }
+    #scenario-banner.hidden { display: none; }
+
+    /* ===================================================
+       MANCHE TRANSITION OVERLAY
+       =================================================== */
+    #overlay-manche {
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 40px;
+      text-align: center;
+      background: rgba(11, 15, 26, 0.96);
+      backdrop-filter: blur(12px);
+    }
+    #overlay-manche.hidden { display: none; }
+    .manche-titre {
+      font-size: clamp(28px, 6vw, 52px);
+      font-weight: 800;
+      letter-spacing: .08em;
+      color: #8093F1;
+      text-transform: uppercase;
+      text-shadow: 0 0 30px rgba(128, 147, 241, 0.38);
+    }
+    .manche-groupe {
+      width: min(100%, 560px);
+      display: grid;
+      gap: 10px;
+    }
+    .manche-libelle {
+      margin: 0;
+      color: rgba(232, 232, 240, 0.68);
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .manche-liste {
+      display: grid;
+      justify-items: center;
+      gap: 8px;
+      min-height: 28px;
+    }
+    .joueur-elimine,
+    .joueur-qualifie {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-weight: 800;
+    }
+    .joueur-elimine { color: #FF6B6B; }
+    .joueur-qualifie { color: #64DC78; }
+    .manche-separateur {
+      width: 0;
+      max-width: min(100%, 560px);
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #8093F1, transparent);
+    }
+    .manche-countdown {
+      min-height: 1.4em;
+      color: #FFD700;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #overlay-manche * { animation-duration: 0.01ms !important; }
+    }
   </style>
 </head>
 <body>
+  <div id="fond-overlay"></div>
 
   <!-- TOAST CONTAINER -->
   <div id="toast-container"></div>
+
+  <!-- SCENARIO BANNER -->
+  <div id="scenario-banner" class="hidden" aria-live="polite"></div>
+
+  <!-- INTRO SCENARIO GLITCH -->
+  <div id="intro-scenario" class="intro-scenario" aria-live="assertive" aria-hidden="true">
+    <div id="intro-scenario-titre" class="titre-glitch" data-text="SCÉNARIO">SCÉNARIO</div>
+    <div id="intro-scenario-soustitre" class="intro-scenario-soustitre"></div>
+  </div>
+
+  <!-- MANCHE TRANSITION OVERLAY -->
+  <div id="overlay-manche" class="hidden" role="status" aria-live="assertive">
+    <div class="manche-titre" id="manche-titre">FIN DE MANCHE</div>
+    <div class="manche-groupe" id="groupe-elimines">
+      <p class="manche-libelle">Éliminés</p>
+      <div class="manche-liste manche-elimines" id="manche-elimines"></div>
+    </div>
+    <div class="manche-separateur"></div>
+    <div class="manche-groupe" id="groupe-qualifies">
+      <p class="manche-libelle">Qualifiés pour la suite</p>
+      <div class="manche-liste manche-qualifies" id="manche-qualifies"></div>
+    </div>
+    <div class="manche-countdown" id="manche-countdown"></div>
+  </div>
 
   <!-- ================================================== -->
   <!-- SCREEN: WAITING                                     -->
@@ -1018,7 +1210,9 @@
         </div>
       </div>
 
-      <div class="header-spacer"></div>
+      <div class="header-spacer">
+        <button type="button" class="btn-theme" data-theme-toggle data-sound="toggle" title="Changer le thème" aria-label="Changer le thème">☾</button>
+      </div>
     </header>
 
     <!-- QUESTION ZONE -->
@@ -1037,6 +1231,8 @@
       </div>
       <div id="answers-label">0 / 0 ont repondu</div>
     </div>
+
+    <div id="joueurs-reponses" aria-live="polite"></div>
 
     <!-- LEADERBOARD BAR -->
     <div id="leaderboard-bar"></div>
@@ -1084,30 +1280,35 @@
     <!-- Rankings 4+ -->
     <div class="rankings-list" id="rankings-list"></div>
 
-    <button class="btn-new-game" id="btn-new-game">
+    <button class="btn-new-game" id="btn-new-game" data-sound="clic">
       <i class="fas fa-redo"></i> Nouvelle partie
     </button>
   </div>
 
   <!-- HOST CONTROLS (fixed floating) -->
   <div id="host-controls" class="host-hidden">
-    <button class="host-btn" id="btn-next-question">
+    <button class="host-btn" id="btn-next-question" data-sound="clic">
       &#10145;&#65039; Question suivante
     </button>
-    <button class="host-btn" id="btn-end-game">
+    <button class="host-btn" id="btn-end-game" data-sound="clic">
       &#9209;&#65039; Terminer la partie
     </button>
   </div>
 
   <!-- Socket.IO CDN -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script type="module" src="js/micro-sons.js"></script>
 
   <script>
   // ======================================================
   // SPECTATE.HTML — Logic
   // ======================================================
 
-  const BACKEND_URL = 'https://questionpourunchampion-backend.onrender.com';
+  const BACKEND_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '')
+    ? `http://${location.hostname || 'localhost'}:3000`
+    : 'https://questionpourunchampion-backend.onrender.com';
 
   // --- URL params ---
   const _params   = new URLSearchParams(window.location.search);
@@ -1118,6 +1319,7 @@
   let socket          = null;
   let players         = [];   // [{name, score, isHost}] — non-host players
   let prevScores      = {};   // name -> score before last question-results
+  let joueursRepondus = {};
 
   // Per-question option state
   let optionTextToIdx = {};   // option text -> column index (0-3)
@@ -1126,6 +1328,8 @@
   // Timer
   let timerInterval   = null;
   let timerTotal      = 1;
+  let scenarioBannerTimer = null;
+  let mancheTransitionTimer = null;
 
   // --- Constants ---
   const CIRCUMFERENCE   = 2 * Math.PI * 42;   // 263.9
@@ -1135,6 +1339,24 @@
   const AVATAR_COLORS   = [
     '#E21B3C', '#1368CE', '#26890C', '#FFA602', '#9B59B6', '#E67E22'
   ];
+  const LABELS_SCENARIOS = {
+    ENTRAINEMENT: {
+      titre: 'Mode Entraînement',
+      soustitre: 'Solo - Teste tes connaissances'
+    },
+    FACE_A_FACE_DIRECT: {
+      titre: 'Face à Face',
+      soustitre: '2 joueurs - À vous de jouer !'
+    },
+    QUATRE_A_LA_SUITE_PUIS_FINALE: {
+      titre: 'Format Classique',
+      soustitre: '3 joueurs - Quatre à la suite puis Finale'
+    },
+    FORMAT_TV_COMPLET: {
+      titre: 'Format TV Complet',
+      soustitre: '4+ joueurs - Comme à la télé !'
+    }
+  };
 
   // ======================================================
   // UTILITIES
@@ -1278,6 +1500,67 @@
     if (lbl)  lbl.textContent  = answered + ' / ' + total + ' ont repondu';
   }
 
+  function nomJoueur(participant) {
+    if (!participant) return '';
+    if (typeof participant === 'string') return participant;
+    return participant.name || participant.playerName || participant.pseudo || participant.id || '';
+  }
+
+  function renderIndicateursJoueurs() {
+    var conteneur = document.getElementById('joueurs-reponses');
+    if (!conteneur) return;
+    conteneur.innerHTML = '';
+
+    var liste = (players || []).filter(function (p) { return !p.isHost; });
+    if (!liste.length) {
+      var vide = document.createElement('div');
+      vide.className = 'indicateur-joueur';
+      appendText(vide, 'En attente des joueurs', 'span');
+      conteneur.appendChild(vide);
+      return;
+    }
+
+    liste.forEach(function (joueur) {
+      var nom = nomJoueur(joueur);
+      var repondu = Boolean(joueursRepondus[nom]);
+      var item = document.createElement('div');
+      item.className = 'indicateur-joueur' + (repondu ? ' repondu' : '');
+
+      var point = document.createElement('span');
+      point.className = 'indicateur-point';
+      point.setAttribute('aria-hidden', 'true');
+      item.appendChild(point);
+
+      appendText(item, nom || 'Joueur', 'span', 'indicateur-nom');
+      appendText(item, repondu ? '✓ répondu' : '...', 'span', 'indicateur-statut');
+      conteneur.appendChild(item);
+    });
+  }
+
+  function resetIndicateursJoueurs() {
+    joueursRepondus = {};
+    renderIndicateursJoueurs();
+  }
+
+  function marquerJoueurRepondu(pseudo) {
+    var nom = nomJoueur(pseudo);
+    if (!nom) return;
+    joueursRepondus[nom] = true;
+    renderIndicateursJoueurs();
+  }
+
+  function appliquerFondQuestion(data) {
+    var image = data && (data.imageUrl || data.image);
+    var overlay = document.getElementById('fond-overlay');
+    if (image) {
+      document.body.style.backgroundImage = 'url("' + String(image).replace(/"/g, '%22') + '")';
+      if (overlay) overlay.style.background = 'rgba(11,15,26,0.75)';
+    } else {
+      document.body.style.backgroundImage = '';
+      if (overlay) overlay.style.background = 'rgba(26,26,46,0)';
+    }
+  }
+
   // ======================================================
   // LEADERBOARD
   // ======================================================
@@ -1358,7 +1641,7 @@
 
   function connectSocket() {
     socket = io(BACKEND_URL, {
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionDelay: 1000,
       timeout: 20000
@@ -1388,6 +1671,7 @@
       persistTokens(data);
       players = (data.players || []).filter(function (p) { return !p.isHost; });
       renderLeaderboard(players, false);
+      renderIndicateursJoueurs();
       showScreen('screen-game');
     });
 
@@ -1395,6 +1679,7 @@
     socket.on('spectate-joined', function (data) {
       players = (data.players || []).filter(function (p) { return !p.isHost; });
       renderLeaderboard(players, false);
+      renderIndicateursJoueurs();
       showScreen('screen-game');
     });
 
@@ -1403,6 +1688,7 @@
       showScreen('screen-game');
       updateRoundLabel(data && data.manche);
       resetQuestion();
+      resetIndicateursJoueurs();
     });
 
     // New question
@@ -1436,24 +1722,53 @@
     socket.on('erreur-limite', function (data) {
       toast((data && data.message) ? data.message : 'Limite atteinte, réessayez plus tard', 'warning');
     });
+
+    socket.on('scenario-selected', function (data) {
+      handleScenarioSelected(data);
+    });
+
+    socket.on('manche-ended', function (data) {
+      handleMancheEnded(data);
+    });
+
+    socket.on('manche-started', function (data) {
+      handleMancheStarted(data);
+    });
   }
 
   // ======================================================
   // GAME HANDLERS
   // ======================================================
 
-  function updateRoundLabel(manche) {
-    if (!manche) return;
-    var el = document.getElementById('round-label');
-    if (!el) return;
+  function getMancheLabel(manche) {
     var labels = {
+      ENTRAINEMENT: 'Entrainement',
       NEUF_POINTS: 'Manche 1 - Neuf points',
       QUATRE_A_LA_SUITE: 'Manche 2 - 4 a la suite',
       FACE_A_FACE: 'Manche 3 - Face-a-face',
       TERMINE: 'Champion designe'
     };
-    var label = labels[manche.nom] || manche.titre || ('Manche ' + (manche.numero || ''));
+    if (!manche) return '';
+    if (typeof manche === 'string') return labels[manche] || manche;
+    return labels[manche.nom] || manche.titre || ('Manche ' + (manche.numero || ''));
+  }
+
+  function updateRoundLabel(manche) {
+    if (!manche) return;
+    var el = document.getElementById('round-label');
+    if (!el) return;
+    var label = getMancheLabel(manche);
     el.textContent = manche.objectif ? label + ' | Objectif ' + manche.objectif : label;
+  }
+
+  function formatMancheLabel(mancheOuNom) {
+    return getMancheLabel(mancheOuNom);
+  }
+
+  function formatParticipantLabel(participant) {
+    if (!participant) return '';
+    if (typeof participant === 'string') return participant;
+    return participant.name || participant.nom || participant.playerName || participant.id || '';
   }
 
   function handleNewQuestion(data) {
@@ -1461,6 +1776,8 @@
     hideNextBtn();
     stopTimer();
     resetQuestion();
+    resetIndicateursJoueurs();
+    appliquerFondQuestion(data);
     updateRoundLabel(data.manche);
 
     // Counter
@@ -1502,6 +1819,7 @@
       if (cnt) cnt.textContent = optionCounts[idx];
     }
     updateProgress(data.totalAnswered, data.totalPlayers);
+    marquerJoueurRepondu(data.playerName || data.pseudo || data.playerId);
   }
 
   function handleQuestionResults(data) {
@@ -1515,6 +1833,7 @@
     var countByIdx = [0, 0, 0, 0];
     if (data.answers) {
       data.answers.forEach(function (a) {
+        if (a.answer !== null) marquerJoueurRepondu(a.playerName || a.playerId);
         var idx = optionTextToIdx[a.answer];
         if (idx !== undefined) countByIdx[idx]++;
       });
@@ -1556,12 +1875,209 @@
     if (isHost) showNextBtn();
   }
 
+  function handleScenarioSelected(data) {
+    var banner = document.getElementById('scenario-banner');
+    var scenario = data && data.scenario;
+    var codeScenario = typeof scenario === 'string'
+      ? scenario
+      : (scenario && (scenario.nom || scenario.name || scenario.code));
+    var label = LABELS_SCENARIOS[codeScenario] || null;
+    var titre = (label && label.titre)
+      || (data && (data.titre || data.scenarioTitre))
+      || (scenario && (scenario.titre || scenario.nom || scenario.name))
+      || codeScenario
+      || '';
+    var soustitre = (label && label.soustitre) || (data && data.description) || '';
+    if (!banner || !titre) return;
+    if (scenarioBannerTimer) clearTimeout(scenarioBannerTimer);
+    banner.textContent = titre;
+    banner.classList.remove('hidden');
+    afficherIntroScenario(titre, soustitre);
+    scenarioBannerTimer = setTimeout(function () {
+      banner.classList.add('hidden');
+      scenarioBannerTimer = null;
+    }, 5000);
+  }
+
+  function afficherIntroScenario(titre, soustitre) {
+    var overlay = document.getElementById('intro-scenario');
+    var titreEl = document.getElementById('intro-scenario-titre');
+    var soustitreEl = document.getElementById('intro-scenario-soustitre');
+    if (!overlay || !titreEl || !soustitreEl) return;
+
+    overlay.classList.remove('sortie');
+    overlay.classList.add('actif');
+    overlay.setAttribute('aria-hidden', 'false');
+    titreEl.textContent = titre;
+    titreEl.dataset.text = titre;
+    titreEl.classList.remove('stabilise');
+    soustitreEl.textContent = soustitre;
+    soustitreEl.classList.remove('visible');
+    window.Sons?.jouer?.('scenarioAnnonce');
+
+    setTimeout(function () {
+      titreEl.classList.add('stabilise');
+    }, 1500);
+
+    setTimeout(function () {
+      soustitreEl.classList.add('visible');
+    }, 2000);
+
+    setTimeout(function () {
+      overlay.classList.add('sortie');
+      setTimeout(function () {
+        overlay.classList.remove('actif', 'sortie');
+        overlay.setAttribute('aria-hidden', 'true');
+      }, 430);
+    }, 3500);
+  }
+
+  function handleMancheEnded(data) {
+    var overlay = document.getElementById('overlay-manche');
+    if (!overlay) return;
+
+    if (mancheTransitionTimer) clearTimeout(mancheTransitionTimer);
+    remplirListeTransitionSpectate(
+      document.getElementById('manche-elimines'),
+      (data && data.elimines) || [],
+      'joueur-elimine',
+      '✕',
+      'Aucun éliminé'
+    );
+    remplirListeTransitionSpectate(
+      document.getElementById('manche-qualifies'),
+      (data && data.qualifies) || [],
+      'joueur-qualifie',
+      '✓',
+      'Qualification en cours'
+    );
+    var titre = document.getElementById('manche-titre');
+    var countdown = document.getElementById('manche-countdown');
+    var separateur = overlay.querySelector('.manche-separateur');
+    if (titre) titre.textContent = 'FIN DE MANCHE';
+    if (countdown) countdown.textContent = '';
+    if (separateur) separateur.style.width = '0';
+    overlay.classList.remove('hidden');
+    overlay.style.opacity = '1';
+    window.Sons?.jouer?.('mancheFin');
+    jouerAnimationTransitionMancheSpectate(overlay);
+
+    setTimeout(function () { if (countdown) countdown.textContent = 'Prochain round dans 2...'; }, 3500);
+    setTimeout(function () { if (countdown) countdown.textContent = 'Prochain round dans 1...'; }, 4300);
+    mancheTransitionTimer = setTimeout(function () { masquerTransitionMancheSpectate(); }, 5000);
+  }
+
+  function handleMancheStarted(data) {
+    masquerTransitionMancheSpectate();
+    if (data && data.manche) updateRoundLabel(data.manche);
+  }
+
+  function remplirListeTransitionSpectate(conteneur, participants, classe, icone, messageVide) {
+    if (!conteneur) return;
+    conteneur.innerHTML = '';
+    var noms = (participants || []).map(formatParticipantLabel).filter(Boolean);
+    if (!noms.length) noms = [messageVide];
+
+    noms.forEach(function (nom) {
+      var ligne = document.createElement('span');
+      ligne.className = classe;
+      var iconeEl = document.createElement('span');
+      iconeEl.textContent = icone;
+      var nomEl = document.createElement('strong');
+      nomEl.textContent = nom;
+      ligne.appendChild(iconeEl);
+      ligne.appendChild(nomEl);
+      conteneur.appendChild(ligne);
+    });
+  }
+
+  function masquerTransitionMancheSpectate() {
+    var overlay = document.getElementById('overlay-manche');
+    if (!overlay) return;
+    if (mancheTransitionTimer) {
+      clearTimeout(mancheTransitionTimer);
+      mancheTransitionTimer = null;
+    }
+    if (window.anime) {
+      window.anime({
+        targets: overlay,
+        opacity: [1, 0],
+        duration: 320,
+        easing: 'easeInQuad',
+        complete: function () {
+          overlay.classList.add('hidden');
+          overlay.style.opacity = '';
+        }
+      });
+    } else {
+      overlay.classList.add('hidden');
+      overlay.style.opacity = '';
+    }
+  }
+
+  function jouerAnimationTransitionMancheSpectate(overlay) {
+    var titre = overlay.querySelector('.manche-titre');
+    var elimines = overlay.querySelectorAll('.joueur-elimine');
+    var qualifies = overlay.querySelectorAll('.joueur-qualifie');
+    var separateur = overlay.querySelector('.manche-separateur');
+    var libelles = overlay.querySelectorAll('.manche-libelle');
+
+    if (!window.anime) {
+      if (separateur) separateur.style.width = '100%';
+      return;
+    }
+
+    window.anime.set(overlay, { opacity: 0 });
+    window.anime.set(titre, { translateY: -60, opacity: 0 });
+    window.anime.set(elimines, { translateY: 24, opacity: 0 });
+    window.anime.set(qualifies, { translateY: 24, opacity: 0 });
+    window.anime.set(libelles, { translateY: 18, opacity: 0 });
+    window.anime.set(separateur, { width: '0%' });
+
+    window.anime.timeline({ autoplay: true })
+      .add({
+        targets: overlay,
+        opacity: [0, 1],
+        duration: 400,
+        easing: 'easeOutQuad'
+      })
+      .add({
+        targets: titre,
+        translateY: [-60, 0],
+        opacity: [0, 1],
+        duration: 650,
+        easing: 'easeOutElastic(1, .75)'
+      }, 400)
+      .add({
+        targets: [libelles[0]].concat(Array.prototype.slice.call(elimines)),
+        translateY: [24, 0],
+        opacity: [0, 1],
+        delay: window.anime.stagger(150),
+        duration: 420,
+        easing: 'easeOutQuad'
+      }, 800)
+      .add({
+        targets: separateur,
+        width: ['0%', '100%'],
+        duration: 300,
+        easing: 'easeOutQuad'
+      }, 1500)
+      .add({
+        targets: [libelles[1]].concat(Array.prototype.slice.call(qualifies)),
+        translateY: [30, 0],
+        opacity: [0, 1],
+        delay: window.anime.stagger(150),
+        duration: 420,
+        easing: 'easeOutQuad'
+      }, 1800);
+  }
+
   function handleGameFinished(data) {
     stopTimer();
     var rankings = (data.rankings || []).filter(function (p) { return !p.isHost; });
     renderFinalScreen(rankings);
     showScreen('screen-final');
-    startConfetti();
+    animerPodiumFinalSpectate();
   }
 
   // ======================================================
@@ -1624,6 +2140,136 @@
         list.appendChild(row);
       });
     }
+  }
+
+  function animerPodiumFinalSpectate() {
+    var titre = document.querySelector('#screen-final .final-title');
+    var actions = document.getElementById('btn-new-game');
+    var slot3 = document.getElementById('pod-slot-3');
+    var slot2 = document.getElementById('pod-slot-2');
+    var slot1 = document.getElementById('pod-slot-1');
+    var block3 = slot3 && slot3.querySelector('.podium-block');
+    var block2 = slot2 && slot2.querySelector('.podium-block');
+    var block1 = slot1 && slot1.querySelector('.podium-block');
+    var heights = {
+      block3: block3 ? block3.offsetHeight || 50 : 50,
+      block2: block2 ? block2.offsetHeight || 70 : 70,
+      block1: block1 ? block1.offsetHeight || 110 : 110
+    };
+
+    [slot3, slot2, slot1].forEach(function (slot) {
+      if (!slot || slot.style.visibility === 'hidden') return;
+      slot.style.opacity = '0';
+      slot.style.transform = 'translateY(50px)';
+    });
+    [
+      [block3, heights.block3],
+      [block2, heights.block2],
+      [block1, heights.block1]
+    ].forEach(function (entry) {
+      if (entry[0]) entry[0].style.height = '0px';
+    });
+    if (actions) {
+      actions.style.opacity = '0';
+      actions.style.transform = 'translateY(12px)';
+    }
+
+    function lancerBurstFinal() {
+      window.Sons?.jouer?.('podium1er');
+      if (typeof window.confetti === 'function') {
+        window.confetti({
+          particleCount: 200,
+          spread: 78,
+          startVelocity: 40,
+          colors: ['#8093F1', '#72DDF7', '#FFD700'],
+          origin: { y: 0.56 },
+          disableForReducedMotion: true
+        });
+      } else {
+        startConfetti();
+      }
+    }
+
+    if (!window.anime) {
+      if (block3) block3.style.height = heights.block3 + 'px';
+      if (block2) block2.style.height = heights.block2 + 'px';
+      if (block1) block1.style.height = heights.block1 + 'px';
+      [slot3, slot2, slot1].forEach(function (slot) {
+        if (slot) {
+          slot.style.opacity = '1';
+          slot.style.transform = '';
+        }
+      });
+      if (actions) {
+        actions.style.opacity = '1';
+        actions.style.transform = '';
+      }
+      lancerBurstFinal();
+      return;
+    }
+
+    window.anime.timeline({ autoplay: true })
+      .add({
+        targets: titre,
+        translateY: [-40, 0],
+        opacity: [0, 1],
+        duration: 500,
+        easing: 'easeOutQuad'
+      })
+      .add({
+        targets: slot3,
+        translateY: [60, 0],
+        opacity: [0, 1],
+        duration: 600,
+        easing: 'easeOutElastic(1, .75)'
+      }, 1000)
+      .add({
+        targets: block3,
+        height: [0, heights.block3],
+        duration: 600,
+        easing: 'easeOutElastic(1, .75)'
+      }, 1000)
+      .add({
+        targets: slot2,
+        translateY: [60, 0],
+        opacity: [0, 1],
+        duration: 600,
+        easing: 'easeOutElastic(1, .75)'
+      }, 1800)
+      .add({
+        targets: block2,
+        height: [0, heights.block2],
+        duration: 600,
+        easing: 'easeOutElastic(1, .75)'
+      }, 1800)
+      .add({
+        targets: slot1,
+        translateY: [60, 0],
+        opacity: [0, 1],
+        duration: 650,
+        easing: 'easeOutElastic(1, .75)',
+        begin: lancerBurstFinal
+      }, 2600)
+      .add({
+        targets: block1,
+        height: [0, heights.block1],
+        duration: 650,
+        easing: 'easeOutElastic(1, .75)'
+      }, 2600)
+      .add({
+        targets: '#pod-slot-1 .podium-crown',
+        translateY: [-40, 0],
+        opacity: [0, 1],
+        duration: 700,
+        easing: 'easeOutElastic(1, .6)'
+      }, 3000)
+      .add({
+        targets: actions,
+        translateY: [12, 0],
+        opacity: [0, 1],
+        duration: 420,
+        easing: 'easeOutQuad'
+      }, 4000);
   }
 
   // ======================================================

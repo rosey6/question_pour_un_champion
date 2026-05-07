@@ -48,6 +48,48 @@
   100% { transform: scale(0.95); opacity: 0; }
 }
 
+@keyframes pop-in {
+  0%   { transform: scale(0) rotate(-10deg); opacity: 0; }
+  70%  { transform: scale(1.2) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-8px); }
+  40%      { transform: translateX(8px); }
+  60%      { transform: translateX(-5px); }
+  80%      { transform: translateX(5px); }
+}
+
+@keyframes score-monte {
+  0%   { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes score-descend {
+  0%   { transform: translateY(-20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes glitch-1 {
+  0%, 100% { clip-path: inset(0 0 90% 0); transform: translateX(0); }
+  25%      { clip-path: inset(20% 0 40% 0); transform: translateX(-4px); }
+  50%      { clip-path: inset(60% 0 20% 0); transform: translateX(4px); }
+  75%      { clip-path: inset(80% 0 0 0); transform: translateX(-2px); }
+}
+
+@keyframes glitch-2 {
+  0%, 100% { clip-path: inset(90% 0 0 0); transform: translateX(0); }
+  30%      { clip-path: inset(0 0 70% 0); transform: translateX(4px); }
+  60%      { clip-path: inset(40% 0 50% 0); transform: translateX(-4px); }
+}
+
+@keyframes intro-scenario-fondu {
+  0%   { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.96); opacity: 0; }
+}
+
 
 /* ─────────────────────────────────────────────────────────────────────────────
    § CLASSE .correcte
@@ -136,6 +178,185 @@
 
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   § OVERLAY RÉPONSE — feedback immédiat joueur
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.overlay-reponse {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 32px;
+  color: #E8E8F0;
+  background: rgba(11, 15, 26, 0.58);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
+.overlay-reponse--correcte {
+  background:
+    radial-gradient(circle at center, rgba(100, 220, 120, 0.15), rgba(11, 15, 26, 0.72) 58%),
+    rgba(100, 220, 120, 0.15);
+}
+
+.overlay-reponse--incorrecte {
+  background:
+    radial-gradient(circle at center, rgba(220, 80, 80, 0.12), rgba(11, 15, 26, 0.74) 58%),
+    rgba(220, 80, 80, 0.12);
+}
+
+.overlay-icone {
+  display: grid;
+  place-items: center;
+  width: clamp(96px, 24vw, 168px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-size: clamp(4rem, 14vw, 8rem);
+  font-weight: 900;
+  line-height: 1;
+  animation: pop-in 300ms ease-out both;
+}
+
+.overlay-icone--correcte {
+  color: #64DC78;
+  background: rgba(100, 220, 120, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(100, 220, 120, 0.36),
+    0 0 48px rgba(100, 220, 120, 0.28);
+}
+
+.overlay-icone--incorrecte {
+  color: #FF6B6B;
+  background: rgba(255, 107, 107, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(255, 107, 107, 0.36),
+    0 0 48px rgba(255, 107, 107, 0.26);
+}
+
+.overlay-score {
+  font-size: clamp(2rem, 8vw, 4.4rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.overlay-score--gain {
+  color: #FFD700;
+  text-shadow: 0 0 28px rgba(255, 215, 0, 0.35);
+  animation: score-monte 360ms 90ms ease-out both;
+}
+
+.overlay-score--perte {
+  color: #FF6B6B;
+  text-shadow: 0 0 24px rgba(255, 107, 107, 0.32);
+  animation: score-descend 360ms 90ms ease-out both;
+}
+
+.overlay-combo {
+  margin-top: 4px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  color: #FFD700;
+  font-size: clamp(1.1rem, 4vw, 1.65rem);
+  font-weight: 800;
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.28);
+  box-shadow: 0 0 28px rgba(255, 215, 0, 0.12);
+  animation: score-monte 300ms 160ms ease-out both;
+}
+
+.secousse-reponse {
+  animation: shake 400ms ease-out both;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   § INTRO SCÉNARIO — effet glitch TV
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.intro-scenario {
+  position: fixed;
+  inset: 0;
+  z-index: 850;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 18px;
+  padding: 40px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(128, 147, 241, 0.18), transparent 34%),
+    rgba(11, 15, 26, 0.98);
+  color: #E8E8F0;
+  overflow: hidden;
+}
+
+.intro-scenario.actif {
+  display: flex;
+}
+
+.titre-glitch {
+  position: relative;
+  max-width: min(92vw, 980px);
+  color: #8093F1;
+  font-size: clamp(36px, 8vw, 72px);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 0 34px rgba(128, 147, 241, 0.38);
+}
+
+.titre-glitch::before,
+.titre-glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.titre-glitch::before {
+  color: #72DDF7;
+  animation: glitch-1 .3s infinite;
+}
+
+.titre-glitch::after {
+  color: #FF6B6B;
+  animation: glitch-2 .3s infinite;
+}
+
+.titre-glitch.stabilise::before,
+.titre-glitch.stabilise::after {
+  animation: none;
+  opacity: 0;
+}
+
+.intro-scenario-soustitre {
+  max-width: min(90vw, 720px);
+  color: rgba(232, 232, 240, 0.78);
+  font-size: clamp(1rem, 2.4vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 420ms ease-out, transform 420ms ease-out;
+}
+
+.intro-scenario-soustitre.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.intro-scenario.sortie {
+  animation: intro-scenario-fondu 420ms ease-in both;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
    § WILL-CHANGE — desktop uniquement (eviter la sur-promotion sur mobile)
    ───────────────────────────────────────────────────────────────────────────── */
 
@@ -145,6 +366,13 @@
   .minuteur-urgent,
   .entree-question,
   .sortie-reponse {
+    will-change: transform, opacity;
+  }
+
+  .overlay-icone,
+  .overlay-score,
+  .overlay-combo,
+  .secousse-reponse {
     will-change: transform, opacity;
   }
 }

@@ -5,7 +5,7 @@
 import { etat, mettreAJourEtat, sauvegarderSession } from './etat.js';
 import * as ui from './interface.js';
 import { demarrerMinuteur, arreterMinuteur } from './minuteur.js';
-import { jouerSon } from './sons.js';
+import { Sons } from './sons.js';
 
 /** Instance Socket.IO partagée */
 export let socket = null;
@@ -40,10 +40,22 @@ function _sauvegarderTokens(donnees) {
 export function connecter(urlBackend) {
   // io() est exposé globalement par le CDN Socket.IO
   socket = io(urlBackend, {
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'],
     reconnection: true,
     reconnectionDelay: 1000,
     timeout: 20000,
+  });
+
+  // Bannière de reconnexion (Mission 5)
+  _injecterBanniereConnexion();
+  socket.io.on('reconnect_attempt', (n) => {
+    _afficherBanniere('warning', `Reconnexion en cours… (tentative ${n})`);
+  });
+  socket.io.on('reconnect', () => {
+    _afficherBanniere('success', 'Reconnecté au serveur !');
+  });
+  socket.io.on('reconnect_failed', () => {
+    _afficherBanniere('danger', 'Connexion perdue. Rechargez la page.');
   });
 
   // Brancher les handlers système
@@ -61,11 +73,18 @@ export function connecter(urlBackend) {
   socket.on('player-joined',         _surJoueurRejoint);
   socket.on('erreur-validation',     _surErreurValidation);
   socket.on('erreur-limite',         _surErreurLimite);
+  socket.on('scenario-selected',     _surScenarioSelectionne);
+  socket.on('manche-ended',          _surMancheTerminee);
+  socket.on('manche-started',        _surMancheDemarree);
   socket.on('theme-vote-started',    _surVoteThemeDemarre);
   socket.on('theme-vote-update',     _surMiseAJourVote);
   socket.on('theme-vote-result',     _surResultatVote);
   socket.on('questions-ready',       _surQuestionsPretes);
   socket.on('error',                 _surErreur);
+  socket.on('server-pong',           _surServerPong);
+
+  // Mission 7 — Mesure de latence (ping toutes les 5s)
+  _demarrerMesurePing();
 
   // Écouter l'événement DOM émis par interface.js (bouton suivant de l'hôte)
   document.addEventListener('ui:questionSuivante', () => {
@@ -112,7 +131,7 @@ function _gererConnexion() {
 /** Déconnexion */
 function _gererDeconnexion() {
   console.log('[socket] Déconnecté');
-  ui.afficherNotification('Connexion perdue...', 'warning');
+  _afficherBanniere('danger', 'Connexion perdue… Reconnexion en cours');
 }
 
 /** Rejoindre la partie avec succès */
@@ -133,10 +152,18 @@ function _surNouvelleQuestion(donnees) {
   mettreAJourEtat('questionActuelle', donnees);
   mettreAJourEtat('indexQuestionCourante', donnees.questionNumber - 1);
 
+  // Réinitialiser le compteur de réponses
+  if (donnees.totalPlayers !== undefined) {
+    mettreAJourEtat('totalJoueurs', donnees.totalPlayers);
+  }
+  ui.mettreAJourCompteurReponses(0, etat.totalJoueurs || donnees.totalPlayers || 0);
+
+  Sons.musique.jouer('question');
+
   // Démarrer le minuteur client (sauf si joueur en mode spectateur)
   const afficherMinuteur = !(etat.mode === 'spectator' && !etat.estHote);
   if (afficherMinuteur) {
-    demarrerMinuteur(donnees.timeLimit);
+    demarrerMinuteur(donnees.timeLimit / 1000);
   }
 
   // Afficher la question avec un callback de soumission de réponse
@@ -176,17 +203,30 @@ function _surResultatsQuestion(donnees) {
       name:   r.name,
       score:  r.score,
       isHost: r.isHost,
+      streak: r.streak,
+      streakManche: r.streakManche,
     }));
     mettreAJourEtat('joueurs', joueursMisAJour);
     ui.mettreAJourListeJoueurs(joueursMisAJour);
   }
 
+  // Streak du joueur courant (par son pseudo)
+  if (!etat.estHote && etat.pseudo) {
+    const ancienStreak = etat.streakActuel || 0;
+    const streakN = donnees.streaksManche?.[etat.pseudo] ?? 0;
+    mettreAJourEtat('streakActuel', streakN);
+    ui.mettreAJourStreak(streakN);
+    if (ancienStreak >= 3 && streakN < ancienStreak) Sons.jouer('streakBriser');
+    else if (streakN > ancienStreak && streakN >= 3) Sons.jouer('streakMonte');
+  }
+
   // Son selon le résultat du joueur courant
   if (!etat.estHote) {
     const monResultat = donnees.answers?.find(a => a.playerId === socket.id);
-    jouerSon(monResultat?.isCorrect ? 'correct' : 'incorrect');
+    Sons.jouer(monResultat?.isCorrect ? 'bonneReponse' : 'mauvaiseReponse');
   }
 
+  Sons.musique.jouer('attente');
   ui.afficherResultatsQuestion(donnees, socket.id);
 }
 
@@ -199,6 +239,7 @@ function _surJoueurARepondu(donnees) {
   mettreAJourEtat('totalJoueurs', totalJoueurs);
 
   ui.mettreAJourCompteurReponses(totalRepondu, totalJoueurs);
+  ui.mettreAJourAttenteReponses(donnees);
 }
 
 /** La partie a démarré (reçu côté joueur en salle d'attente) */
@@ -218,7 +259,7 @@ function _surPartieDemarree(donnees) {
 /** La partie est terminée */
 function _surPartieTerminee(donnees) {
   console.log('[socket] Partie terminée :', donnees);
-  jouerSon('fin');
+  Sons.musique.jouer('finale');
   ui.afficherResultatsFinaux(donnees);
 }
 
@@ -239,10 +280,32 @@ function _surJoueurRejoint(donnees) {
   }
 }
 
+/** Scénario sélectionné — affiché 5s au démarrage */
+function _surScenarioSelectionne(donnees) {
+  console.log('[socket] Scénario sélectionné :', donnees);
+  Sons.jouer('scenarioAnnonce');
+  ui.afficherBanniereScenario(donnees.titre || donnees.scenario);
+}
+
+/** Fin d'une manche — afficher l'overlay de transition */
+function _surMancheTerminee(donnees) {
+  console.log('[socket] Manche terminée :', donnees);
+  Sons.jouer('mancheFin');
+  ui.afficherTransitionManche(donnees);
+}
+
+/** Début d'une nouvelle manche — masquer l'overlay et afficher la manche */
+function _surMancheDemarree(donnees) {
+  console.log('[socket] Manche démarrée :', donnees);
+  Sons.jouer('mancheDebut');
+  ui.masquerTransitionManche();
+  ui.afficherManche(donnees.manche);
+}
+
 /** Vote de thème démarré */
 function _surVoteThemeDemarre(donnees) {
   console.log('[socket] Vote de thème démarré :', donnees);
-  ui.afficherVoteTheme(donnees.options || donnees);
+  ui.afficherVoteTheme(donnees.themes || donnees.options || donnees);
 }
 
 /** Mise à jour live des votes */
@@ -314,4 +377,63 @@ export function sauvegarderDonneesPartie(donnees) {
   mettreAJourEtat('mode',     donnees.mode || 'spectator');
   _sauvegarderTokens(donnees);
   sauvegarderSession();
+}
+
+// ─── Ping / latence (Mission 7) ────────────────────────────────────────────────
+
+let _intervalPing = null;
+
+function _demarrerMesurePing() {
+  clearInterval(_intervalPing);
+  _intervalPing = setInterval(() => {
+    if (socket?.connected) socket.emit('client-ping', Date.now());
+  }, 5000);
+}
+
+function _surServerPong(timestamp) {
+  const latence = Date.now() - timestamp;
+  ui.mettreAJourPing(latence);
+}
+
+// ─── Bannière de reconnexion (Mission 5) ───────────────────────────────────────
+
+const _COULEURS_BANNIERE = {
+  warning: { fond: '#FFB400', texte: '#000' },
+  success: { fond: '#64DC78', texte: '#000' },
+  danger:  { fond: '#FF6B6B', texte: '#fff' },
+};
+let _timerBanniere = null;
+
+function _injecterBanniereConnexion() {
+  if (document.getElementById('banniere-connexion')) return;
+  const el = document.createElement('div');
+  el.id = 'banniere-connexion';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  Object.assign(el.style, {
+    position: 'fixed', top: '0', left: '0', right: '0',
+    zIndex: '10002', padding: '10px 20px', textAlign: 'center',
+    fontSize: '0.9rem', fontWeight: '600',
+    transition: 'transform 0.3s ease, opacity 0.3s ease',
+    transform: 'translateY(-100%)', opacity: '0',
+  });
+  document.body.prepend(el);
+}
+
+function _afficherBanniere(type, contenu) {
+  const el = document.getElementById('banniere-connexion');
+  if (!el) return;
+  const { fond, texte } = _COULEURS_BANNIERE[type] ?? _COULEURS_BANNIERE.warning;
+  el.style.background = fond;
+  el.style.color = texte;
+  el.textContent = contenu;
+  el.style.transform = 'translateY(0)';
+  el.style.opacity = '1';
+  clearTimeout(_timerBanniere);
+  if (type === 'success') {
+    _timerBanniere = setTimeout(() => {
+      el.style.transform = 'translateY(-100%)';
+      el.style.opacity = '0';
+    }, 2500);
+  }
 }

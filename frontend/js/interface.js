@@ -5,6 +5,9 @@
 
 import { etat } from './etat.js';
 
+const joueursRepondusQuestion = new Set();
+let minuterieTransitionManche = null;
+
 // ─── Utilitaires internes ──────────────────────────────────────────────────────
 
 /**
@@ -97,6 +100,8 @@ export function afficherQuestion(donneesQuestion, callbackReponse) {
   masquerElement('result-zone');
   masquerElement('player-result');
   masquerElement('answer-zone');
+  masquerElement('player-wait-zone');
+  joueursRepondusQuestion.clear();
   afficherManche(donneesQuestion.manche);
 
   const infoQuestion = document.getElementById('info-question');
@@ -123,10 +128,11 @@ export function afficherManche(manche) {
   if (!zoneManche) return;
 
   const titres = {
-    NEUF_POINTS: 'Manche 1 - Neuf points gagnants',
-    QUATRE_A_LA_SUITE: 'Manche 2 - Quatre a la suite',
-    FACE_A_FACE: 'Manche 3 - Face-a-face',
-    TERMINE: 'Champion designe',
+    ENTRAINEMENT:      'Entraînement',
+    NEUF_POINTS:       'Manche 1 — Neuf points gagnants',
+    QUATRE_A_LA_SUITE: 'Manche 2 — Quatre à la suite',
+    FACE_A_FACE:       'Finale — Face-à-face',
+    TERMINE:           'Champion désigné',
   };
 
   const titre = titres[manche.nom] || manche.titre || `Manche ${manche.numero || ''}`;
@@ -175,9 +181,15 @@ function _afficherQuestionJoueur(donneesQuestion, callbackReponse) {
   donneesQuestion.options.forEach(option => {
     const btn = document.createElement('button');
     btn.className = 'player-option';
+    btn.dataset.sound = 'selectionReponse';
     btn.textContent = option;
 
     btn.addEventListener('click', () => {
+      if (btn.dataset.clique === 'oui') return;
+      btn.dataset.clique = 'oui';
+
+      navigator.vibrate?.(50);
+
       // Bloquer les clics multiples
       conteneurOptions.querySelectorAll('.player-option').forEach(b => {
         b.disabled = true;
@@ -190,6 +202,8 @@ function _afficherQuestionJoueur(donneesQuestion, callbackReponse) {
         statutBuzzer.textContent = 'Réponse envoyée ! En attente des autres...';
         statutBuzzer.classList.add('success');
       }
+
+      afficherAttenteReponses(etat.pseudo);
 
       // Notifier le module appelant
       if (typeof callbackReponse === 'function') {
@@ -222,8 +236,114 @@ export function afficherResultatsQuestion(donnees, socketId) {
     _afficherResultatsHote(donnees);
   } else {
     const monResultat = donnees.answers?.find(a => a.playerId === socketId) ?? null;
-    _afficherResultatsJoueur(donnees, monResultat);
+    afficherOverlayReponse(monResultat).then(() => {
+      _afficherResultatsJoueur(donnees, monResultat);
+    });
   }
+}
+
+function _obtenirOverlayReponse() {
+  let overlay = document.getElementById('overlay-reponse');
+  if (overlay) return overlay;
+
+  overlay = document.createElement('div');
+  overlay.id = 'overlay-reponse';
+  overlay.className = 'overlay-reponse';
+  overlay.style.display = 'none';
+  overlay.setAttribute('aria-live', 'polite');
+  overlay.setAttribute('aria-hidden', 'true');
+
+  const icone = document.createElement('div');
+  icone.id = 'overlay-icone';
+  icone.className = 'overlay-icone';
+
+  const score = document.createElement('div');
+  score.id = 'overlay-score';
+  score.className = 'overlay-score';
+
+  const combo = document.createElement('div');
+  combo.id = 'overlay-combo';
+  combo.className = 'overlay-combo';
+  combo.style.display = 'none';
+
+  overlay.append(icone, score, combo);
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function _obtenirComboJoueur(monResultat) {
+  if (!monResultat?.isCorrect) return 0;
+  const classement = etat.joueurs || [];
+  const joueur = classement.find((j) => j.name === monResultat.playerName || j.id === monResultat.playerId);
+  return Number(joueur?.streak || joueur?.streakManche || 0);
+}
+
+function _declencherConfettisCombo() {
+  if (typeof window.confetti !== 'function') return;
+  window.confetti({
+    particleCount: 20,
+    spread: 46,
+    startVelocity: 18,
+    scalar: 0.65,
+    ticks: 80,
+    colors: ['#FFD700', '#72DDF7', '#8093F1'],
+    origin: { y: 0.62 },
+    disableForReducedMotion: true,
+  });
+}
+
+/**
+ * Affiche un feedback dramatique court avant le résultat détaillé du joueur.
+ * @param {Object|null} monResultat
+ * @returns {Promise<void>}
+ */
+export function afficherOverlayReponse(monResultat) {
+  const overlay = _obtenirOverlayReponse();
+  const icone = document.getElementById('overlay-icone');
+  const score = document.getElementById('overlay-score');
+  const combo = document.getElementById('overlay-combo');
+  const bonneReponse = Boolean(monResultat?.isCorrect);
+  const points = Number(monResultat?.pointsEarned || 0);
+  const comboActif = _obtenirComboJoueur(monResultat);
+
+  overlay.className = `overlay-reponse ${bonneReponse ? 'overlay-reponse--correcte' : 'overlay-reponse--incorrecte'}`;
+  overlay.style.display = 'flex';
+  overlay.setAttribute('aria-hidden', 'false');
+
+  if (icone) {
+    icone.textContent = bonneReponse ? '✓' : '✕';
+    icone.className = `overlay-icone ${bonneReponse ? 'overlay-icone--correcte' : 'overlay-icone--incorrecte'}`;
+  }
+
+  if (score) {
+    const prefixe = points > 0 ? '+' : '';
+    score.textContent = `${prefixe}${points} pts`;
+    score.className = `overlay-score ${bonneReponse ? 'overlay-score--gain' : 'overlay-score--perte'}`;
+  }
+
+  if (combo) {
+    if (bonneReponse && comboActif >= 3) {
+      combo.textContent = `Combo x${comboActif} !`;
+      combo.style.display = 'block';
+      _declencherConfettisCombo();
+    } else {
+      combo.textContent = '';
+      combo.style.display = 'none';
+    }
+  }
+
+  if (!bonneReponse) {
+    document.body.classList.add('secousse-reponse');
+  }
+
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      overlay.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('secousse-reponse');
+      resolve();
+    }, 800);
+  });
 }
 
 /**
@@ -274,6 +394,7 @@ function _afficherResultatsHote(donnees) {
 function _afficherResultatsJoueur(donnees, monResultat) {
   masquerElement('player-options');
   masquerElement('buzzer-zone');
+  masquerElement('player-wait-zone');
   afficherElement('player-result');
 
   const statutResultat = document.getElementById('player-result-status');
@@ -376,6 +497,87 @@ export function mettreAJourCompteurReponses(repondu, total) {
   }
 }
 
+function _joueursVisiblesPourAttente() {
+  let joueurs = [...(etat.joueurs || [])].filter((j) => !j.isHost);
+  if (!joueurs.length && etat.pseudo) {
+    joueurs = [{ name: etat.pseudo }];
+  }
+  return joueurs;
+}
+
+function _normaliserNomJoueur(joueurOuNom) {
+  if (!joueurOuNom) return '';
+  if (typeof joueurOuNom === 'string') return joueurOuNom;
+  return joueurOuNom.name || joueurOuNom.playerName || joueurOuNom.pseudo || joueurOuNom.id || '';
+}
+
+function _rendreAttenteReponses(totalForce = null, reponduForce = null) {
+  const liste = document.getElementById('liste-attente-joueurs');
+  const barre = document.getElementById('barre-attente-reponses');
+  const texte = document.getElementById('texte-attente-reponses');
+  const joueurs = _joueursVisiblesPourAttente();
+  const total = Number(totalForce || etat.totalJoueurs || joueurs.length || 0);
+  const repondusCalcules = joueurs.filter((joueur) => joueursRepondusQuestion.has(_normaliserNomJoueur(joueur))).length;
+  const repondus = Number.isFinite(Number(reponduForce)) ? Number(reponduForce) : repondusCalcules;
+  const totalAffiche = Math.max(total, joueurs.length, repondus);
+
+  if (liste) {
+    liste.innerHTML = '';
+    joueurs.forEach((joueur) => {
+      const nom = _normaliserNomJoueur(joueur);
+      const aRepondu = joueursRepondusQuestion.has(nom);
+      const ligne = document.createElement('div');
+      ligne.className = `avatar-joueur${aRepondu ? ' repondu' : ''}`;
+
+      const dot = document.createElement('span');
+      dot.className = 'avatar-dot';
+      dot.setAttribute('aria-hidden', 'true');
+
+      appendText(ligne, nom || 'Joueur', 'span', 'avatar-nom');
+      appendText(ligne, aRepondu ? 'répondu ✓' : '...', 'span', 'avatar-statut');
+      ligne.prepend(dot);
+      liste.appendChild(ligne);
+    });
+  }
+
+  if (barre) {
+    const ratio = totalAffiche > 0 ? Math.min(1, repondus / totalAffiche) : 0;
+    barre.style.width = `${Math.round(ratio * 100)}%`;
+  }
+
+  if (texte) {
+    texte.textContent = `${repondus} / ${totalAffiche} joueurs`;
+  }
+}
+
+export function afficherAttenteReponses(pseudoJoueur = etat.pseudo) {
+  const nom = _normaliserNomJoueur(pseudoJoueur);
+  if (nom) joueursRepondusQuestion.add(nom);
+
+  masquerElement('player-options');
+  masquerElement('buzzer-zone');
+  masquerElement('player-result');
+  afficherElement('player-wait-zone');
+  _rendreAttenteReponses();
+}
+
+export function mettreAJourAttenteReponses(donnees = {}) {
+  const nom = _normaliserNomJoueur(donnees.playerName || donnees.pseudo || donnees);
+  const dejaRepondu = nom && joueursRepondusQuestion.has(nom);
+  if (nom) joueursRepondusQuestion.add(nom);
+
+  if (document.getElementById('player-wait-zone')?.classList.contains('hidden')) {
+    _rendreAttenteReponses(donnees.totalPlayers, donnees.totalAnswered);
+    return;
+  }
+
+  _rendreAttenteReponses(donnees.totalPlayers, donnees.totalAnswered);
+
+  if (nom && !dejaRepondu) {
+    window.Sons?.jouer?.('popJoueur');
+  }
+}
+
 // ─── Minuteur ──────────────────────────────────────────────────────────────────
 
 /**
@@ -469,6 +671,7 @@ export function afficherResultatsFinaux(donnees) {
   _rendreAutresClassements(classement);
   _rendreGraphiqueScores(classement, historique);
   _rendreCartesStats(classement, historique);
+  _animerPodiumFinal();
 }
 
 /** Podium top 3 (ordre visuel : 2e gauche, 1er centre, 3e droite) */
@@ -488,6 +691,140 @@ function _rendrePodium(classement) {
     if (nomEl)   nomEl.textContent   = joueur.name;
     if (scoreEl) scoreEl.textContent = `${joueur.score} pts`;
   });
+}
+
+function _animerPodiumFinal() {
+  const podium = document.getElementById('podium');
+  if (!podium) return;
+
+  const actions = document.querySelector('#resultats-finaux .actions');
+  const titre = document.querySelector('#resultats-finaux .final-header h1');
+  const slots = {
+    troisieme: document.getElementById('podium-3'),
+    deuxieme: document.getElementById('podium-2'),
+    premier: document.getElementById('podium-1'),
+  };
+  const barres = {
+    troisieme: document.querySelector('#podium-3 .podium-bar'),
+    deuxieme: document.querySelector('#podium-2 .podium-bar'),
+    premier: document.querySelector('#podium-1 .podium-bar'),
+  };
+  const hauteurs = {
+    troisieme: barres.troisieme?.offsetHeight || 50,
+    deuxieme: barres.deuxieme?.offsetHeight || 70,
+    premier: barres.premier?.offsetHeight || 100,
+  };
+
+  [slots.troisieme, slots.deuxieme, slots.premier].forEach((slot) => {
+    if (!slot || slot.style.visibility === 'hidden') return;
+    slot.style.opacity = '0';
+    slot.style.transform = 'translateY(40px)';
+  });
+  Object.entries(barres).forEach(([cle, barre]) => {
+    if (!barre) return;
+    barre.style.height = '0px';
+    barre.dataset.hauteurFinale = String(hauteurs[cle]);
+  });
+  if (actions) {
+    actions.style.opacity = '0';
+    actions.style.transform = 'translateY(12px)';
+  }
+
+  const lancerConfettis = () => {
+    window.Sons?.jouer?.('podium1er');
+    if (typeof window.confetti === 'function') {
+      window.confetti({
+        particleCount: 200,
+        spread: 72,
+        startVelocity: 38,
+        colors: ['#8093F1', '#72DDF7', '#FFD700'],
+        origin: { y: 0.58 },
+        disableForReducedMotion: true,
+      });
+    }
+  };
+
+  if (!window.anime) {
+    Object.entries(barres).forEach(([cle, barre]) => {
+      if (barre) barre.style.height = `${hauteurs[cle]}px`;
+    });
+    [slots.troisieme, slots.deuxieme, slots.premier].forEach((slot) => {
+      if (slot) {
+        slot.style.opacity = '1';
+        slot.style.transform = '';
+      }
+    });
+    if (actions) {
+      actions.style.opacity = '1';
+      actions.style.transform = '';
+    }
+    lancerConfettis();
+    return;
+  }
+
+  const timeline = window.anime.timeline({ autoplay: true });
+  timeline
+    .add({
+      targets: titre,
+      translateY: [-36, 0],
+      opacity: [0, 1],
+      duration: 500,
+      easing: 'easeOutQuad',
+    })
+    .add({
+      targets: slots.troisieme,
+      translateY: [60, 0],
+      opacity: [0, 1],
+      duration: 600,
+      easing: 'easeOutElastic(1, .75)',
+    }, 1000)
+    .add({
+      targets: barres.troisieme,
+      height: [0, hauteurs.troisieme],
+      duration: 600,
+      easing: 'easeOutElastic(1, .75)',
+    }, 1000)
+    .add({
+      targets: slots.deuxieme,
+      translateY: [60, 0],
+      opacity: [0, 1],
+      duration: 600,
+      easing: 'easeOutElastic(1, .75)',
+    }, 1800)
+    .add({
+      targets: barres.deuxieme,
+      height: [0, hauteurs.deuxieme],
+      duration: 600,
+      easing: 'easeOutElastic(1, .75)',
+    }, 1800)
+    .add({
+      targets: slots.premier,
+      translateY: [60, 0],
+      opacity: [0, 1],
+      duration: 650,
+      easing: 'easeOutElastic(1, .75)',
+      begin: lancerConfettis,
+    }, 2600)
+    .add({
+      targets: barres.premier,
+      height: [0, hauteurs.premier],
+      duration: 650,
+      easing: 'easeOutElastic(1, .75)',
+    }, 2600)
+    .add({
+      targets: '#podium-1 .podium-crown',
+      translateY: [-40, 0],
+      opacity: [0, 1],
+      duration: 700,
+      easing: 'easeOutElastic(1, .6)',
+    }, 3000)
+    .add({
+      targets: actions,
+      translateY: [12, 0],
+      opacity: [0, 1],
+      duration: 420,
+      easing: 'easeOutQuad',
+    }, 4000);
 }
 
 /** Joueurs de rang 4 et plus */
@@ -694,6 +1031,7 @@ export function afficherVoteTheme(options) {
     options.forEach(theme => {
       const btn = document.createElement('button');
       btn.className = 'vote-theme-btn';
+      btn.dataset.sound = 'toggle';
       btn.textContent = theme;
       btn.dataset.theme = theme;
       conteneurBoutons.appendChild(btn);
@@ -812,6 +1150,222 @@ export function afficherErreurLimite(attente) {
     `Limite atteinte. Attendez ${attente}s avant de réessayer.`,
     'warning'
   );
+}
+
+// ─── Scénario & transitions de manche ─────────────────────────────────────────
+
+/**
+ * Affiche la bannière du scénario pendant 5 secondes.
+ * @param {string} titre - Titre lisible du scénario
+ */
+export function afficherBanniereScenario(titre) {
+  const banner = document.getElementById('scenario-banner');
+  if (!banner) return;
+  banner.textContent = titre;
+  banner.classList.remove('hidden');
+  setTimeout(() => banner.classList.add('hidden'), 5000);
+}
+
+/**
+ * Affiche l'overlay de transition inter-manche avec qualifiés/éliminés.
+ * @param {Object} donnees - Données de l'event 'manche-ended'
+ */
+export function afficherTransitionManche(donnees) {
+  const overlay = document.getElementById('overlay-manche');
+  if (!overlay) return;
+
+  const titreEl = document.getElementById('manche-titre');
+  const eliminesEl = document.getElementById('manche-elimines');
+  const qualifiesEl = document.getElementById('manche-qualifies');
+  const separateur = overlay.querySelector('.manche-separateur');
+  const countdown = document.getElementById('manche-countdown');
+
+  if (minuterieTransitionManche) clearTimeout(minuterieTransitionManche);
+  if (titreEl) titreEl.textContent = 'FIN DE MANCHE';
+  if (countdown) countdown.textContent = '';
+  if (separateur) separateur.style.width = '0';
+
+  _remplirListeTransition(eliminesEl, donnees.elimines, 'joueur-elimine', '✕', 'Aucun éliminé');
+  _remplirListeTransition(qualifiesEl, donnees.qualifies, 'joueur-qualifie', '✓', 'Qualification en cours');
+
+  overlay.classList.remove('hidden');
+  overlay.style.opacity = '1';
+  window.Sons?.jouer?.('mancheFin');
+  _jouerAnimationTransitionManche(overlay);
+
+  setTimeout(() => { if (countdown) countdown.textContent = 'Prochain round dans 2...'; }, 3500);
+  setTimeout(() => { if (countdown) countdown.textContent = 'Prochain round dans 1...'; }, 4300);
+  minuterieTransitionManche = setTimeout(() => masquerTransitionManche(), 5000);
+}
+
+/**
+ * Masque l'overlay de transition inter-manche.
+ */
+export function masquerTransitionManche() {
+  const overlay = document.getElementById('overlay-manche');
+  if (!overlay) return;
+
+  if (minuterieTransitionManche) {
+    clearTimeout(minuterieTransitionManche);
+    minuterieTransitionManche = null;
+  }
+
+  if (window.anime) {
+    window.anime({
+      targets: overlay,
+      opacity: [1, 0],
+      duration: 320,
+      easing: 'easeInQuad',
+      complete: () => {
+        overlay.classList.add('hidden');
+        overlay.style.opacity = '';
+      },
+    });
+  } else {
+    overlay.classList.add('hidden');
+    overlay.style.opacity = '';
+  }
+}
+
+function _libelleParticipant(participant) {
+  if (!participant) return '';
+  if (typeof participant === 'string') return participant;
+  return participant.name || participant.playerName || participant.pseudo || participant.id || '';
+}
+
+function _remplirListeTransition(conteneur, participants, classe, icone, messageVide) {
+  if (!conteneur) return;
+  conteneur.innerHTML = '';
+  const noms = (participants || []).map(_libelleParticipant).filter(Boolean);
+
+  if (!noms.length) {
+    const vide = document.createElement('span');
+    vide.className = classe;
+    vide.textContent = messageVide;
+    conteneur.appendChild(vide);
+    return;
+  }
+
+  noms.forEach((nom) => {
+    const ligne = document.createElement('span');
+    ligne.className = classe;
+    appendText(ligne, icone, 'span');
+    appendText(ligne, nom, 'strong');
+    conteneur.appendChild(ligne);
+  });
+}
+
+function _jouerAnimationTransitionManche(overlay) {
+  const elements = {
+    titre: overlay.querySelector('.manche-titre'),
+    elimines: overlay.querySelectorAll('.joueur-elimine'),
+    separateur: overlay.querySelector('.manche-separateur'),
+    qualifies: overlay.querySelectorAll('.joueur-qualifie'),
+    libelles: overlay.querySelectorAll('.manche-libelle'),
+  };
+
+  if (!window.anime) {
+    if (elements.separateur) elements.separateur.style.width = '100%';
+    return;
+  }
+
+  window.anime.set(overlay, { opacity: 0 });
+  window.anime.set(elements.titre, { translateY: -60, opacity: 0 });
+  window.anime.set(elements.elimines, { translateY: 24, opacity: 0 });
+  window.anime.set(elements.qualifies, { translateY: 24, opacity: 0 });
+  window.anime.set(elements.libelles, { translateY: 18, opacity: 0 });
+  window.anime.set(elements.separateur, { width: '0%' });
+
+  const sequence = window.anime.timeline({ autoplay: true });
+  sequence
+    .add({
+      targets: overlay,
+      opacity: [0, 1],
+      duration: 400,
+      easing: 'easeOutQuad',
+    })
+    .add({
+      targets: elements.titre,
+      translateY: [-60, 0],
+      opacity: [0, 1],
+      duration: 650,
+      easing: 'easeOutElastic(1, .75)',
+    }, 400)
+    .add({
+      targets: [elements.libelles[0], ...elements.elimines],
+      translateY: [24, 0],
+      opacity: [0, 1],
+      delay: window.anime.stagger(150),
+      duration: 420,
+      easing: 'easeOutQuad',
+    }, 800)
+    .add({
+      targets: elements.separateur,
+      width: ['0%', '100%'],
+      duration: 300,
+      easing: 'easeOutQuad',
+    }, 1500)
+    .add({
+      targets: [elements.libelles[1], ...elements.qualifies],
+      translateY: [30, 0],
+      opacity: [0, 1],
+      delay: window.anime.stagger(150),
+      duration: 420,
+      easing: 'easeOutQuad',
+    }, 1800);
+}
+
+// ─── Ping indicator (Mission 7) ───────────────────────────────────────────────
+
+/**
+ * Met à jour l'indicateur de latence réseau (dot coloré dans le header).
+ * @param {number} latence - Temps aller-retour en ms
+ */
+export function mettreAJourPing(latence) {
+  const dot    = document.getElementById('ping-dot');
+  const valeur = document.getElementById('ping-valeur');
+  if (!dot) return;
+
+  let couleur, titre;
+  if (latence < 100) {
+    couleur = '#64DC78'; titre = `Excellent (${latence}ms)`;
+  } else if (latence < 250) {
+    couleur = '#FFD700'; titre = `Moyen (${latence}ms)`;
+  } else {
+    couleur = '#FF6B6B'; titre = `Mauvais (${latence}ms)`;
+  }
+
+  dot.style.background = couleur;
+  dot.style.boxShadow  = `0 0 6px ${couleur}`;
+  dot.title = titre;
+  if (valeur) valeur.textContent = `${latence}ms`;
+}
+
+// ─── Streak indicator ─────────────────────────────────────────────────────────
+
+/**
+ * Met à jour l'indicateur de série visible dans le header.
+ * @param {number} n - Nombre de bonnes réponses consécutives dans la manche
+ */
+export function mettreAJourStreak(n) {
+  const badge = document.getElementById('indicateur-streak');
+  if (!badge) return;
+
+  badge.dataset.streak = n;
+  const count = badge.querySelector('.streak-count');
+  const label = badge.querySelector('.streak-label');
+
+  if (count) count.textContent = n;
+  if (label) label.textContent = n >= 5 ? 'EN FEU !' : 'Série';
+
+  if (n >= 3) {
+    badge.classList.add('actif');
+    badge.classList.remove('cascade-animee');
+    void badge.offsetWidth;
+    badge.classList.add('cascade-animee');
+  } else {
+    badge.classList.remove('actif', 'cascade-animee');
+  }
 }
 
 // ─── Animations de réponse ─────────────────────────────────────────────────────

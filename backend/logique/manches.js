@@ -5,17 +5,19 @@
 // ============================================
 
 const MANCHES = {
-  NEUF_POINTS: "NEUF_POINTS",
+  ENTRAINEMENT:      "ENTRAINEMENT",
+  NEUF_POINTS:       "NEUF_POINTS",
   QUATRE_A_LA_SUITE: "QUATRE_A_LA_SUITE",
-  FACE_A_FACE: "FACE_A_FACE",
-  TERMINE: "TERMINE",
+  FACE_A_FACE:       "FACE_A_FACE",
+  TERMINE:           "TERMINE",
 };
 
 const TITRES_MANCHES = {
-  [MANCHES.NEUF_POINTS]: "Neuf points gagnants",
-  [MANCHES.QUATRE_A_LA_SUITE]: "Quatre a la suite",
-  [MANCHES.FACE_A_FACE]: "Face-a-face",
-  [MANCHES.TERMINE]: "Partie terminee",
+  [MANCHES.ENTRAINEMENT]:      "Entraînement",
+  [MANCHES.NEUF_POINTS]:       "Neuf points gagnants",
+  [MANCHES.QUATRE_A_LA_SUITE]: "Quatre à la suite",
+  [MANCHES.FACE_A_FACE]:       "Face-à-face",
+  [MANCHES.TERMINE]:           "Partie terminée",
 };
 
 function idsJoueursReels(partie) {
@@ -50,19 +52,50 @@ function creerEtatManche(nom, numero, joueursActifs, objectif, extras = {}) {
 function initialiserManche(partie) {
   const joueurs = idsJoueursReels(partie);
 
-  // Les manches TV completes demandent 4 joueurs. Pour les parties locales de
-  // test a 2/3 joueurs, on demarre a la manche qui correspond au nombre restant.
+  if (joueurs.length <= 1) {
+    partie.manche = creerEtatManche(MANCHES.ENTRAINEMENT, 1, joueurs, null);
+    return partie.manche;
+  }
+
   if (joueurs.length <= 2) {
-    partie.manche = creerEtatManche(MANCHES.FACE_A_FACE, 3, joueurs, 12);
+    partie.manche = creerEtatManche(MANCHES.FACE_A_FACE, 1, joueurs, 12);
     return partie.manche;
   }
 
   if (joueurs.length === 3) {
-    partie.manche = creerEtatManche(MANCHES.QUATRE_A_LA_SUITE, 2, joueurs, 4);
+    partie.manche = creerEtatManche(MANCHES.QUATRE_A_LA_SUITE, 1, joueurs, 4);
     return partie.manche;
   }
 
   partie.manche = creerEtatManche(MANCHES.NEUF_POINTS, 1, joueurs, 9);
+  return partie.manche;
+}
+
+/**
+ * initialiserMancheDepuisNom — Crée un état de manche à partir d'un nom connu.
+ * Utilisé quand le scénario impose une manche précise sans recalcul par joueurs.
+ * @param {Object} partie
+ * @param {string} nomManche - Constante MANCHES
+ * @param {number} numeromanche - Numéro de manche (1, 2, 3...)
+ */
+function initialiserMancheDepuisNom(partie, nomManche, numeroManche) {
+  const joueurs = idsJoueursReels(partie);
+  switch (nomManche) {
+    case MANCHES.ENTRAINEMENT:
+      partie.manche = creerEtatManche(MANCHES.ENTRAINEMENT, numeroManche || 1, joueurs, null);
+      break;
+    case MANCHES.NEUF_POINTS:
+      partie.manche = creerEtatManche(MANCHES.NEUF_POINTS, numeroManche || 1, joueurs, 9);
+      break;
+    case MANCHES.QUATRE_A_LA_SUITE:
+      partie.manche = creerEtatManche(MANCHES.QUATRE_A_LA_SUITE, numeroManche || 1, joueurs, 4);
+      break;
+    case MANCHES.FACE_A_FACE:
+      partie.manche = creerEtatManche(MANCHES.FACE_A_FACE, numeroManche || 1, joueurs, 12);
+      break;
+    default:
+      partie.manche = creerEtatManche(MANCHES.NEUF_POINTS, numeroManche || 1, joueurs, 9);
+  }
   return partie.manche;
 }
 
@@ -74,6 +107,38 @@ function obtenirJoueursActifs(partie) {
   return partie.manche.joueursActifs
     .map((id) => partie.players[id])
     .filter(Boolean);
+}
+
+function remplacerIdDansTableau(tableau, ancienId, nouveauId) {
+  if (!Array.isArray(tableau) || !ancienId || !nouveauId || ancienId === nouveauId) {
+    return tableau;
+  }
+
+  const remplaces = tableau.map((id) => (id === ancienId ? nouveauId : id));
+  return [...new Set(remplaces)];
+}
+
+function remplacerCleDansMap(map, ancienId, nouveauId) {
+  if (!map || !ancienId || !nouveauId || ancienId === nouveauId) return;
+  if (!Object.prototype.hasOwnProperty.call(map, ancienId)) return;
+
+  map[nouveauId] = map[ancienId];
+  delete map[ancienId];
+}
+
+function remplacerIdJoueurManche(partie, ancienId, nouveauId) {
+  const manche = partie?.manche;
+  if (!manche || !ancienId || !nouveauId || ancienId === nouveauId) return;
+
+  manche.joueursActifs = remplacerIdDansTableau(manche.joueursActifs, ancienId, nouveauId);
+  manche.qualifies = remplacerIdDansTableau(manche.qualifies, ancienId, nouveauId);
+  manche.elimines = remplacerIdDansTableau(manche.elimines, ancienId, nouveauId);
+  remplacerCleDansMap(manche.scoresManche, ancienId, nouveauId);
+  remplacerCleDansMap(manche.streaksManche, ancienId, nouveauId);
+
+  if (manche.champion === ancienId) {
+    manche.champion = nouveauId;
+  }
 }
 
 function obtenirQualificationCible(partie, cibleTheorique) {
@@ -211,7 +276,9 @@ module.exports = {
   MANCHES,
   TITRES_MANCHES,
   initialiserManche,
+  initialiserMancheDepuisNom,
   obtenirJoueursActifs,
+  remplacerIdJoueurManche,
   appliquerResultatsManche,
   pointsQuestionNeufPoints,
   pointsFaceAFace,

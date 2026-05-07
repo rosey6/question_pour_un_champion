@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#000000" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://localhost:* http://localhost:* ws://127.0.0.1:* http://127.0.0.1:* ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;" />
   <title>Inviter des joueurs - Question pour un Champion</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,6 +38,7 @@
       <header>
         <h1><i class="fas fa-users"></i> Invitez vos amis</h1>
         <p class="sous-titre">Partagez le code ou scannez le QR code</p>
+        <button type="button" class="btn-theme" data-theme-toggle data-sound="toggle" title="Changer le thème" aria-label="Changer le thème">☾</button>
       </header>
 
       <div class="separateur"></div>
@@ -49,12 +50,12 @@
           <h3>Code de la partie</h3>
           <div class="code-box">
             <span id="game-code" class="game-code">------</span>
-            <button id="btn-copy-code" class="btn-copy" title="Copier le code">
+            <button id="btn-copy-code" class="btn-copy" title="Copier le code" data-sound="clic">
               <i class="fas fa-copy"></i>
             </button>
           </div>
           <p class="code-instruction">Dictez ce code a vos amis</p>
-          <button id="btn-copy-link" class="btn-link-copy">
+          <button id="btn-copy-link" class="btn-link-copy" data-sound="clic">
             📋 Copier le lien
           </button>
         </div>
@@ -103,13 +104,13 @@
 
       <!-- Actions -->
       <div class="actions-bottom">
-        <button id="btn-annuler" class="bouton bouton-secondaire">
+        <button id="btn-annuler" class="bouton bouton-secondaire" data-sound="clic">
           <i class="fas fa-times"></i> Annuler
         </button>
-        <button id="btn-vote-theme" class="bouton bouton-secondaire hidden">
+        <button id="btn-vote-theme" class="bouton bouton-secondaire hidden" data-sound="clic">
           🗳️ Voter le thème (IA)
         </button>
-<button id="btn-demarrer" class="bouton bouton-principal" disabled>
+<button id="btn-demarrer" class="bouton bouton-principal" disabled data-sound="mancheDebut">
           <i class="fas fa-play"></i> Demarrer la partie
           <span id="btn-demarrer-count">(0/2 min)</span>
         </button>
@@ -713,12 +714,15 @@
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script type="module" src="js/micro-sons.js"></script>
   <script>
     // ============================================
     // PAGE CODE - SCRIPT
     // ============================================
 
-    const BACKEND_URL = "https://questionpourunchampion-backend.onrender.com";
+    const BACKEND_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '')
+      ? `http://${location.hostname || 'localhost'}:3000`
+      : 'https://questionpourunchampion-backend.onrender.com';
     let socket = null;
     let gameData = null;
     let players = [];
@@ -797,7 +801,7 @@
 
     function reconnectSocket() {
       socket = io(BACKEND_URL, {
-        transports: ['websocket', 'polling'],
+        transports: ['polling', 'websocket'],
         reconnection: true,
         timeout: 20000
       });
@@ -913,6 +917,7 @@
       themes.forEach(theme => {
         const btn = document.createElement('button');
         btn.className = 'vote-theme-btn';
+        btn.dataset.sound = 'toggle';
         btn.textContent = theme;
         btn.dataset.theme = theme;
         btn.addEventListener('click', () => {

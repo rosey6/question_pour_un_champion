@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#000000" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://localhost:* http://localhost:* ws://127.0.0.1:* http://127.0.0.1:* ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;" />
   <title>Creer une partie - Question pour un Champion</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,6 +38,7 @@
       <header>
         <h1><i class="fas fa-cog"></i> Configurer la partie</h1>
         <p class="sous-titre">Definissez les regles du jeu</p>
+        <button type="button" class="btn-theme" data-theme-toggle data-sound="toggle" title="Changer le thème" aria-label="Changer le thème">☾</button>
       </header>
 
       <div class="separateur"></div>
@@ -195,7 +196,7 @@
           <a href="multijoueur.html" class="bouton bouton-secondaire">
             <i class="fas fa-arrow-left"></i> Retour
           </a>
-          <button type="submit" id="btn-creer" class="bouton bouton-principal">
+          <button type="submit" id="btn-creer" class="bouton bouton-principal" data-sound="mancheDebut">
             <i class="fas fa-rocket"></i> Creer la partie
           </button>
         </div>
@@ -648,12 +649,15 @@
   </style>
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script type="module" src="js/micro-sons.js"></script>
   <script>
     // ============================================
     // CREATION DE PARTIE - SCRIPT
     // ============================================
 
-    const BACKEND_URL = "https://questionpourunchampion-backend.onrender.com";
+    const BACKEND_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '')
+      ? `http://${location.hostname || 'localhost'}:3000`
+      : 'https://questionpourunchampion-backend.onrender.com';
     let socket = null;
 
     // Gestion des modes
@@ -756,7 +760,7 @@
 
       // Connecter au serveur
       socket = io(BACKEND_URL, {
-        transports: ['websocket', 'polling'],
+        transports: ['polling', 'websocket'],
         reconnection: true,
         timeout: 20000
       });

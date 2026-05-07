@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#000000" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' ws://localhost:* http://localhost:* ws://127.0.0.1:* http://127.0.0.1:* ws://questionpourunchampion-backend.onrender.com wss://questionpourunchampion-backend.onrender.com https://questionpourunchampion-backend.onrender.com https://cdn.socket.io; img-src 'self' data: https://upload.wikimedia.org https://commons.wikimedia.org;" />
   <title>Rejoindre une partie - Question pour un Champion</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,6 +25,7 @@
           <h1><i class="fas fa-sign-in-alt"></i> Rejoindre</h1>
           <p class="sous-titre">Entrez le code partage par l'hote</p>
         </div>
+        <button type="button" class="btn-theme" data-theme-toggle data-sound="toggle" title="Changer le thème" aria-label="Changer le thème">☾</button>
       </header>
 
       <div class="separateur"></div>
@@ -69,7 +70,7 @@
 
         <!-- Bouton rejoindre -->
         <div class="form-actions-center">
-          <button type="submit" id="btn-rejoindre" class="bouton bouton-principal bouton-large">
+          <button type="submit" id="btn-rejoindre" class="bouton bouton-principal bouton-large" data-sound="clic">
             <i class="fas fa-door-open"></i> Rejoindre la partie
           </button>
         </div>
@@ -152,7 +153,7 @@
 
       <!-- Bouton quitter -->
       <div class="actions">
-        <button id="btn-quitter" class="bouton bouton-secondaire">
+        <button id="btn-quitter" class="bouton bouton-secondaire" data-sound="clic">
           <i class="fas fa-sign-out-alt"></i> Quitter la partie
         </button>
       </div>
@@ -485,12 +486,15 @@
   </style>
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script type="module" src="js/micro-sons.js"></script>
   <script>
     // ============================================
     // REJOINDRE UNE PARTIE - SCRIPT
     // ============================================
 
-    const BACKEND_URL = "https://questionpourunchampion-backend.onrender.com";
+    const BACKEND_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '')
+      ? `http://${location.hostname || 'localhost'}:3000`
+      : 'https://questionpourunchampion-backend.onrender.com';
     let socket = null;
     let playerName = '';
     let gameCode = '';
@@ -592,7 +596,7 @@
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion...';
 
       socket = io(BACKEND_URL, {
-        transports: ['websocket', 'polling'],
+        transports: ['polling', 'websocket'],
         reconnection: true,
         timeout: 20000
       });

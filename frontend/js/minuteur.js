@@ -1,42 +1,46 @@
 // ============================================
-// MINUTEUR.JS — Compte à rebours animé côté client
+// MINUTEUR.JS — Compte à rebours + escalade sonore
 // ============================================
 
-import { jouerSon } from './sons.js';
+import { Sons } from './sons.js';
 
-/** Référence à l'intervalle courant */
-let intervalMinuteur = null;
+let _intervalle        = null;
+let _secondesRestantes = 0;
 
-// ─── API publique ──────────────────────────────────────────────────────────────
+// Fréquences des bips d'escalade (secondes restantes → Hz)
+const FREQUENCES_TIC = { 5: 440, 4: 523, 3: 659, 2: 784 };
+
+// ─── API publique ─────────────────────────────────────────────────────────────
 
 /**
- * Démarre un compte à rebours client.
- * Met à jour l'affichage via mettreAJourAffichage() à chaque seconde.
- *
- * @param {number}   dureeMs      - Durée totale en millisecondes
- * @param {Function} [callbackFin] - Fonction appelée quand le compteur atteint 0
+ * Démarre un compte à rebours.
+ * Joue des bips à fréquence croissante dans les 5 dernières secondes.
+ * @param {number}   dureeSecondes - Durée en secondes
+ * @param {Function} [callbackFin] - Appelé quand le compteur atteint 0
  */
-export function demarrerMinuteur(dureeMs, callbackFin) {
+export function demarrerMinuteur(dureeSecondes, callbackFin) {
   arreterMinuteur();
+  _secondesRestantes = Math.floor(dureeSecondes);
+  _mettreAJourAffichage(_secondesRestantes);
 
-  let secondesRestantes = Math.floor(dureeMs / 1000);
-  mettreAJourAffichage(secondesRestantes);
+  _intervalle = setInterval(() => {
+    _secondesRestantes--;
+    _mettreAJourAffichage(_secondesRestantes);
 
-  intervalMinuteur = setInterval(() => {
-    secondesRestantes--;
-    mettreAJourAffichage(secondesRestantes);
-
-    // Bip sur les 5 dernières secondes
-    if (secondesRestantes > 0 && secondesRestantes <= 5) {
-      jouerSon('tic');
+    if (_secondesRestantes > 0 && _secondesRestantes <= 5) {
+      if (_secondesRestantes === 1) {
+        Sons.jouer('minuteurTic', { frequence: 880 });
+        if (typeof navigator.vibrate === 'function') navigator.vibrate([300]);
+      } else {
+        Sons.jouer('minuteurTic', { frequence: FREQUENCES_TIC[_secondesRestantes] ?? 440 });
+      }
     }
 
-    if (secondesRestantes <= 0) {
-      clearInterval(intervalMinuteur);
-      intervalMinuteur = null;
-      if (typeof callbackFin === 'function') {
-        callbackFin();
-      }
+    if (_secondesRestantes <= 0) {
+      clearInterval(_intervalle);
+      _intervalle = null;
+      Sons.jouer('tempsEcoule');
+      if (typeof callbackFin === 'function') callbackFin();
     }
   }, 1000);
 }
@@ -45,26 +49,27 @@ export function demarrerMinuteur(dureeMs, callbackFin) {
  * Arrête le compte à rebours en cours.
  */
 export function arreterMinuteur() {
-  if (intervalMinuteur !== null) {
-    clearInterval(intervalMinuteur);
-    intervalMinuteur = null;
+  if (_intervalle !== null) {
+    clearInterval(_intervalle);
+    _intervalle = null;
   }
 }
 
 /**
- * Met à jour l'élément #timer-value et applique la classe
- * 'minuteur-urgent' (CSS) quand les secondes sont <= 5.
- * N'anime QUE transform et opacity via la classe CSS.
- *
- * @param {number} secondes - Secondes restantes à afficher
+ * Retourne le nombre de secondes restantes.
+ * @returns {number}
  */
-export function mettreAJourAffichage(secondes) {
+export function getSecondesRestantes() {
+  return _secondesRestantes;
+}
+
+// ─── Utilitaire interne ───────────────────────────────────────────────────────
+
+function _mettreAJourAffichage(secondes) {
   const valeurEl    = document.getElementById('timer-value');
   const conteneurEl = document.getElementById('timer-container');
 
-  if (valeurEl) {
-    valeurEl.textContent = secondes > 0 ? secondes : 0;
-  }
+  if (valeurEl) valeurEl.textContent = secondes > 0 ? secondes : 0;
 
   if (conteneurEl) {
     if (secondes <= 5 && secondes > 0) {
