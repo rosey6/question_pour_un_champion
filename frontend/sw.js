@@ -1,11 +1,8 @@
 // Service Worker — cache-first pour les assets statiques (Mission 8)
-const CACHE_NOM = 'qpuc-v2';
+const CACHE_NOM = 'qpuc-v3';
+// Ne pas inclure les pages HTML : Cloudflare Workers les redirige (clean URLs)
+// ce qui provoque l'erreur "redirected response / redirect mode not follow"
 const ASSETS_STATIQUES = [
-  '/index.html',
-  '/multijoueur.html',
-  '/multijoueur-jeu.html',
-  '/multijoueur-creer.html',
-  '/multijoueur-rejoindre.html',
   '/css/style.css',
   '/css/animations.css',
   '/js/principal.js',
@@ -14,6 +11,8 @@ const ASSETS_STATIQUES = [
   '/js/etat.js',
   '/js/sons.js',
   '/js/minuteur.js',
+  '/js/theme.js',
+  '/js/micro-sons.js',
   '/manifest.json',
 ];
 
@@ -37,9 +36,15 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  // Ne pas intercepter : Socket.IO, CDNs externes, requêtes non-GET
+  // Ne pas intercepter :
+  // - requêtes non-GET
+  // - navigations HTML (mode:'navigate') : Cloudflare Workers redirige les .html
+  //   vers les clean URLs, ce qui génère l'erreur "redirected response not follow"
+  // - Socket.IO
+  // - CDNs externes
   if (
     event.request.method !== 'GET' ||
+    event.request.mode === 'navigate' ||
     url.pathname.startsWith('/socket.io') ||
     url.hostname !== self.location.hostname
   ) return;
