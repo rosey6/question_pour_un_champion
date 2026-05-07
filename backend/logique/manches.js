@@ -104,7 +104,7 @@ function initialiserManche(partie) {
     return partie.manche;
   }
   if (joueurs.length <= 2) {
-    partie.manche = creerEtatManche(MANCHES.FACE_A_FACE, 1, joueurs, 12);
+    partie.manche = creerEtatManche(MANCHES.FACE_A_FACE, 1, joueurs, 5);
     const noms = joueurs.map((id) => partie.players[id]?.name).filter(Boolean);
     initialiserFaceAFace(partie.manche, noms, {});
     return partie.manche;
@@ -131,7 +131,7 @@ function initialiserMancheDepuisNom(partie, nomManche, numeroManche) {
       partie.manche = creerEtatManche(MANCHES.QUATRE_A_LA_SUITE, numeroManche || 1, joueurs, 4);
       break;
     case MANCHES.FACE_A_FACE:
-      partie.manche = creerEtatManche(MANCHES.FACE_A_FACE, numeroManche || 1, joueurs, 12);
+      partie.manche = creerEtatManche(MANCHES.FACE_A_FACE, numeroManche || 1, joueurs, 5);
       { const noms = joueurs.map((id) => partie.players[id]?.name).filter(Boolean);
         initialiserFaceAFace(partie.manche, noms, {}); }
       break;
@@ -352,10 +352,9 @@ function gererBuzzer(manche, pseudo, timestamp) {
 
 function gererReponseApressBuzz(manche, pseudo, reponse, bonneReponse) {
   if (reponse === bonneReponse) {
-    const pts = prochaineCyclePts(manche);
-    manche.scoresManche[pseudo] = (manche.scoresManche[pseudo] || 0) + pts;
+    manche.scoresManche[pseudo] = (manche.scoresManche[pseudo] || 0) + 1;
     reinitialiserBuzzQuestion(manche);
-    return { correct: true, points: pts };
+    return { correct: true, points: 1 };
   }
   // Mauvaise réponse → exclure ce joueur, rouvrir le buzzer
   manche.joueurExcluQuestion = pseudo;
@@ -472,7 +471,7 @@ function revelerIndice(manche, question) {
   return {
     numero:      i + 1,
     texte:       indices[i],
-    points:      manche.pointsIndice[i] || 1,
+    points:      1,
     joueurActif: manche.mainActuelle,
   };
 }
@@ -494,7 +493,7 @@ function gererReponseFaceAFace(manche, pseudo, reponse, bonneReponse) {
   if (pseudo !== manche.mainActuelle) return { ignore: true };
 
   if (reponse === bonneReponse) {
-    const pts = manche.pointsIndice[manche.indiceActuel] || 1;
+    const pts = 1;
     manche.scoresManche[pseudo] = (manche.scoresManche[pseudo] || 0) + pts;
     // La main reste au gagnant; on réinitialise pour la question suivante
     manche.indiceActuel      = 0;

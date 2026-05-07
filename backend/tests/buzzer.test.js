@@ -36,7 +36,7 @@ function mancheQuatreASuite(pseudos) {
 }
 
 function mancheFaceAFace(pseudos) {
-  return creerEtatManche(MANCHES.FACE_A_FACE, 3, pseudos, 12);
+  return creerEtatManche(MANCHES.FACE_A_FACE, 3, pseudos, 5);
 }
 
 function questionAvecIndices(question = "Q?", bonneReponse = "Paris") {
@@ -106,14 +106,14 @@ describe("Buzzer — Manche Neuf Points", () => {
     expect(m.joueurExcluQuestion).toBe("alice");
   });
 
-  test("bonne réponse donne les points du cycle et réinitialise le buzzer", () => {
+  test("bonne réponse donne 1 point et réinitialise le buzzer", () => {
     const m = mancheNeufPoints(["alice", "bob"]);
     gererBuzzer(m, "alice", 1000);
     const res = gererReponseApressBuzz(m, "alice", "Paris", "Paris");
     expect(res.correct).toBe(true);
-    expect(res.points).toBe(1); // premier cycle = 1 pt
+    expect(res.points).toBe(1);
     expect(m.scoresManche.alice).toBe(1);
-    expect(m.buzzOuvert).toBe(true); // rouvert pour la prochaine question
+    expect(m.buzzOuvert).toBe(true);
   });
 
   test("cycle de points 1 → 2 → 3 → 1", () => {
@@ -256,7 +256,7 @@ describe("Face à Face — Indices et la main", () => {
     expect(m.mainActuelle).toBe("alice");
   });
 
-  test("indice 1 vaut 4 pts, indice 4 vaut 1 pt", () => {
+  test("chaque indice vaut toujours 1 pt", () => {
     const m = mancheFaceAFace(["alice", "bob"]);
     initialiserFaceAFace(m, ["alice", "bob"], {});
     m.mainActuelle = "alice";
@@ -264,7 +264,7 @@ describe("Face à Face — Indices et la main", () => {
 
     const i1 = revelerIndice(m, q);
     expect(i1.numero).toBe(1);
-    expect(i1.points).toBe(4);
+    expect(i1.points).toBe(1);
 
     m.indiceActuel = 3;
     const i4 = revelerIndice(m, q);
@@ -301,16 +301,16 @@ describe("Face à Face — Indices et la main", () => {
     expect(m.mainActuelle).toBe("bob");
   });
 
-  test("bonne réponse → score mis à jour, main conservée", () => {
+  test("bonne réponse → 1 pt, main conservée", () => {
     const m = mancheFaceAFace(["alice", "bob"]);
     initialiserFaceAFace(m, ["alice", "bob"], {});
     m.mainActuelle = "alice";
     const res = gererReponseFaceAFace(m, "alice", "Paris", "Paris");
     expect(res.correct).toBe(true);
-    expect(res.points).toBe(4); // indice 1 = 4 pts
-    expect(m.scoresManche.alice).toBe(4);
-    expect(m.mainActuelle).toBe("alice"); // main conservée
-    expect(m.indiceActuel).toBe(0);        // réinitialisé pour prochaine question
+    expect(res.points).toBe(1);
+    expect(m.scoresManche.alice).toBe(1);
+    expect(m.mainActuelle).toBe("alice");
+    expect(m.indiceActuel).toBe(0);
   });
 
   test("4 indices épuisés → tousIndicesEpuises, 0 point, indice reset", () => {
@@ -324,11 +324,11 @@ describe("Face à Face — Indices et la main", () => {
     expect(m.indiceActuel).toBe(0);
   });
 
-  test("objectif 12 pts atteint → champion désigné, manche TERMINE", () => {
+  test("objectif 5 pts atteint → champion désigné, manche TERMINE", () => {
     const m = mancheFaceAFace(["alice", "bob"]);
     initialiserFaceAFace(m, ["alice", "bob"], {});
     m.mainActuelle            = "alice";
-    m.scoresManche.alice      = 8;
+    m.scoresManche.alice      = 4;
     const res = gererReponseFaceAFace(m, "alice", "Paris", "Paris");
     expect(res.correct).toBe(true);
     expect(res.champion).toBe(true);

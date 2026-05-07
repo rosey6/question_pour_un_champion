@@ -1205,6 +1205,62 @@
     @media (prefers-reduced-motion: reduce) {
       #overlay-manche * { animation-duration: 0.01ms !important; }
     }
+
+    /* === Overlay annonce de manche === */
+    #overlay-annonce-manche {
+      position: fixed;
+      inset: 0;
+      z-index: 600;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      background: rgba(11, 15, 26, 0.97);
+      backdrop-filter: blur(18px);
+      animation: annonce-entree 0.35s ease-out;
+    }
+    #overlay-annonce-manche.hidden { display: none; }
+    @keyframes annonce-entree {
+      from { opacity: 0; transform: scale(1.04); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .annonce-numero {
+      font-size: 0.95rem;
+      letter-spacing: 0.35em;
+      color: #FFD700;
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
+    .annonce-separateur-ligne {
+      width: 60px;
+      height: 3px;
+      background: #FFD700;
+      border-radius: 2px;
+    }
+    .annonce-titre-text {
+      font-size: clamp(2.2rem, 7vw, 4rem);
+      font-weight: 900;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      text-align: center;
+    }
+    .annonce-desc-text {
+      font-size: 1.1rem;
+      color: #adb5bd;
+      max-width: 540px;
+      text-align: center;
+      line-height: 1.5;
+    }
+    .annonce-decompte-text {
+      font-size: 4rem;
+      font-weight: 900;
+      color: #FFD700;
+      min-width: 64px;
+      text-align: center;
+      line-height: 1;
+    }
   </style>
 </head>
 <body>
@@ -1220,6 +1276,15 @@
   <div id="intro-scenario" class="intro-scenario" aria-live="assertive" aria-hidden="true">
     <div id="intro-scenario-titre" class="titre-glitch" data-text="SCÉNARIO">SCÉNARIO</div>
     <div id="intro-scenario-soustitre" class="intro-scenario-soustitre"></div>
+  </div>
+
+  <!-- OVERLAY ANNONCE DE MANCHE -->
+  <div id="overlay-annonce-manche" class="hidden" role="status" aria-live="assertive">
+    <div class="annonce-numero">MANCHE <span id="annonce-numero-val">1</span></div>
+    <div class="annonce-separateur-ligne"></div>
+    <div class="annonce-titre-text" id="annonce-titre-val"></div>
+    <div class="annonce-desc-text" id="annonce-desc-val"></div>
+    <div class="annonce-decompte-text" id="annonce-decompte"></div>
   </div>
 
   <!-- MANCHE TRANSITION OVERLAY -->
@@ -1759,6 +1824,7 @@
       updateRoundLabel(data && data.manche);
       resetQuestion();
       resetIndicateursJoueurs();
+      afficherAnnonceMancheSpectate(data && data.manche);
     });
 
     // New question
@@ -2080,6 +2146,46 @@
   function handleMancheStarted(data) {
     masquerTransitionMancheSpectate();
     if (data && data.manche) updateRoundLabel(data.manche);
+    afficherAnnonceMancheSpectate(data && data.manche);
+  }
+
+  var _timerAnnonceSpectate = null;
+  var _decompteAnnonceSpectate = null;
+  var DESCRIPTIONS_MANCHES_SPECTATE = {
+    NEUF_POINTS:       'Premier à buzzer répond. Premier à 9 points gagne.',
+    QUATRE_A_LA_SUITE: 'Chaque joueur tente 4 bonnes réponses consécutives.',
+    FACE_A_FACE:       'Face à face aux indices. Premier à 5 points est champion !',
+    ENTRAINEMENT:      'Mode entraînement.',
+  };
+
+  function afficherAnnonceMancheSpectate(manche) {
+    var overlay = document.getElementById('overlay-annonce-manche');
+    if (!overlay) return;
+    var nom    = (manche && manche.nom)    || '';
+    var titre  = (manche && manche.titre)  || nom;
+    var numero = (manche && manche.numero) || 1;
+    var elNum    = document.getElementById('annonce-numero-val');
+    var elTitre  = document.getElementById('annonce-titre-val');
+    var elDesc   = document.getElementById('annonce-desc-val');
+    var elCompte = document.getElementById('annonce-decompte');
+    if (elNum)   elNum.textContent   = numero;
+    if (elTitre) elTitre.textContent = titre;
+    if (elDesc)  elDesc.textContent  = DESCRIPTIONS_MANCHES_SPECTATE[nom] || '';
+    clearInterval(_decompteAnnonceSpectate);
+    clearTimeout(_timerAnnonceSpectate);
+    var count = 3;
+    if (elCompte) elCompte.textContent = count;
+    overlay.classList.remove('hidden');
+    _decompteAnnonceSpectate = setInterval(function () {
+      count--;
+      if (elCompte) elCompte.textContent = count > 0 ? count : '';
+      if (count <= 0) {
+        clearInterval(_decompteAnnonceSpectate);
+        _timerAnnonceSpectate = setTimeout(function () {
+          overlay.classList.add('hidden');
+        }, 400);
+      }
+    }, 1000);
   }
 
   function remplirListeTransitionSpectate(conteneur, participants, classe, icone, messageVide) {

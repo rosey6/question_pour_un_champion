@@ -264,15 +264,13 @@ function _surJoueurARepondu(donnees) {
 /** La partie a démarré (reçu côté joueur en salle d'attente) */
 function _surPartieDemarree(donnees) {
   console.log('[socket] Partie démarrée :', donnees);
-  // Cette page est multijoueur-jeu.html — normalement la redirection
-  // est déjà faite par multijoueur-rejoindre.html.
-  // Ici on met à jour les données si on est déjà sur la page de jeu.
   if (donnees.players) {
     mettreAJourEtat('joueurs', donnees.players);
     ui.mettreAJourListeJoueurs(donnees.players);
   }
   ui.afficherManche(donnees.manche);
   ui.afficherEcranJeu();
+  ui.afficherAnnonceManche(donnees.manche || {});
 }
 
 /** La partie est terminée */
@@ -313,12 +311,13 @@ function _surMancheTerminee(donnees) {
   ui.afficherTransitionManche(donnees);
 }
 
-/** Début d'une nouvelle manche — masquer l'overlay et afficher la manche */
+/** Début d'une nouvelle manche — masquer l'overlay transition et annoncer */
 function _surMancheDemarree(donnees) {
   console.log('[socket] Manche démarrée :', donnees);
   Sons.jouer('mancheDebut');
   ui.masquerTransitionManche();
   ui.afficherManche(donnees.manche);
+  ui.afficherAnnonceManche(donnees.manche || {});
 }
 
 /** Vote de thème démarré */

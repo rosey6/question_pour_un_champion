@@ -1684,6 +1684,65 @@ export function afficherBanniereScenario(titre) {
   setTimeout(() => banner.classList.add('hidden'), 5000);
 }
 
+const DESCRIPTIONS_MANCHES = {
+  NEUF_POINTS:        'Le premier à buzzer répond. Premier à 9 points remporte la manche.',
+  QUATRE_A_LA_SUITE:  'Chaque joueur tente 4 bonnes réponses consécutives dans son thème.',
+  FACE_A_FACE:        'Face à face aux indices. Premier à 5 points est champion !',
+  ENTRAINEMENT:       'Mode entraînement — répondez à votre rythme.',
+};
+
+let _timerAnnonce    = null;
+let _decompteAnnonce = null;
+
+/**
+ * Affiche l'overlay d'annonce au début d'une manche (3s countdown).
+ * @param {Object} manche
+ */
+export function afficherAnnonceManche(manche) {
+  const overlay = document.getElementById('overlay-annonce-manche');
+  if (!overlay) return;
+
+  const nom    = manche?.nom  || '';
+  const titre  = manche?.titre || nom;
+  const numero = manche?.numero || 1;
+
+  const elNum    = document.getElementById('annonce-numero-val');
+  const elTitre  = document.getElementById('annonce-titre-val');
+  const elDesc   = document.getElementById('annonce-desc-val');
+  const elCompte = document.getElementById('annonce-decompte');
+
+  if (elNum)   elNum.textContent   = numero;
+  if (elTitre) elTitre.textContent = titre;
+  if (elDesc)  elDesc.textContent  = DESCRIPTIONS_MANCHES[nom] || '';
+
+  clearInterval(_decompteAnnonce);
+  clearTimeout(_timerAnnonce);
+
+  let count = 3;
+  if (elCompte) elCompte.textContent = count;
+
+  overlay.classList.remove('hidden');
+
+  _decompteAnnonce = setInterval(() => {
+    count--;
+    if (elCompte) elCompte.textContent = count > 0 ? count : '';
+    if (count <= 0) {
+      clearInterval(_decompteAnnonce);
+      _timerAnnonce = setTimeout(masquerAnnonceManche, 400);
+    }
+  }, 1000);
+}
+
+/**
+ * Masque l'overlay d'annonce de manche.
+ */
+export function masquerAnnonceManche() {
+  clearInterval(_decompteAnnonce);
+  clearTimeout(_timerAnnonce);
+  const overlay = document.getElementById('overlay-annonce-manche');
+  if (overlay) overlay.classList.add('hidden');
+}
+
 /**
  * Affiche l'overlay de transition inter-manche avec qualifiés/éliminés.
  * @param {Object} donnees - Données de l'event 'manche-ended'

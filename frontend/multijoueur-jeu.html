@@ -102,6 +102,62 @@
       }
     }
 
+    /* --- Overlay annonce de manche --- */
+    .overlay-annonce {
+      position: fixed;
+      inset: 0;
+      z-index: 600;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      background: rgba(11, 15, 26, 0.97);
+      backdrop-filter: blur(18px);
+      animation: annonce-entree 0.35s ease-out;
+    }
+    .overlay-annonce.hidden { display: none; }
+    @keyframes annonce-entree {
+      from { opacity: 0; transform: scale(1.04); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .annonce-numero {
+      font-size: 0.95rem;
+      letter-spacing: 0.35em;
+      color: var(--gold-bright, #FFD700);
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
+    .annonce-separateur {
+      width: 60px;
+      height: 3px;
+      background: var(--gold-bright, #FFD700);
+      border-radius: 2px;
+    }
+    .annonce-titre {
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      font-weight: 900;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      text-align: center;
+    }
+    .annonce-desc {
+      font-size: 1rem;
+      color: #adb5bd;
+      max-width: 480px;
+      text-align: center;
+      line-height: 1.5;
+    }
+    .annonce-decompte {
+      font-size: 3.5rem;
+      font-weight: 900;
+      color: var(--gold-bright, #FFD700);
+      min-width: 64px;
+      text-align: center;
+      line-height: 1;
+    }
+
     /* --- Bannière champion --- */
     .champion-banner {
       display: inline-flex;
@@ -189,6 +245,15 @@
 
       <div id="zone-manche" class="manche-banner" aria-live="polite">
         Manche en attente
+      </div>
+
+      <!-- Overlay annonce de manche (début) -->
+      <div id="overlay-annonce-manche" class="overlay-annonce hidden" role="status" aria-live="assertive">
+        <div class="annonce-numero">MANCHE <span id="annonce-numero-val">1</span></div>
+        <div class="annonce-separateur"></div>
+        <div class="annonce-titre" id="annonce-titre-val"></div>
+        <div class="annonce-desc" id="annonce-desc-val"></div>
+        <div class="annonce-decompte" id="annonce-decompte"></div>
       </div>
 
       <!-- Overlay de transition inter-manche -->

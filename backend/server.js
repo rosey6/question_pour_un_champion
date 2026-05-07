@@ -511,7 +511,7 @@ function serialiserJoueurs(partie) {
  */
 function normaliserParametres(bruts = {}) {
   const maxJoueurs = Number(bruts.maxPlayers ?? bruts.playersCount ?? bruts.nombreJoueurs ?? 4);
-  const nombreQuestions = Number(bruts.questionsCount ?? bruts.nombreQuestions ?? 10);
+  const nombreQuestions = Number(bruts.questionsCount ?? bruts.nombreQuestions ?? 30);
   const dureeQuestion = Number(bruts.timePerQuestion ?? bruts.dureeQuestion ?? 30);
   const dureeReponse = Number(bruts.timePerAnswer ?? bruts.dureeReponse ?? 15);
   const maxPlayers = Number.isFinite(maxJoueurs) ? maxJoueurs : 4;
@@ -1027,7 +1027,7 @@ function _terminerMancheQuatreASuite(codePartie) {
     if (!parties[codePartie]) return;
 
     const scoresPassage = partie.manche.scorePassage || {};
-    const nouvelleManche = creerEtatManche(MANCHES.FACE_A_FACE, 3, qualifies, 12);
+    const nouvelleManche = creerEtatManche(MANCHES.FACE_A_FACE, 3, qualifies, 5);
     initialiserFaceAFace(nouvelleManche, qualifies, scoresPassage);
     partie.manche = nouvelleManche;
 

@@ -101,19 +101,6 @@
 
           <div class="params-grid">
             <div class="param-card">
-              <div class="param-icon"><i class="fas fa-question-circle"></i></div>
-              <div class="param-content">
-                <label for="nombre-questions">Nombre de questions</label>
-                <select id="nombre-questions" class="select-choix">
-                  <option value="5">5 questions</option>
-                  <option value="10" selected>10 questions</option>
-                  <option value="15">15 questions</option>
-                  <option value="20">20 questions</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="param-card">
               <div class="param-icon"><i class="fas fa-hourglass-start"></i></div>
               <div class="param-content">
                 <label for="temps-question">Temps pour buzzer</label>
@@ -697,7 +684,6 @@
       const nom = document.getElementById('nom-createur').value.trim();
       const mode = document.querySelector('input[name="mode"]:checked').value;
       const questionSource = document.querySelector('input[name="question-source"]:checked').value;
-      const nombreQuestions = parseInt(document.getElementById('nombre-questions').value);
       const tempsQuestion = parseInt(document.getElementById('temps-question').value);
       const tempsReponse = parseInt(document.getElementById('temps-reponse').value);
 
@@ -750,7 +736,7 @@
         questionSource: questionSource,
         settings: {
           maxPlayers: 4,
-          questionsCount: nombreQuestions,
+          questionsCount: 30,
           timePerQuestion: tempsQuestion,
           timePerAnswer: tempsReponse
         }
